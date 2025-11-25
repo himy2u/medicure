@@ -861,10 +861,10 @@ export default function SignupScreen() {
 
   // Remove auto-test - let user manually select role and signup method
 
-  // Google OAuth setup - explicitly set redirect URI
+  // Google OAuth setup - use Expo auth proxy for production, local for dev
   const redirectUri = AuthSession.makeRedirectUri({
+    useProxy: true,  // Use auth.expo.io proxy
     scheme: 'medic',
-    path: undefined,
   });
 
   const [request, response, promptAsync] = Google.useAuthRequest({
