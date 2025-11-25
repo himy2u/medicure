@@ -30,6 +30,7 @@ const styles = StyleSheet.create({
     paddingTop: spacing.lg,
     paddingBottom: spacing.lg,
     flex: 1,
+    justifyContent: 'space-between',
   },
   input: {
     marginBottom: spacing.md,
@@ -1011,8 +1012,7 @@ export default function SignupScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
-      <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
-        <View style={styles.content}>
+      <View style={styles.content}>
 
       {/* Role Selection First */}
       <View style={styles.roleSection}>
@@ -1053,87 +1053,94 @@ export default function SignupScreen() {
         </TouchableOpacity>
       </View>
 
-      {/* Auth Method Selection */}
-      <Text style={styles.sectionTitle}>{t('authMethod')}</Text>
-      <View style={styles.authMethodContainer}>
-        <TouchableOpacity style={styles.googleButton}>
-          <Text style={styles.googleButtonText}>Google</Text>
-        </TouchableOpacity>
-        <Text style={styles.divider}>{t('orEmail')}</Text>
+      {/* Basic Form Fields */}
+      <View style={styles.formRow}>
+        <View style={styles.formHalf}>
+          <Controller
+            control={control}
+            name="name"
+            render={({ field: { onChange, onBlur, value } }) => (
+              <TextInput
+                label={t('name')}
+                placeholder={t('namePlaceholder')}
+                value={value}
+                onChangeText={onChange}
+                onBlur={onBlur}
+                mode="outlined"
+                style={styles.inputCompact}
+                error={!!errors.name}
+              />
+            )}
+          />
+          {errors.name && <Text style={styles.errorTextCompact}>{errors.name.message}</Text>}
+        </View>
+
+        <View style={styles.formHalf}>
+          <Controller
+            control={control}
+            name="email"
+            render={({ field: { onChange, onBlur, value } }) => (
+              <TextInput
+                label={t('email')}
+                placeholder={t('emailPlaceholder')}
+                value={value}
+                onChangeText={onChange}
+                onBlur={onBlur}
+                mode="outlined"
+                style={styles.inputCompact}
+                error={!!errors.email}
+                keyboardType="email-address"
+                autoCapitalize="none"
+              />
+            )}
+          />
+          {errors.email && <Text style={styles.errorTextCompact}>{errors.email.message}</Text>}
+        </View>
       </View>
 
-        {/* Basic Form Fields */}
-        <Controller
-          control={control}
-          name="name"
-          render={({ field: { onChange, onBlur, value } }) => (
-            <TextInput
-              label={t('name')}
-              value={value}
-              onChangeText={onChange}
-              onBlur={onBlur}
-              mode="outlined"
-              style={styles.input}
-              error={!!errors.name}
-            />
-          )}
-        />
-        {errors.name && <Text style={styles.errorText}>{errors.name.message}</Text>}
+        <View style={styles.formRow}>
+        <View style={styles.formHalf}>
+          <Controller
+            control={control}
+            name="password"
+            render={({ field: { onChange, onBlur, value } }) => (
+              <TextInput
+                label={t('password')}
+                placeholder={t('passwordPlaceholder')}
+                value={value}
+                onChangeText={onChange}
+                onBlur={onBlur}
+                mode="outlined"
+                style={styles.inputCompact}
+                error={!!errors.password}
+                secureTextEntry
+              />
+            )}
+          />
+          {errors.password && <Text style={styles.errorTextCompact}>{errors.password.message}</Text>}
+        </View>
 
-        <Controller
-          control={control}
-          name="email"
-          render={({ field: { onChange, onBlur, value } }) => (
-            <TextInput
-              label={t('email')}
-              value={value}
-              onChangeText={onChange}
-              onBlur={onBlur}
-              mode="outlined"
-              style={styles.input}
-              error={!!errors.email}
-              keyboardType="email-address"
-              autoCapitalize="none"
-            />
-          )}
-        />
-        {errors.email && <Text style={styles.errorText}>{errors.email.message}</Text>}
-
-        <Controller
-          control={control}
-          name="password"
-          render={({ field: { onChange, onBlur, value } }) => (
-            <TextInput
-              label={t('password')}
-              value={value}
-              onChangeText={onChange}
-              onBlur={onBlur}
-              mode="outlined"
-              style={styles.input}
-              error={!!errors.password}
-              secureTextEntry
-            />
-          )}
-        />
-        {errors.password && <Text style={styles.errorText}>{errors.password.message}</Text>}
-
-        <Controller
-          control={control}
-          name="confirmPassword"
-          render={({ field: { onChange, onBlur, value } }) => (
-            <TextInput
-              label={t('confirmPassword')}
-              value={value}
-              onChangeText={onChange}
-              onBlur={onBlur}
-              mode="outlined"
-              style={styles.input}
-              error={!!errors.confirmPassword}
-              secureTextEntry
-            />
-          )}
-        />
-        {errors.confirmPassword && <Text style={styles.errorText}>{errors.confirmPassword.message}</Text>}
+        <View style={styles.formHalf}>
+          <Controller
+            control={control}
+            name="confirmPassword"
+            render={({ field: { onChange, onBlur, value } }) => (
+              <TextInput
+                label={t('confirmPassword')}
+                placeholder={t('confirmPasswordPlaceholder')}
+                value={value}
+                onChangeText={onChange}
+                onBlur={onBlur}
+                mode="outlined"
+                style={styles.inputCompact}
+                error={!!errors.confirmPassword}
+                secureTextEntry
+              />
+            )}
+          />
+          {errors.confirmPassword && <Text style={styles.errorTextCompact}>{errors.confirmPassword.message}</Text>}
+        </View>
+      </View>
 
         {/* Submit Button */}
         <Button
@@ -1153,7 +1160,6 @@ export default function SignupScreen() {
           </TouchableOpacity>
         </View>
       </View>
-      </ScrollView>
     </SafeAreaView>
   );
 }
