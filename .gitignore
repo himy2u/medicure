@@ -132,27 +132,27 @@ build/
 dist/
 out/
 
-# Documentation files (as requested)
+# Documentation files (as requested - but allow verification screenshots)
 *.md
-*.png
-*.jpg
-*.jpeg
-*.gif
-*.bmp
-*.tiff
-*.ico
-*.webp
-*.heic
-*.heif
-*.svg
+# *.png
+# *.jpg
+# *.jpeg
+# *.gif
+# *.bmp
+# *.tiff
+# *.ico
+# *.webp
+# *.heic
+# *.heif
+# *.svg
 
-# Test files
+# Test files (but allow mtp verification)
 test_*.png
 verify_*.png
 *_screenshot.png
 *_test.png
 
-# Verification files
+# Verification files (but allow mtp verification)
 baseline_*.png
 emergency_*.png
 regular_*.png
@@ -160,6 +160,7 @@ clean_*.png
 fixed_*.png
 refreshed_*.png
 complete_*.png
+mtp*_*.png
 
 # Database
 *.db
