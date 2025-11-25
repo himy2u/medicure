@@ -3,7 +3,9 @@ import { StyleSheet, Text, View, Alert, Pressable, TouchableOpacity } from 'reac
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
+import { useTranslation } from 'react-i18next';
 import { colors, spacing, borderRadius } from '../theme/colors';
+import LanguageToggle from '../components/LanguageToggle';
 
 import { RootStackParamList } from '../navigation/AppNavigator';
 
@@ -11,7 +13,7 @@ type LandingScreenNavigationProp = StackNavigationProp<RootStackParamList, 'Land
 
 export default function LandingScreen() {
   const navigation = useNavigation<LandingScreenNavigationProp>();
-  const [isSpanish, setIsSpanish] = useState(false);
+  const { t } = useTranslation();
 
   const handleEmergency = () => {
     // Navigate to emergency symptom page
@@ -34,83 +36,46 @@ export default function LandingScreen() {
     <SafeAreaView style={styles.container}>
       <View style={styles.content}>
         {/* Language Toggle */}
-        <View style={styles.languageToggle}>
-          <TouchableOpacity 
-            style={[styles.languageButton, !isSpanish && styles.languageButtonActive]}
-            onPress={() => setIsSpanish(false)}
-          >
-            <Text style={[styles.languageButtonText, !isSpanish && styles.languageButtonTextActive]}>English</Text>
-          </TouchableOpacity>
-          <TouchableOpacity 
-            style={[styles.languageButton, isSpanish && styles.languageButtonActive]}
-            onPress={() => setIsSpanish(true)}
-          >
-            <Text style={[styles.languageButtonText, isSpanish && styles.languageButtonTextActive]}>Español</Text>
-          </TouchableOpacity>
+        <View style={styles.languageToggleContainer}>
+          <LanguageToggle />
         </View>
 
         {/* App Title */}
         <View style={styles.header}>
-          <Text style={styles.appTitle}>Medicure</Text>
-          <Text style={styles.appSubtitle}>Your Health Assistant</Text>
+          <Text style={styles.appTitle}>{t('medicure')}</Text>
+          <Text style={styles.appSubtitle}>{t('healthAssistant')}</Text>
         </View>
 
-        {/* Test Button for Verification */}
-        <Pressable
-          style={[styles.testButton, { backgroundColor: '#FF6B6B' }]}
-          onPress={() => {
-            console.log('TEST: Before navigation');
-            Alert.alert("Test", "This is a test alert");
-          }}
-        >
-          <Text style={styles.testButtonText}>TEST ALERT</Text>
-        </Pressable>
-
-        {/* Emergency Button - Top Priority */}
-        <Pressable
-          style={({ pressed }) => [
-            styles.emergencyButton,
-            pressed && styles.emergencyButtonPressed
-          ]}
+        {/* Main Action Buttons */}
+        <TouchableOpacity 
+          style={[styles.actionButton, styles.emergencyButton]}
           onPress={handleEmergency}
         >
-          <Text style={styles.emergencyButtonText}>Emergency</Text>
-          <Text style={styles.emergencySubtext}>Get help now!</Text>
-        </Pressable>
+          <Text style={styles.emergencyButtonText}>🚨 {t('emergency')}</Text>
+          <Text style={styles.emergencySubtext}>{t('getImmediateHelp')}</Text>
+        </TouchableOpacity>
 
-        {/* Find a Doctor Button */}
-        <Pressable
-          style={({ pressed }) => [
-            styles.primaryButton,
-            pressed && styles.primaryButtonPressed
-          ]}
-          onPress={() => handleRegularFeature("Find a Doctor", "Signup")}
+        <TouchableOpacity 
+          style={[styles.actionButton, styles.primaryButton]}
+          onPress={() => handleRegularFeature('find doctors', 'Signup')}
         >
-          <Text style={styles.primaryButtonText}>Find a Doctor</Text>
-          <Text style={styles.buttonSubtext}>Book appointment</Text>
-        </Pressable>
+          <Text style={styles.primaryButtonText}>🔍 {t('findDoctors')}</Text>
+        </TouchableOpacity>
 
-        {/* My Health & Prescription Row */}
         <View style={styles.buttonRow}>
-          <Pressable
-            style={({ pressed }) => [
-              styles.secondaryButton,
-              pressed && styles.secondaryButtonPressed
-            ]}
-            onPress={() => handleRegularFeature("My Health", "Signup")}
+          <TouchableOpacity 
+            style={[styles.actionButton, styles.prescriptionButton]}
+            onPress={() => handleRegularFeature('prescriptions', 'Signup')}
           >
-            <Text style={styles.secondaryButtonText}>My Health</Text>
-          </Pressable>
+            <Text style={styles.prescriptionButtonText}>💊 {t('prescriptions')}</Text>
+          </TouchableOpacity>
 
-          <Pressable
-            style={({ pressed }) => [
-              styles.secondaryButton,
-              pressed && styles.secondaryButtonPressed
-            ]}
-            onPress={() => handleRegularFeature("Prescription", "Signup")}
+          <TouchableOpacity 
+            style={[styles.actionButton, styles.healthButton]}
+            onPress={() => handleRegularFeature('my health', 'Signup')}
           >
-            <Text style={styles.secondaryButtonText}>Prescription</Text>
-          </Pressable>
+            <Text style={styles.healthButtonText}>❤️ {t('myHealth')}</Text>
+          </TouchableOpacity>
         </View>
       </View>
     </SafeAreaView>
@@ -128,31 +93,9 @@ const styles = StyleSheet.create({
     paddingTop: spacing.lg,
     justifyContent: 'flex-start',
   },
-  languageToggle: {
-    flexDirection: 'row',
-    backgroundColor: colors.backgroundSecondary,
-    borderRadius: borderRadius.lg,
-    padding: spacing.xs,
+  languageToggleContainer: {
+    alignItems: 'flex-end',
     marginBottom: spacing.md,
-    alignSelf: 'flex-end',
-  },
-  languageButton: {
-    flex: 1,
-    paddingVertical: spacing.sm,
-    paddingHorizontal: spacing.md,
-    borderRadius: borderRadius.md,
-    alignItems: 'center',
-  },
-  languageButtonActive: {
-    backgroundColor: colors.accent,
-  },
-  languageButtonText: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: colors.textSecondary,
-  },
-  languageButtonTextActive: {
-    color: '#FFFFFF',
   },
   header: {
     alignItems: 'center',
@@ -199,28 +142,20 @@ const styles = StyleSheet.create({
   },
   emergencySubtext: {
     fontSize: 16,
-    color: colors.backgroundSecondary,
-    fontWeight: '500',
   },
   // Primary Button - Find a Doctor
   primaryButton: {
     backgroundColor: colors.accent,
-    borderRadius: borderRadius.xl,
+    borderRadius: borderRadius.lg,
     paddingVertical: spacing.lg,
     paddingHorizontal: spacing.lg,
-    marginBottom: spacing.lg,
     alignItems: 'center',
-    justifyContent: 'center',
-    minHeight: 90,
+    marginBottom: spacing.md,
     shadowColor: colors.shadow,
-    shadowOffset: { width: 0, height: 3 },
+    shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.2,
-    shadowRadius: 6,
+    shadowRadius: 4,
     elevation: 6,
-  },
-  primaryButtonPressed: {
-    backgroundColor: colors.accentDark,
-    transform: [{ scale: 0.98 }],
   },
   primaryButtonText: {
     fontSize: 22,
@@ -234,13 +169,58 @@ const styles = StyleSheet.create({
     fontWeight: '400',
     opacity: 0.9,
   },
+  actionButton: {
+    borderRadius: borderRadius.lg,
+    paddingVertical: spacing.lg,
+    paddingHorizontal: spacing.lg,
+    alignItems: 'center',
+    marginBottom: spacing.md,
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 8,
+    elevation: 8,
+  },
+  secondaryButton: {
+    backgroundColor: '#95E1D3',
+  },
+  secondaryButtonText: {
+    fontSize: 20,
+    fontWeight: '600',
+    color: '#2C3E50',
+    marginBottom: spacing.xs,
+  },
+  prescriptionButton: {
+    backgroundColor: '#6B8E9F', // Muted blue-gray
+    borderWidth: 2,
+    borderColor: '#5A7A8A',
+    flex: 1,
+  },
+  prescriptionButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#FFFFFF',
+    marginBottom: spacing.xs,
+  },
+  healthButton: {
+    backgroundColor: '#8FBC8F', // Soft sage green
+    borderWidth: 2,
+    borderColor: '#7AB87A',
+    flex: 1,
+  },
+  healthButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#FFFFFF',
+    marginBottom: spacing.xs,
+  },
   // Button Row - My Health & Prescription
   buttonRow: {
     flexDirection: 'row',
     gap: spacing.md,
     marginBottom: spacing.lg,
   },
-  secondaryButton: {
+  secondaryButtonRow: {
     flex: 1,
     backgroundColor: colors.backgroundSecondary,
     borderRadius: borderRadius.lg,
@@ -260,12 +240,6 @@ const styles = StyleSheet.create({
   secondaryButtonPressed: {
     backgroundColor: colors.accentSoft,
     transform: [{ scale: 0.98 }],
-  },
-  secondaryButtonText: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: colors.accent,
-    textAlign: 'center',
   },
   testButton: {
     borderRadius: borderRadius.lg,

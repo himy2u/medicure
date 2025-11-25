@@ -1,15 +1,363 @@
 import React, { useState } from 'react';
-import { StyleSheet, Text, View, Alert, ScrollView, TouchableOpacity } from 'react-native';
-import { TextInput, Button, RadioButton } from 'react-native-paper';
-import { useForm, Controller } from 'react-hook-form';
+import { StyleSheet, Text, View, Alert, Pressable, TouchableOpacity, ScrollView, SafeAreaView } from 'react-native';
+import { Button, TextInput } from 'react-native-paper';
+import { RadioButton } from 'react-native-paper';
 import { useNavigation } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
+import { useForm, Controller } from 'react-hook-form';
+import { useTranslation } from 'react-i18next';
 import * as SecureStore from 'expo-secure-store';
 import * as Google from 'expo-auth-session/providers/google';
 import * as WebBrowser from 'expo-web-browser';
 import { colors, spacing, borderRadius } from '../theme/colors';
 
 import { RootStackParamList } from '../navigation/AppNavigator';
+
+// Move styles to top to fix "styles used before declaration" errors
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: colors.backgroundPrimary,
+  },
+  scrollView: {
+    flex: 1,
+  },
+  scrollContent: {
+    flexGrow: 1,
+  },
+  content: {
+    paddingHorizontal: spacing.lg,
+    paddingTop: spacing.lg,
+    paddingBottom: spacing.lg,
+    flex: 1,
+  },
+  input: {
+    marginBottom: spacing.md,
+  },
+  errorText: {
+    color: '#FF6B6B',
+    fontSize: 12,
+    marginTop: -spacing.sm,
+    marginBottom: spacing.sm,
+  },
+  signupButton: {
+    marginBottom: spacing.lg,
+  },
+  loginRedirect: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  loginText: {
+    color: colors.textSecondary,
+  },
+  loginLink: {
+    color: colors.accent,
+    fontWeight: '600',
+  },
+  authMethodContainer: {
+    marginBottom: spacing.lg,
+  },
+  googleButton: {
+    backgroundColor: '#4285F4',
+    paddingVertical: spacing.md,
+    borderRadius: borderRadius.md,
+    alignItems: 'center',
+    marginBottom: spacing.sm,
+  },
+  googleButtonText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  divider: {
+    textAlign: 'center',
+    color: colors.textSecondary,
+    marginBottom: spacing.md,
+  },
+  profileHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: spacing.md,
+  },
+  backButton: {
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.sm,
+  },
+  backButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: colors.accent,
+  },
+  placeholder: {
+    width: 50,
+  },
+  selectedValueContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.md,
+    backgroundColor: colors.accentSoft,
+    borderRadius: borderRadius.md,
+    marginBottom: spacing.md,
+  },
+  selectedValueLabel: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: colors.textPrimary,
+    marginRight: spacing.sm,
+  },
+  selectedValue: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: colors.textPrimary,
+    flex: 1,
+  },
+  changeText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: colors.accent,
+  },
+  searchButton: {
+    backgroundColor: colors.accent,
+    paddingVertical: spacing.md,
+    paddingHorizontal: spacing.lg,
+    borderRadius: borderRadius.md,
+    alignItems: 'center',
+    marginBottom: spacing.md,
+  },
+  searchButtonText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  searchContainer: {
+    backgroundColor: colors.backgroundSecondary,
+    padding: spacing.md,
+    borderRadius: borderRadius.md,
+    marginBottom: spacing.md,
+  },
+  doctorItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: spacing.sm,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
+  },
+  doctorInfo: {
+    flex: 1,
+  },
+  doctorName: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: colors.textPrimary,
+  },
+  doctorCedula: {
+    fontSize: 14,
+    color: colors.textSecondary,
+  },
+  availabilityToggle: {
+    paddingVertical: spacing.xs,
+    paddingHorizontal: spacing.sm,
+    borderRadius: borderRadius.sm,
+    minWidth: 50,
+    alignItems: 'center',
+  },
+  availabilityOn: {
+    backgroundColor: colors.success,
+  },
+  availabilityOff: {
+    backgroundColor: colors.textLight,
+  },
+  availabilityText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#FFFFFF',
+  },
+  title: {
+    fontSize: 24,
+    fontWeight: '700',
+    color: colors.textPrimary,
+    marginBottom: spacing.xs,
+  },
+  subtitle: {
+    fontSize: 14,
+    color: colors.textSecondary,
+    marginBottom: spacing.sm,
+  },
+  roleSection: {
+    marginBottom: spacing.md,
+  },
+  roleTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: colors.textPrimary,
+    marginBottom: spacing.sm,
+  },
+  roleRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: spacing.xs,
+  },
+  roleRowCompact: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: spacing.sm,
+    flexWrap: 'wrap',
+  },
+  radioItemCompact: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    width: '48%', // 2 per row
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.sm,
+    borderRadius: borderRadius.md,
+    marginHorizontal: '1%',
+    marginVertical: 2,
+  },
+  radioItemSelected: {
+    backgroundColor: colors.accent + '20',
+  },
+  radioLabelCompact: {
+    fontSize: 14,
+    color: colors.textPrimary,
+    marginLeft: spacing.xs,
+    fontWeight: '600',
+    flex: 1,
+  },
+  authButtons: {
+    marginBottom: spacing.lg,
+  },
+  authTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: colors.textPrimary,
+    marginBottom: spacing.sm,
+    textAlign: 'center',
+  },
+  whatsappButton: {
+    backgroundColor: '#25D366',
+    borderRadius: borderRadius.lg,
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.lg,
+    alignItems: 'center',
+    marginBottom: spacing.sm,
+    minHeight: 44,
+  },
+  whatsappButtonText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#FFFFFF',
+  },
+  dividerLine: {
+    flex: 1,
+    height: 1,
+    backgroundColor: colors.textSecondary,
+  },
+  dividerText: {
+    paddingHorizontal: spacing.sm,
+    color: colors.textSecondary,
+    fontSize: 12,
+  },
+  formRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: spacing.md,
+  },
+  formHalf: {
+    flex: 1,
+    marginHorizontal: spacing.xs,
+  },
+  inputCompact: {
+    marginBottom: spacing.xs,
+  },
+  errorTextCompact: {
+    color: colors.emergency,
+    fontSize: 12,
+    marginBottom: spacing.xs,
+  },
+  buttonRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginTop: spacing.lg,
+  },
+  backButtonStyle: {
+    flex: 1,
+    marginRight: spacing.sm,
+  },
+  signupButtonExpanded: {
+    flex: 1,
+    marginLeft: spacing.sm,
+    backgroundColor: colors.accent,
+    borderRadius: borderRadius.lg,
+  },
+  buttonContent: {
+    paddingVertical: spacing.sm,
+  },
+  backContainer: {
+    alignItems: 'center',
+  },
+  sectionTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: colors.textPrimary,
+    marginTop: spacing.md,
+    marginBottom: spacing.sm,
+  },
+  dropdownItem: {
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.md,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
+    backgroundColor: colors.backgroundPrimary,
+  },
+  dropdownItemSelected: {
+    backgroundColor: colors.accent + '20',
+  },
+  dropdownItemText: {
+    fontSize: 16,
+    color: colors.textPrimary,
+  },
+  vehicleContainer: {
+    marginBottom: spacing.lg,
+    padding: spacing.md,
+    backgroundColor: colors.backgroundSecondary,
+    borderRadius: borderRadius.md,
+  },
+  vehicleTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: colors.textPrimary,
+    marginBottom: spacing.sm,
+  },
+  addVehicleButton: {
+    backgroundColor: colors.accent,
+    paddingVertical: spacing.md,
+    paddingHorizontal: spacing.lg,
+    borderRadius: borderRadius.md,
+    alignItems: 'center',
+    marginTop: spacing.md,
+  },
+  addVehicleText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  removeVehicleButton: {
+    backgroundColor: colors.emergency,
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.md,
+    borderRadius: borderRadius.sm,
+    alignItems: 'center',
+    marginTop: spacing.sm,
+  },
+  removeVehicleText: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: '600',
+  },
+});
 
 type SignupScreenNavigationProp = StackNavigationProp<RootStackParamList, 'Signup'>;
 
@@ -497,6 +845,7 @@ const BasicProfileForm = ({ control, errors }: any) => (
 
 export default function SignupScreen() {
   const navigation = useNavigation<SignupScreenNavigationProp>();
+  const { t } = useTranslation();
   const [loading, setLoading] = useState(false);
   const [selectedRole, setSelectedRole] = useState('patient');
   const [showProfileStep, setShowProfileStep] = useState(false);
@@ -517,11 +866,11 @@ export default function SignupScreen() {
   WebBrowser.maybeCompleteAuthSession();
 
   const roles = [
-    { key: 'patient', label: 'Patient' },
-    { key: 'doctor', label: 'Doctor' },
-    { key: 'caregiver', label: 'Caregiver' },
-    { key: 'medical_staff', label: 'Medical Staff' },
-    { key: 'ambulance_staff', label: 'Ambulance Staff' }
+    { key: 'patient', label: t('patient') },
+    { key: 'doctor', label: t('doctor') },
+    { key: 'caregiver', label: t('caregiver') },
+    { key: 'medical_staff', label: t('medicalStaff') },
+    { key: 'ambulance_staff', label: t('ambulanceStaff') }
   ];
 
   const password = watch('password');
@@ -616,12 +965,12 @@ export default function SignupScreen() {
         <View style={styles.content}>
           <View style={styles.profileHeader}>
             <TouchableOpacity style={styles.backButton} onPress={() => setShowProfileStep(false)}>
-              <Text style={styles.backButtonText}>← Back</Text>
+              <Text style={styles.backButtonText}>{t('backButtonText')}</Text>
             </TouchableOpacity>
-            <Text style={styles.title}>Complete Your Profile</Text>
+            <Text style={styles.title}>{t('completeProfile')}</Text>
             <View style={styles.placeholder} />
           </View>
-          <Text style={styles.subtitle}>Role: {roles.find(r => r.key === currentRole)?.label}</Text>
+          <Text style={styles.subtitle}>{t('role')}: {roles.find(r => r.key === currentRole)?.label}</Text>
 
           {currentRole === 'patient' || currentRole === 'caregiver' ? (
             <PatientProfileForm control={control} errors={errors} />
@@ -661,8 +1010,9 @@ export default function SignupScreen() {
   }
 
   return (
-    <ScrollView style={styles.container} showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
-      <View style={styles.content}>
+    <SafeAreaView style={styles.container}>
+      <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
+        <View style={styles.content}>
 
       {/* Role Selection First */}
       <View style={styles.roleSection}>
@@ -694,7 +1044,7 @@ export default function SignupScreen() {
 
       {/* Auth Method */}
       <View style={styles.authButtons}>
-        <Text style={styles.authTitle}>Auth Method</Text>
+        <Text style={styles.authTitle}>{t('authMethod')}</Text>
         <TouchableOpacity style={styles.googleButton} onPress={handleGoogleSignup}>
           <Text style={styles.googleButtonText}>🔵 Google</Text>
         </TouchableOpacity>
@@ -703,464 +1053,107 @@ export default function SignupScreen() {
         </TouchableOpacity>
       </View>
 
-      <View style={styles.divider}>
-        <View style={styles.dividerLine} />
-        <Text style={styles.dividerText}>OR EMAIL</Text>
-        <View style={styles.dividerLine} />
+      {/* Auth Method Selection */}
+      <Text style={styles.sectionTitle}>{t('authMethod')}</Text>
+      <View style={styles.authMethodContainer}>
+        <TouchableOpacity style={styles.googleButton}>
+          <Text style={styles.googleButtonText}>Google</Text>
+        </TouchableOpacity>
+        <Text style={styles.divider}>{t('orEmail')}</Text>
       </View>
 
-      {/* Compact Form Fields */}
-      <View style={styles.formRow}>
-        <View style={styles.formHalf}>
-          <Controller
-            control={control}
-            rules={{
-              required: 'Name is required',
-              minLength: {
-                value: 2,
-                message: 'Name must be at least 2 characters',
-              },
-            }}
-            render={({ field: { onChange, onBlur, value } }) => (
-              <TextInput
-                label="Full Name"
-                value={value}
-                onBlur={onBlur}
-                onChangeText={onChange}
-                error={!!errors.name}
-                style={styles.inputCompact}
-                dense
-              />
-            )}
-            name="name"
-          />
-          {errors.name && <Text style={styles.errorTextCompact}>{errors.name.message}</Text>}
-        </View>
+        {/* Basic Form Fields */}
+        <Controller
+          control={control}
+          name="name"
+          render={({ field: { onChange, onBlur, value } }) => (
+            <TextInput
+              label={t('name')}
+              value={value}
+              onChangeText={onChange}
+              onBlur={onBlur}
+              mode="outlined"
+              style={styles.input}
+              error={!!errors.name}
+            />
+          )}
+        />
+        {errors.name && <Text style={styles.errorText}>{errors.name.message}</Text>}
 
-        <View style={styles.formHalf}>
-          <Controller
-            control={control}
-            rules={{
-              required: 'Email is required',
-              pattern: {
-                value: /\S+@\S+\.\S+/,
-                message: 'Invalid email address',
-              },
-            }}
-            render={({ field: { onChange, onBlur, value } }) => (
-              <TextInput
-                label="Email"
-                value={value}
-                onBlur={onBlur}
-                onChangeText={onChange}
-                error={!!errors.email}
-                style={styles.inputCompact}
-                keyboardType="email-address"
-                autoCapitalize="none"
-                dense
-              />
-            )}
-            name="email"
-          />
-          {errors.email && <Text style={styles.errorTextCompact}>{errors.email.message}</Text>}
-        </View>
-      </View>
+        <Controller
+          control={control}
+          name="email"
+          render={({ field: { onChange, onBlur, value } }) => (
+            <TextInput
+              label={t('email')}
+              value={value}
+              onChangeText={onChange}
+              onBlur={onBlur}
+              mode="outlined"
+              style={styles.input}
+              error={!!errors.email}
+              keyboardType="email-address"
+              autoCapitalize="none"
+            />
+          )}
+        />
+        {errors.email && <Text style={styles.errorText}>{errors.email.message}</Text>}
 
-      <View style={styles.formRow}>
-        <View style={styles.formHalf}>
-          <Controller
-            control={control}
-            rules={{
-              required: 'Password is required',
-              minLength: {
-                value: 6,
-                message: 'Password must be at least 6 characters',
-              },
-            }}
-            render={({ field: { onChange, onBlur, value } }) => (
-              <TextInput
-                label="Password"
-                value={value}
-                onBlur={onBlur}
-                onChangeText={onChange}
-                error={!!errors.password}
-                style={styles.inputCompact}
-                secureTextEntry
-                dense
-              />
-            )}
-            name="password"
-          />
-          {errors.password && <Text style={styles.errorTextCompact}>{errors.password.message}</Text>}
-        </View>
+        <Controller
+          control={control}
+          name="password"
+          render={({ field: { onChange, onBlur, value } }) => (
+            <TextInput
+              label={t('password')}
+              value={value}
+              onChangeText={onChange}
+              onBlur={onBlur}
+              mode="outlined"
+              style={styles.input}
+              error={!!errors.password}
+              secureTextEntry
+            />
+          )}
+        />
+        {errors.password && <Text style={styles.errorText}>{errors.password.message}</Text>}
 
-        <View style={styles.formHalf}>
-          <Controller
-            control={control}
-            rules={{
-              required: 'Please confirm your password',
-            }}
-            render={({ field: { onChange, onBlur, value } }) => (
-              <TextInput
-                label="Confirm"
-                value={value}
-                onBlur={onBlur}
-                onChangeText={onChange}
-                error={!!errors.confirmPassword}
-                style={styles.inputCompact}
-                secureTextEntry
-                dense
-              />
-            )}
-            name="confirmPassword"
-          />
-          {errors.confirmPassword && <Text style={styles.errorTextCompact}>{errors.confirmPassword.message}</Text>}
-        </View>
-      </View>
+        <Controller
+          control={control}
+          name="confirmPassword"
+          render={({ field: { onChange, onBlur, value } }) => (
+            <TextInput
+              label={t('confirmPassword')}
+              value={value}
+              onChangeText={onChange}
+              onBlur={onBlur}
+              mode="outlined"
+              style={styles.input}
+              error={!!errors.confirmPassword}
+              secureTextEntry
+            />
+          )}
+        />
+        {errors.confirmPassword && <Text style={styles.errorText}>{errors.confirmPassword.message}</Text>}
 
+        {/* Submit Button */}
         <Button
           mode="contained"
           onPress={handleSubmit(onSubmit)}
+          style={styles.signupButton}
           loading={loading}
           disabled={loading}
-          style={styles.signupButton}
-          contentStyle={styles.buttonContent}
         >
-          Create Account
+          {t('signup')}
         </Button>
 
-        <View style={styles.backContainer}>
-          <Button
-            mode="text"
-            onPress={() => navigation.navigate('Login')}
-            compact
-          >
-            Already have an account? Sign In
-          </Button>
+        <View style={styles.loginRedirect}>
+          <Text style={styles.loginText}>Already have an account? </Text>
+          <TouchableOpacity onPress={() => navigation.navigate('Login')}>
+            <Text style={styles.loginLink}>{t('login')}</Text>
+          </TouchableOpacity>
         </View>
       </View>
-    </ScrollView>
+      </ScrollView>
+    </SafeAreaView>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: colors.backgroundPrimary,
-  },
-  scrollContent: {
-    flexGrow: 1,
-  },
-  content: {
-    paddingHorizontal: spacing.lg,
-    paddingTop: spacing.lg,
-    paddingBottom: spacing.lg,
-    flex: 1,
-  },
-  profileHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: spacing.md,
-  },
-  backButton: {
-    paddingVertical: spacing.sm,
-    paddingHorizontal: spacing.sm,
-  },
-  backButtonText: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: colors.accent,
-  },
-  placeholder: {
-    width: 50,
-  },
-  selectedValueContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: spacing.sm,
-    paddingHorizontal: spacing.md,
-    backgroundColor: colors.accentSoft,
-    borderRadius: borderRadius.md,
-    marginBottom: spacing.md,
-  },
-  selectedValueLabel: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: colors.textPrimary,
-    marginRight: spacing.sm,
-  },
-  selectedValue: {
-    fontSize: 14,
-    fontWeight: '500',
-    color: colors.textPrimary,
-    flex: 1,
-  },
-  changeText: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: colors.accent,
-  },
-  searchButton: {
-    backgroundColor: colors.accent,
-    paddingVertical: spacing.md,
-    paddingHorizontal: spacing.lg,
-    borderRadius: borderRadius.md,
-    alignItems: 'center',
-    marginBottom: spacing.md,
-  },
-  searchButtonText: {
-    color: '#FFFFFF',
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  searchContainer: {
-    backgroundColor: colors.backgroundSecondary,
-    padding: spacing.md,
-    borderRadius: borderRadius.md,
-    marginBottom: spacing.md,
-  },
-  doctorItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: spacing.sm,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
-  },
-  doctorInfo: {
-    flex: 1,
-  },
-  doctorName: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: colors.textPrimary,
-  },
-  doctorCedula: {
-    fontSize: 14,
-    color: colors.textSecondary,
-  },
-  availabilityToggle: {
-    paddingVertical: spacing.xs,
-    paddingHorizontal: spacing.sm,
-    borderRadius: borderRadius.sm,
-    minWidth: 50,
-    alignItems: 'center',
-  },
-  availabilityOn: {
-    backgroundColor: colors.success,
-  },
-  availabilityOff: {
-    backgroundColor: colors.textLight,
-  },
-  availabilityText: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: '#FFFFFF',
-  },
-  title: {
-    fontSize: 24,
-    fontWeight: '700',
-    color: colors.textPrimary,
-    marginBottom: spacing.xs,
-  },
-  subtitle: {
-    fontSize: 14,
-    color: colors.textSecondary,
-    marginBottom: spacing.sm,
-  },
-  roleSection: {
-    marginBottom: spacing.md,
-  },
-  roleTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: colors.textPrimary,
-    marginBottom: spacing.sm,
-  },
-  roleRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: spacing.xs,
-  },
-  roleRowCompact: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: spacing.sm,
-    flexWrap: 'wrap',
-  },
-  radioItemCompact: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    width: '48%', // 2 per row
-    paddingVertical: spacing.sm,
-    paddingHorizontal: spacing.sm,
-    borderRadius: borderRadius.md,
-    marginHorizontal: '1%',
-    marginVertical: 2,
-  },
-  radioItemSelected: {
-    backgroundColor: colors.accent + '20',
-  },
-  radioLabelCompact: {
-    fontSize: 14,
-    color: colors.textPrimary,
-    marginLeft: spacing.xs,
-    fontWeight: '600',
-    flex: 1,
-  },
-  authButtons: {
-    marginBottom: spacing.lg,
-  },
-  authTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: colors.textPrimary,
-    marginBottom: spacing.sm,
-    textAlign: 'center',
-  },
-  googleButton: {
-    backgroundColor: '#4285F4',
-    borderRadius: borderRadius.lg,
-    paddingVertical: spacing.sm,
-    paddingHorizontal: spacing.lg,
-    alignItems: 'center',
-    marginBottom: spacing.sm,
-    minHeight: 44,
-  },
-  googleButtonText: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#FFFFFF',
-  },
-  whatsappButton: {
-    backgroundColor: '#25D366',
-    borderRadius: borderRadius.lg,
-    paddingVertical: spacing.sm,
-    paddingHorizontal: spacing.lg,
-    alignItems: 'center',
-    marginBottom: spacing.sm,
-    minHeight: 44,
-  },
-  whatsappButtonText: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#FFFFFF',
-  },
-  divider: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginVertical: spacing.md,
-  },
-  dividerLine: {
-    flex: 1,
-    height: 1,
-    backgroundColor: colors.textSecondary,
-  },
-  dividerText: {
-    paddingHorizontal: spacing.sm,
-    color: colors.textSecondary,
-    fontSize: 12,
-  },
-  formRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: spacing.md,
-  },
-  formHalf: {
-    flex: 1,
-    marginHorizontal: spacing.xs,
-  },
-  inputCompact: {
-    marginBottom: spacing.xs,
-  },
-  errorTextCompact: {
-    color: colors.emergency,
-    fontSize: 12,
-    marginBottom: spacing.xs,
-  },
-  buttonRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginTop: spacing.lg,
-  },
-  backButtonStyle: {
-    flex: 1,
-    marginRight: spacing.sm,
-  },
-  signupButton: {
-    backgroundColor: colors.accent,
-    borderRadius: borderRadius.lg,
-    marginBottom: spacing.md,
-  },
-  signupButtonExpanded: {
-    flex: 1,
-    marginLeft: spacing.sm,
-    backgroundColor: colors.accent,
-    borderRadius: borderRadius.lg,
-  },
-  buttonContent: {
-    paddingVertical: spacing.sm,
-  },
-  backContainer: {
-    alignItems: 'center',
-  },
-  sectionTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: colors.textPrimary,
-    marginTop: spacing.md,
-    marginBottom: spacing.sm,
-  },
-  dropdownItem: {
-    paddingVertical: spacing.sm,
-    paddingHorizontal: spacing.md,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
-    backgroundColor: colors.backgroundPrimary,
-  },
-  dropdownItemSelected: {
-    backgroundColor: colors.accent + '20',
-  },
-  dropdownItemText: {
-    fontSize: 16,
-    color: colors.textPrimary,
-  },
-  vehicleContainer: {
-    marginBottom: spacing.lg,
-    padding: spacing.md,
-    backgroundColor: colors.backgroundSecondary,
-    borderRadius: borderRadius.md,
-  },
-  vehicleTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: colors.textPrimary,
-    marginBottom: spacing.sm,
-  },
-  addVehicleButton: {
-    backgroundColor: colors.accent,
-    paddingVertical: spacing.md,
-    paddingHorizontal: spacing.lg,
-    borderRadius: borderRadius.md,
-    alignItems: 'center',
-    marginTop: spacing.md,
-  },
-  addVehicleText: {
-    color: '#FFFFFF',
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  removeVehicleButton: {
-    backgroundColor: colors.emergency,
-    paddingVertical: spacing.sm,
-    paddingHorizontal: spacing.md,
-    borderRadius: borderRadius.sm,
-    alignItems: 'center',
-    marginTop: spacing.sm,
-  },
-  removeVehicleText: {
-    color: '#FFFFFF',
-    fontSize: 14,
-    fontWeight: '600',
-  },
-});
