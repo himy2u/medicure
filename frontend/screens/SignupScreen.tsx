@@ -8,7 +8,9 @@ import { useForm, Controller } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 import * as SecureStore from 'expo-secure-store';
 import * as Google from 'expo-auth-session/providers/google';
+import * as AuthSession from 'expo-auth-session';
 import * as WebBrowser from 'expo-web-browser';
+import Constants from 'expo-constants';
 import { colors, spacing, borderRadius } from '../theme/colors';
 
 import { RootStackParamList } from '../navigation/AppNavigator';
@@ -859,10 +861,39 @@ export default function SignupScreen() {
 
   // Remove auto-test - let user manually select role and signup method
 
-  // Google OAuth setup
-  const [request, response, promptAsync] = Google.useAuthRequest({
-    clientId: 'YOUR_EXPO_CLIENT_ID',
+  // Google OAuth setup - explicitly set redirect URI
+  const redirectUri = AuthSession.makeRedirectUri({
+    scheme: 'medic',
+    path: undefined,
   });
+
+  const [request, response, promptAsync] = Google.useAuthRequest({
+    expoClientId: process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID,
+    androidClientId: process.env.EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID,
+    iosClientId: process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID,
+    redirectUri: redirectUri,
+    scopes: ['openid', 'profile', 'email'],
+  });
+
+  // Log the redirect URI for debugging
+  React.useEffect(() => {
+    console.log('=== OAUTH CONFIGURATION ===');
+    console.log('Computed redirectUri:', redirectUri);
+    console.log('Request redirectUri:', request?.redirectUri);
+    console.log('Request clientId:', request?.clientId);
+    console.log('==========================');
+  }, [redirectUri, request]);
+
+  // Debug: Log environment variables immediately
+  console.log('=== GOOGLE OAUTH DEBUG ===');
+  console.log('Environment variables loaded:', {
+    expoClientId: process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID,
+    androidClientId: process.env.EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID,
+    iosClientId: process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID,
+  });
+  console.log('Request object:', request);
+  console.log('Response object:', response);
+  console.log('========================');
 
   WebBrowser.maybeCompleteAuthSession();
 
@@ -924,22 +955,118 @@ export default function SignupScreen() {
 
   const handleGoogleSignup = async () => {
     try {
+      console.log('=== GOOGLE AUTH STARTED ===');
+      console.log('Environment variables:', {
+        expoClientId: process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID,
+        androidClientId: process.env.EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID,
+        iosClientId: process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID,
+        apiBaseUrl: Constants.expoConfig?.extra?.apiBaseUrl || process.env.EXPO_PUBLIC_API_BASE_URL || 'http://localhost:8000'
+      });
+      console.log('Request configuration:', {
+        redirectUri: request?.redirectUri,
+        clientId: request?.clientId,
+        scopes: request?.scopes,
+      });
+
       const result = await promptAsync();
+      console.log('=== GOOGLE AUTH RESULT ===');
+      console.log('Result type:', result.type);
+      console.log('Full result:', JSON.stringify(result, null, 2));
+
+      // Check for error in result
+      if (result.type === 'error') {
+        const errorDetails = {
+          type: result.type,
+          error: result.error,
+          params: result.params,
+          url: result.url,
+        };
+        console.error('=== GOOGLE AUTH ERROR ===');
+        console.error('Error details:', JSON.stringify(errorDetails, null, 2));
+
+        // Show detailed error to user
+        const errorMsg = result.params?.error_description || result.error?.message || 'Unknown error';
+        Alert.alert(
+          'Google Authentication Error',
+          `Type: ${result.type}\n\nError: ${errorMsg}\n\nRedirect URI: ${request?.redirectUri}\n\nPlease check console for full details.`,
+          [{ text: 'OK' }]
+        );
+        return;
+      }
+
       if (result.type === 'success') {
-        // Handle successful Google authentication
-        Alert.alert('Success', 'Google authentication successful! Please complete your profile.');
-        // TODO: Extract user info from result.authentication or result.params
-        // setValue('name', result.user?.name || '');
-        // setValue('email', result.user?.email || '');
-        setShowProfileStep(true);
+        // Extract the ID token properly
+        let idToken = null;
+        
+        // Check different possible locations for the ID token
+        if (result.params && result.params.id_token) {
+          idToken = result.params.id_token;
+        } else if (result.authentication && result.authentication.idToken) {
+          idToken = result.authentication.idToken;
+        } else if (result.params && result.params.access_token) {
+          // If we get an access token, we might need to exchange it for ID token
+          console.log('Got access token, need to exchange for ID token');
+          Alert.alert('Error', 'ID token not found in Google response');
+          return;
+        }
+        
+        console.log('Extracted ID token:', idToken ? 'Present' : 'Missing');
+        
+        if (!idToken) {
+          console.error('No ID token found in Google auth result');
+          Alert.alert('Error', 'Google authentication failed - no ID token received');
+          return;
+        }
+        
+        // Get the selected role
+        const selectedRole = currentRole || 'patient';
+        
+        // Call backend Google auth endpoint
+        const apiBaseUrl = Constants.expoConfig?.extra?.apiBaseUrl || process.env.EXPO_PUBLIC_API_BASE_URL || 'http://localhost:8000';
+        console.log('Calling backend at:', apiBaseUrl);
+        
+        const response = await fetch(`${apiBaseUrl}/auth/google`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            id_token: idToken,
+            role: selectedRole
+          }),
+        });
+
+        const data = await response.json();
+        console.log('Backend response:', data);
+
+        if (response.ok) {
+          // Store token securely
+          await SecureStore.setItemAsync('auth_token', data.access_token);
+          await SecureStore.setItemAsync('user_role', data.role);
+          await SecureStore.setItemAsync('user_id', data.user_id);
+          
+          Alert.alert('Success', 'Google authentication successful!');
+          // Navigate to main app or dashboard
+          navigation.navigate('Landing');
+        } else {
+          Alert.alert('Error', data.detail || 'Google authentication failed');
+        }
+      } else if (result.type === 'cancel') {
+        console.log('Google auth cancelled by user');
+        Alert.alert('Cancelled', 'Google authentication was cancelled');
+      } else {
+        console.log('Google auth failed with type:', result.type);
+        Alert.alert('Error', `Google authentication failed: ${result.type}`);
       }
     } catch (error) {
-      Alert.alert('Error', 'Google authentication failed');
+      console.error('Google auth error:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      Alert.alert('Error', `Google authentication failed: ${errorMessage}`);
     }
   };
 
   const handleWhatsAppSignup = () => {
-    Alert.alert(
+    Alert.prompt(
       'WhatsApp Sign Up',
       'Enter your WhatsApp number to receive OTP',
       [
@@ -949,13 +1076,21 @@ export default function SignupScreen() {
         },
         {
           text: 'Send OTP',
-          onPress: () => {
-            // TODO: Implement WhatsApp OTP logic
-            Alert.alert('OTP Sent', 'OTP has been sent to your WhatsApp number');
+          onPress: (phoneNumber) => {
+            if (!phoneNumber || phoneNumber.trim() === '') {
+              Alert.alert('Error', 'Please enter a valid phone number');
+              return;
+            }
+            // TODO: Implement WhatsApp OTP logic with phoneNumber
+            console.log('WhatsApp phone number:', phoneNumber);
+            Alert.alert('OTP Sent', `OTP has been sent to ${phoneNumber}`);
             setShowProfileStep(true);
           },
         },
-      ]
+      ],
+      'plain-text',
+      '',
+      'phone-pad'
     );
   };
 
