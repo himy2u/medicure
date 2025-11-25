@@ -2,12 +2,14 @@ from fastapi import FastAPI, HTTPException, status, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from auth import (
-    init_db, UserCreate, UserLogin, User, Token,
+    init_db, UserCreate, UserLogin, User, Token, DB_PATH,
     create_user, authenticate_user, create_access_token,
     get_user_by_email, ACCESS_TOKEN_EXPIRE_MINUTES
 )
 from datetime import timedelta
 from typing import Optional
+from google.oauth2 import id_token
+from google.auth.transport import requests as google_requests
 
 app = FastAPI(title="Medicure API", version="1.0.0")
 
@@ -38,6 +40,10 @@ class LoginResponse(BaseModel):
 
 class ForgotPasswordRequest(BaseModel):
     email: str
+
+class GoogleAuthRequest(BaseModel):
+    id_token: str
+    role: str = "patient"
 
 # Auth endpoints
 @app.post("/auth/signup", response_model=SignupResponse)
@@ -100,6 +106,88 @@ async def login(user_data: UserLogin):
         user_id=user.id
     )
 
+@app.post("/auth/google", response_model=SignupResponse)
+async def google_auth(google_request: GoogleAuthRequest):
+    """Authenticate user with Google OAuth ID token"""
+    try:
+        # List of valid client IDs (from user's .env file + development fallback)
+        valid_client_ids = [
+            '525370111764-srqivp2nt3ud86p1g8k5kg7uosvt731p.apps.googleusercontent.com',  # User's Web Client ID
+            '525370111764-tlptte414ht2vgfq54t8lvglri3ucvma.apps.googleusercontent.com',  # User's iOS Client ID
+            '857419776724-9l0ouh9rmq0i1f1nppujl2f7kbs22ekk.apps.googleusercontent.com',  # Expo development fallback
+        ]
+
+        # Verify the ID token
+        idinfo = None
+        for client_id in valid_client_ids:
+            try:
+                idinfo = id_token.verify_oauth2_token(
+                    google_request.id_token,
+                    google_requests.Request(),
+                    client_id
+                )
+                break
+            except ValueError:
+                continue
+
+        if not idinfo:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Invalid Google ID token"
+            )
+
+        # Extract user information from Google
+        email = idinfo.get('email')
+        name = idinfo.get('name', email.split('@')[0])
+
+        if not email:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Email not provided by Google"
+            )
+
+        # Check if user already exists
+        existing_user = get_user_by_email(email)
+
+        if existing_user:
+            # User exists - login
+            user = existing_user
+        else:
+            # Create new user with Google email
+            # Use a random password since they're using OAuth
+            import secrets
+            random_password = secrets.token_urlsafe(32)
+
+            user_data = UserCreate(
+                name=name,
+                email=email,
+                password=random_password,  # Will be hashed
+                role=google_request.role
+            )
+            user = create_user(user_data)
+
+        # Create access token
+        access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+        access_token = create_access_token(
+            data={"sub": user.email, "role": user.role, "user_id": user.id},
+            expires_delta=access_token_expires
+        )
+
+        return SignupResponse(
+            access_token=access_token,
+            token_type="bearer",
+            role=user.role,
+            user_id=user.id
+        )
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Google authentication failed: {str(e)}"
+        )
+
 @app.post("/auth/forgot-password")
 async def forgot_password(request: ForgotPasswordRequest):
     """Send password reset email (mock implementation)"""
@@ -107,7 +195,7 @@ async def forgot_password(request: ForgotPasswordRequest):
     if not user:
         # Don't reveal whether email exists for security
         return {"message": "If email exists, reset instructions will be sent"}
-    
+
     # TODO: Implement actual email sending
     # For now, just return success message
     return {"message": "Password reset instructions sent to email"}

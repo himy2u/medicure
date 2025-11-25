@@ -12,14 +12,19 @@ SECRET_KEY = "your-secret-key-here"  # In production, use environment variable
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 30
 
-# Password hashing
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+# Database configuration
+DB_PATH = "medicure.db"
+
+# Password hashing with argon2
+pwd_context = CryptContext(schemes=["argon2"], deprecated="auto")
 
 # Database setup
-def init_db():
-    conn = sqlite3.connect('medicure.db')
+def init_db(db_path: str = None):
+    if db_path is None:
+        db_path = DB_PATH
+    conn = sqlite3.connect(db_path)
     cursor = conn.cursor()
-    
+
     # Create users table
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS users (
@@ -31,7 +36,7 @@ def init_db():
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
     ''')
-    
+
     conn.commit()
     conn.close()
 
@@ -60,13 +65,12 @@ class Token(BaseModel):
 
 # Password utilities
 def verify_password(plain_password: str, hashed_password: str) -> bool:
-    import hashlib
-    return hashlib.sha256(plain_password.encode()).hexdigest() == hashed_password
+    """Verify a plain password against argon2 hash"""
+    return pwd_context.verify(plain_password, hashed_password)
 
 def get_password_hash(password: str) -> str:
-    # Use simple hash for testing, bcrypt version issue
-    import hashlib
-    return hashlib.sha256(password.encode()).hexdigest()
+    """Hash a password using argon2"""
+    return pwd_context.hash(password)
 
 # JWT utilities
 def create_access_token(data: dict, expires_delta: Optional[timedelta] = None):
@@ -80,54 +84,60 @@ def create_access_token(data: dict, expires_delta: Optional[timedelta] = None):
     return encoded_jwt
 
 # Database operations
-def get_user_by_email(email: str) -> Optional[User]:
-    conn = sqlite3.connect('medicure.db')
+def get_user_by_email(email: str, db_path: str = None) -> Optional[User]:
+    if db_path is None:
+        db_path = DB_PATH
+    conn = sqlite3.connect(db_path)
     cursor = conn.cursor()
     cursor.execute('SELECT id, name, email, role FROM users WHERE email = ?', (email,))
     result = cursor.fetchone()
     conn.close()
-    
+
     if result:
         return User(id=result[0], name=result[1], email=result[2], role=result[3])
     return None
 
-def create_user(user: UserCreate) -> User:
-    conn = sqlite3.connect('medicure.db')
+def create_user(user: UserCreate, db_path: str = None) -> User:
+    if db_path is None:
+        db_path = DB_PATH
+    conn = sqlite3.connect(db_path)
     cursor = conn.cursor()
-    
+
     # Check if user already exists
-    if get_user_by_email(user.email):
+    if get_user_by_email(user.email, db_path):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Email already registered"
         )
-    
+
     user_id = str(uuid.uuid4())
     hashed_password = get_password_hash(user.password)
-    
+
     cursor.execute(
         'INSERT INTO users (id, name, email, hashed_password, role) VALUES (?, ?, ?, ?, ?)',
         (user_id, user.name, user.email, hashed_password, user.role)
     )
-    
+
     conn.commit()
     conn.close()
-    
+
     return User(id=user_id, name=user.name, email=user.email, role=user.role)
 
-def authenticate_user(email: str, password: str) -> Optional[User]:
-    conn = sqlite3.connect('medicure.db')
+def authenticate_user(email: str, password: str, db_path: str = None) -> Optional[User]:
+    if db_path is None:
+        db_path = DB_PATH
+    conn = sqlite3.connect(db_path)
     cursor = conn.cursor()
     cursor.execute('SELECT id, name, email, hashed_password, role FROM users WHERE email = ?', (email,))
     result = cursor.fetchone()
     conn.close()
-    
+
     if not result:
         return None
-    
+
     user_id, name, email, hashed_password, role = result
-    
+
     if not verify_password(password, hashed_password):
         return None
-    
+
     return User(id=user_id, name=name, email=email, role=role)

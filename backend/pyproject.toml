@@ -5,10 +5,16 @@ description = "Add your description here"
 readme = "README.md"
 requires-python = ">=3.13"
 dependencies = [
+    "argon2-cffi>=23.1.0",
     "bcrypt>=5.0.0",
     "fastapi>=0.121.3",
-    "passlib[bcrypt]>=1.7.4",
+    "google-auth>=2.39.0",
+    "httpx>=0.28.1",
+    "passlib[bcrypt,argon2]>=1.7.4",
     "pydantic-settings>=2.12.0",
+    "pytest>=8.3.4",
+    "pytest-asyncio>=0.25.2",
     "python-jose[cryptography]>=3.5.0",
+    "requests>=2.32.0",
     "uvicorn>=0.38.0",
 ]
