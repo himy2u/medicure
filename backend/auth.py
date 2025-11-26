@@ -55,6 +55,17 @@ def init_db(db_path: str = None):
         )
     ''')
 
+    # Create user_profiles table for storing additional profile data
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS user_profiles (
+            user_id TEXT PRIMARY KEY,
+            profile_data TEXT NOT NULL,
+            profile_complete BOOLEAN DEFAULT FALSE,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (user_id) REFERENCES users(id)
+        )
+    ''')
+
     conn.commit()
     conn.close()
 
