@@ -377,6 +377,12 @@ const styles = StyleSheet.create({
     marginTop: spacing.md,
     marginBottom: spacing.sm,
   },
+  helperText: {
+    fontSize: 13,
+    color: colors.textSecondary,
+    marginBottom: spacing.sm,
+    fontStyle: 'italic',
+  },
   dropdownItem: {
     paddingVertical: spacing.sm,
     paddingHorizontal: spacing.md,
@@ -471,7 +477,7 @@ const PatientProfileForm = ({ control, errors }: any) => (
       rules={{ required: 'National ID is required' }}
       render={({ field: { onChange, onBlur, value } }) => (
         <TextInput
-          label="National ID (Cedula)"
+          label="National ID (Cedula) *"
           value={value}
           onBlur={onBlur}
           onChangeText={onChange}
@@ -482,6 +488,8 @@ const PatientProfileForm = ({ control, errors }: any) => (
       )}
       name="nationalId"
     />
+    {errors.nationalId && <Text style={styles.errorTextCompact}>{errors.nationalId.message}</Text>}
+    
     <Text style={styles.sectionTitle}>Insurance (Optional)</Text>
     <Controller
       control={control}
@@ -493,6 +501,7 @@ const PatientProfileForm = ({ control, errors }: any) => (
           onChangeText={onChange}
           style={styles.inputCompact}
           dense
+          placeholder="e.g., Blue Cross, Aetna"
         />
       )}
       name="insurance"
@@ -641,30 +650,36 @@ const DoctorProfileForm = ({ control, errors, watch }: any) => {
         )}
         name="locations"
       />
+      <Text style={styles.sectionTitle}>Availability Schedule (Optional)</Text>
+      <Text style={styles.helperText}>You can set your detailed availability schedule later from your dashboard</Text>
       <Controller
         control={control}
         render={({ field: { onChange, onBlur, value } }) => (
           <TextInput
-            label="Availability Schedule"
+            label="General Availability (e.g., Mon-Fri 9AM-5PM)"
             value={value}
             onBlur={onBlur}
             onChangeText={onChange}
             style={styles.inputCompact}
             dense
+            placeholder="e.g., Weekdays 9AM-5PM"
           />
         )}
         name="availability"
       />
+      
+      <Text style={styles.sectionTitle}>Insurance Accepted (Optional)</Text>
       <Controller
         control={control}
         render={({ field: { onChange, onBlur, value } }) => (
           <TextInput
-            label="Insurance Accepted"
+            label="Insurance Providers (comma separated)"
             value={value}
             onBlur={onBlur}
             onChangeText={onChange}
             style={styles.inputCompact}
             dense
+            placeholder="e.g., Blue Cross, Aetna, Medicare"
           />
         )}
         name="insurance"
@@ -929,7 +944,24 @@ export default function SignupScreen() {
     }
   });
 
-  // Remove auto-test - let user manually select role and signup method
+  // Check if user is already authenticated
+  React.useEffect(() => {
+    checkAuthStatus();
+  }, []);
+
+  const checkAuthStatus = async () => {
+    try {
+      const authToken = await SecureStore.getItemAsync('auth_token');
+      const userId = await SecureStore.getItemAsync('user_id');
+      
+      if (authToken && userId) {
+        console.log('User already authenticated, redirecting to Landing');
+        navigation.navigate('Landing');
+      }
+    } catch (error) {
+      console.error('Error checking auth status:', error);
+    }
+  };
 
   // Configure Google Sign-In
   React.useEffect(() => {
