@@ -30,7 +30,10 @@ const styles = StyleSheet.create({
     paddingTop: spacing.lg,
     paddingBottom: spacing.lg,
     flex: 1,
-    justifyContent: 'space-between',
+    justifyContent: 'flex-start',
+    maxWidth: 600,
+    width: '100%',
+    alignSelf: 'center',
   },
   input: {
     marginBottom: spacing.md,
@@ -78,17 +81,41 @@ const styles = StyleSheet.create({
   },
   profileHeader: {
     flexDirection: 'row',
-    alignItems: 'center',
+    alignItems: 'flex-start',
     justifyContent: 'space-between',
-    marginBottom: spacing.md,
+    marginBottom: spacing.lg,
+    paddingBottom: spacing.md,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
+  },
+  headerLeft: {
+    flex: 1,
+  },
+  roleContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: spacing.xs,
+  },
+  roleLabel: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: colors.textSecondary,
+    marginRight: spacing.xs,
+  },
+  roleValue: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: colors.accent,
+    textTransform: 'capitalize',
   },
   profileIcon: {
     padding: spacing.xs,
+    position: 'relative',
   },
   userAvatar: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
     backgroundColor: colors.accent,
     alignItems: 'center',
     justifyContent: 'center',
@@ -99,9 +126,31 @@ const styles = StyleSheet.create({
     elevation: 3,
   },
   userAvatarText: {
-    fontSize: 18,
+    fontSize: 20,
     fontWeight: '700',
     color: '#FFFFFF',
+  },
+  signOutMenu: {
+    position: 'absolute',
+    top: 55,
+    right: 0,
+    backgroundColor: colors.backgroundSecondary,
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.md,
+    borderRadius: borderRadius.md,
+    shadowColor: colors.shadowDark,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 6,
+    elevation: 5,
+    minWidth: 120,
+    zIndex: 1000,
+  },
+  signOutText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: colors.emergency,
+    textAlign: 'center',
   },
   backButton: {
     paddingVertical: spacing.sm,
@@ -204,9 +253,10 @@ const styles = StyleSheet.create({
     marginBottom: spacing.xs,
   },
   subtitle: {
-    fontSize: 14,
+    fontSize: 16,
     color: colors.textSecondary,
-    marginBottom: spacing.sm,
+    marginBottom: spacing.md,
+    textAlign: 'center',
   },
   roleSection: {
     marginBottom: spacing.md,
@@ -871,6 +921,7 @@ export default function SignupScreen() {
   const [loading, setLoading] = useState(false);
   const [selectedRole, setSelectedRole] = useState('patient');
   const [showProfileStep, setShowProfileStep] = useState(false);
+  const [showSignOutMenu, setShowSignOutMenu] = useState(false);
 
   const { control, handleSubmit, formState: { errors }, watch, setValue } = useForm<SignupFormData>({
     defaultValues: {
@@ -1060,6 +1111,8 @@ export default function SignupScreen() {
 
   const handleSignOut = async () => {
     try {
+      setShowSignOutMenu(false);
+      
       // Sign out from Google
       await GoogleSignin.signOut();
       
@@ -1084,16 +1137,34 @@ export default function SignupScreen() {
       <ScrollView style={styles.container} showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
         <View style={styles.content}>
           <View style={styles.profileHeader}>
-            <Text style={styles.title}>{t('completeProfile')}</Text>
-            <TouchableOpacity style={styles.profileIcon} onPress={handleSignOut}>
-              <View style={styles.userAvatar}>
-                <Text style={styles.userAvatarText}>
-                  {watch('name')?.charAt(0).toUpperCase() || 'U'}
-                </Text>
+            <View style={styles.headerLeft}>
+              <Text style={styles.title}>{t('completeProfile')}</Text>
+              <View style={styles.roleContainer}>
+                <Text style={styles.roleLabel}>Role:</Text>
+                <Text style={styles.roleValue}>{roles.find(r => r.key === currentRole)?.label}</Text>
               </View>
-            </TouchableOpacity>
+            </View>
+            <View>
+              <TouchableOpacity 
+                style={styles.profileIcon} 
+                onPress={() => setShowSignOutMenu(!showSignOutMenu)}
+              >
+                <View style={styles.userAvatar}>
+                  <Text style={styles.userAvatarText}>
+                    {watch('name')?.charAt(0).toUpperCase() || 'U'}
+                  </Text>
+                </View>
+              </TouchableOpacity>
+              {showSignOutMenu && (
+                <TouchableOpacity 
+                  style={styles.signOutMenu}
+                  onPress={handleSignOut}
+                >
+                  <Text style={styles.signOutText}>Sign Out</Text>
+                </TouchableOpacity>
+              )}
+            </View>
           </View>
-          <Text style={styles.subtitle}>{t('role')}: {roles.find(r => r.key === currentRole)?.label}</Text>
 
           {currentRole === 'patient' || currentRole === 'caregiver' ? (
             <PatientProfileForm control={control} errors={errors} />
