@@ -861,31 +861,30 @@ export default function SignupScreen() {
 
   // Remove auto-test - let user manually select role and signup method
 
-  // Google OAuth setup - use platform-specific client IDs for development client
-  // Development client uses custom scheme from app.json (medic://)
-  const redirectUri = AuthSession.makeRedirectUri({
-    scheme: 'medic',
-  });
-  
+  // Google OAuth setup for development client
+  // Use platform-specific client IDs (iOS/Android) configured in Google Cloud Console
+  // iOS Client ID must be configured with Bundle ID: com.medicure.app
+  // Android Client ID must be configured with package name: com.medicure.app and SHA-1
+  // The redirectUri uses the reversed client ID scheme from Info.plist
   const [request, response, promptAsync] = Google.useAuthRequest({
     iosClientId: process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID,
     androidClientId: process.env.EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID,
-    redirectUri: redirectUri,
+    webClientId: process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID,
+    redirectUri: 'com.googleusercontent.apps.920375448724-n0p1g2gbkenbmaduto9tcqt4fbq8hsr6:/oauthredirect',
     scopes: ['openid', 'profile', 'email'],
   });
 
-  // Log the redirect URI for debugging
+  // Log OAuth configuration for debugging
   React.useEffect(() => {
     console.log('=== OAUTH CONFIGURATION ===');
     console.log('Platform:', require('react-native').Platform.OS);
-    console.log('Computed redirectUri:', redirectUri);
     console.log('Request redirectUri:', request?.redirectUri);
     console.log('Request clientId:', request?.clientId);
     console.log('iOS Client ID:', process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID);
     console.log('Android Client ID:', process.env.EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID);
     console.log('Web Client ID:', process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID);
     console.log('==========================');
-  }, [redirectUri, request]);
+  }, [request]);
 
   // Debug: Log environment variables immediately
   console.log('=== GOOGLE OAUTH DEBUG ===');

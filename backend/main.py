@@ -110,11 +110,11 @@ async def login(user_data: UserLogin):
 async def google_auth(google_request: GoogleAuthRequest):
     """Authenticate user with Google OAuth ID token"""
     try:
-        # List of valid client IDs (from user's .env file + development fallback)
+        # List of valid client IDs (must match frontend .env client IDs)
         valid_client_ids = [
-            '525370111764-srqivp2nt3ud86p1g8k5kg7uosvt731p.apps.googleusercontent.com',  # User's Web Client ID
-            '525370111764-tlptte414ht2vgfq54t8lvglri3ucvma.apps.googleusercontent.com',  # User's iOS Client ID
-            '857419776724-9l0ouh9rmq0i1f1nppujl2f7kbs22ekk.apps.googleusercontent.com',  # Expo development fallback
+            '920375448724-pdnedfikt5kh3cphc1n89i270n4hasps.apps.googleusercontent.com',  # Web Client ID
+            '920375448724-n0p1g2gbkenbmaduto9tcqt4fbq8hsr6.apps.googleusercontent.com',  # iOS Client ID
+            '920375448724-c03e17m90cqb81bb14q7e5blp6b9vobb.apps.googleusercontent.com',  # Android Client ID
         ]
 
         # Verify the ID token
