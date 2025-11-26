@@ -861,16 +861,14 @@ export default function SignupScreen() {
 
   // Remove auto-test - let user manually select role and signup method
 
-  // Google OAuth setup - use Expo auth proxy for production, local for dev
-  const redirectUri = AuthSession.makeRedirectUri({
-    useProxy: true,  // Use auth.expo.io proxy
-    scheme: 'medic',
-  });
+  // Google OAuth setup - explicitly use Expo auth proxy redirect URI
+  // This is the only redirect URI that works with Google Web OAuth clients
+  const redirectUri = 'https://auth.expo.io/@anonymous/medic';
 
   const [request, response, promptAsync] = Google.useAuthRequest({
-    expoClientId: process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID,
-    androidClientId: process.env.EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID,
-    iosClientId: process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID,
+    clientId: process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID,
+    // Only use Web Client ID - it handles all platforms via auth.expo.io proxy
+    // Don't use iosClientId/androidClientId as they don't support redirect URIs
     redirectUri: redirectUri,
     scopes: ['openid', 'profile', 'email'],
   });
