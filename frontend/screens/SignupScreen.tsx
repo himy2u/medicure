@@ -968,32 +968,41 @@ export default function SignupScreen() {
   const onFinalSubmit = async (data: SignupFormData) => {
     setLoading(true);
     try {
-      // TODO: Replace with actual API call
-      const response = await fetch('http://localhost:8000/auth/signup', {
-        method: 'POST',
+      // Get stored auth token and user info
+      const authToken = await SecureStore.getItemAsync('auth_token');
+      const userId = await SecureStore.getItemAsync('user_id');
+      
+      if (!authToken || !userId) {
+        Alert.alert('Error', 'Authentication required. Please sign in again.');
+        setShowProfileStep(false);
+        return;
+      }
+
+      // Update user profile with additional information
+      const apiBaseUrl = Constants.expoConfig?.extra?.apiBaseUrl || process.env.EXPO_PUBLIC_API_BASE_URL || 'http://192.168.100.6:8000';
+      
+      const response = await fetch(`${apiBaseUrl}/users/${userId}/profile`, {
+        method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
+          'Authorization': `Bearer ${authToken}`,
         },
         body: JSON.stringify({
-          name: data.name,
-          email: data.email,
-          password: data.password,
-          role: data.role
+          ...data,
+          profile_complete: true
         }),
       });
 
       if (response.ok) {
-        const result = await response.json();
-        // Store token securely
-        await SecureStore.setItemAsync('auth_token', result.access_token);
-        await SecureStore.setItemAsync('user_role', result.role);
-        
-        Alert.alert('Success', 'Account created successfully!');
-        navigation.navigate('Login');
+        console.log('Profile updated successfully');
+        // Navigate to Landing/Dashboard
+        navigation.navigate('Landing');
       } else {
-        Alert.alert('Error', 'Failed to create account');
+        const errorData = await response.json().catch(() => ({}));
+        Alert.alert('Error', errorData.detail || 'Failed to update profile');
       }
     } catch (error) {
+      console.error('Profile update error:', error);
       Alert.alert('Error', 'Network error. Please try again.');
     } finally {
       setLoading(false);

@@ -48,6 +48,20 @@ class GoogleAuthRequest(BaseModel):
     code_verifier: Optional[str] = None
     role: str = "patient"
 
+class ProfileUpdateRequest(BaseModel):
+    nationalId: Optional[str] = None
+    insurance: Optional[list] = None
+    specialty: Optional[str] = None
+    subSpecialty: Optional[str] = None
+    locations: Optional[str] = None
+    availability: Optional[str] = None
+    department: Optional[str] = None
+    licenseNumber: Optional[str] = None
+    vehicles: Optional[list] = None
+    certificationLevel: Optional[str] = None
+    associatedDoctors: Optional[list] = None
+    profile_complete: bool = True
+
 # Auth endpoints
 @app.post("/auth/signup", response_model=SignupResponse)
 async def signup(user_data: UserCreate):
@@ -301,14 +315,23 @@ async def google_auth(google_request: GoogleAuthRequest):
             expires_delta=access_token_expires
         )
 
+        # Check if user has completed their profile
+        import sqlite3
+        conn = sqlite3.connect(DB_PATH)
+        cursor = conn.cursor()
+        cursor.execute('SELECT profile_complete FROM user_profiles WHERE user_id = ?', (user.id,))
+        profile_result = cursor.fetchone()
+        conn.close()
+        
+        profile_complete = profile_result[0] if profile_result else False
+
         # Return response with profile completion status
-        # For now, assume new users need to complete profile, existing users don't
         response_data = {
             "access_token": access_token,
             "token_type": "bearer",
             "role": user.role,
             "user_id": user.id,
-            "profile_complete": not is_new_user  # Existing users have complete profiles
+            "profile_complete": profile_complete
         }
 
         return response_data
@@ -332,6 +355,71 @@ async def forgot_password(request: ForgotPasswordRequest):
     # TODO: Implement actual email sending
     # For now, just return success message
     return {"message": "Password reset instructions sent to email"}
+
+@app.put("/users/{user_id}/profile")
+async def update_user_profile(user_id: str, profile_data: ProfileUpdateRequest):
+    """Update user profile with additional information"""
+    try:
+        import sqlite3
+        import json
+        
+        conn = sqlite3.connect(DB_PATH)
+        cursor = conn.cursor()
+        
+        # Check if user exists
+        cursor.execute('SELECT id, email FROM users WHERE id = ?', (user_id,))
+        user = cursor.fetchone()
+        
+        if not user:
+            conn.close()
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="User not found"
+            )
+        
+        # Create profile_data table if it doesn't exist
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS user_profiles (
+                user_id TEXT PRIMARY KEY,
+                profile_data TEXT NOT NULL,
+                profile_complete BOOLEAN DEFAULT FALSE,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (user_id) REFERENCES users(id)
+            )
+        ''')
+        
+        # Convert profile data to JSON
+        profile_json = json.dumps(profile_data.dict())
+        
+        # Insert or update profile
+        cursor.execute('''
+            INSERT INTO user_profiles (user_id, profile_data, profile_complete)
+            VALUES (?, ?, ?)
+            ON CONFLICT(user_id) DO UPDATE SET
+                profile_data = excluded.profile_data,
+                profile_complete = excluded.profile_complete,
+                updated_at = CURRENT_TIMESTAMP
+        ''', (user_id, profile_json, profile_data.profile_complete))
+        
+        conn.commit()
+        conn.close()
+        
+        print(f"✓ Profile updated for user {user_id}")
+        
+        return {
+            "message": "Profile updated successfully",
+            "user_id": user_id,
+            "profile_complete": profile_data.profile_complete
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"✗ Profile update error: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to update profile: {str(e)}"
+        )
 
 @app.get("/health")
 async def health_check():
