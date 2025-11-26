@@ -67,16 +67,13 @@ export default function LandingScreen() {
     navigation.navigate('Emergency');
   };
 
+  const handleFindDoctor = () => {
+    navigation.navigate('FindDoctor');
+  };
+
   const handleRegularFeature = (feature: string, screen: keyof RootStackParamList) => {
-    // Navigate to signup first for non-emergency features
     console.log(`Navigating to ${screen} for ${feature}`);
-    Alert.alert(
-      "Navigation Test",
-      `Trying to navigate to ${screen} for ${feature}`,
-      [
-        { text: "OK", onPress: () => navigation.navigate(screen) }
-      ]
-    );
+    navigation.navigate(screen);
   };
 
   return (
@@ -129,7 +126,7 @@ export default function LandingScreen() {
 
         <TouchableOpacity 
           style={[styles.actionButton, styles.primaryButton]}
-          onPress={() => handleRegularFeature('find doctors', 'Signup')}
+          onPress={handleFindDoctor}
         >
           <Text style={styles.primaryButtonText}>🔍 {t('findDoctors')}</Text>
         </TouchableOpacity>

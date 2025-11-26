@@ -9,6 +9,7 @@ import LoginScreen from '../screens/LoginScreen';
 import SignupScreen from '../screens/SignupScreen';
 import ForgotPasswordScreen from '../screens/ForgotPasswordScreen';
 import EmergencyScreen from '../screens/EmergencyScreen';
+import FindDoctorScreen from '../screens/FindDoctorScreen';
 
 export type RootStackParamList = {
   Landing: undefined;
@@ -16,6 +17,7 @@ export type RootStackParamList = {
   Signup: undefined;
   ForgotPassword: undefined;
   Emergency: undefined;
+  FindDoctor: undefined;
 };
 
 const Stack = createStackNavigator<RootStackParamList>();
@@ -68,6 +70,17 @@ export default function AppNavigator() {
                 backgroundColor: colors.emergency,
               },
               headerTintColor: '#FFFFFF',
+              headerTitleStyle: {
+                fontWeight: '700',
+                fontSize: 20,
+              },
+            }}
+          />
+          <Stack.Screen 
+            name="FindDoctor" 
+            component={FindDoctorScreen}
+            options={{ 
+              title: 'Find a Doctor',
               headerTitleStyle: {
                 fontWeight: '700',
                 fontSize: 20,
