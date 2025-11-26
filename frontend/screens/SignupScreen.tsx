@@ -82,6 +82,27 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     marginBottom: spacing.md,
   },
+  profileIcon: {
+    padding: spacing.xs,
+  },
+  userAvatar: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: colors.accent,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: colors.shadow,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  userAvatarText: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#FFFFFF',
+  },
   backButton: {
     paddingVertical: spacing.sm,
     paddingHorizontal: spacing.sm,
@@ -1037,17 +1058,40 @@ export default function SignupScreen() {
     );
   };
 
+  const handleSignOut = async () => {
+    try {
+      // Sign out from Google
+      await GoogleSignin.signOut();
+      
+      // Clear all stored data
+      await SecureStore.deleteItemAsync('auth_token');
+      await SecureStore.deleteItemAsync('user_role');
+      await SecureStore.deleteItemAsync('user_id');
+      await SecureStore.deleteItemAsync('user_name');
+      await SecureStore.deleteItemAsync('user_email');
+      
+      console.log('User signed out successfully');
+      setShowProfileStep(false);
+    } catch (error) {
+      console.error('Error signing out:', error);
+      Alert.alert('Error', 'Failed to sign out');
+    }
+  };
+
   // If showing profile step, render role-specific form
   if (showProfileStep) {
     return (
       <ScrollView style={styles.container} showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
         <View style={styles.content}>
           <View style={styles.profileHeader}>
-            <TouchableOpacity style={styles.backButton} onPress={() => setShowProfileStep(false)}>
-              <Text style={styles.backButtonText}>{t('backButtonText')}</Text>
-            </TouchableOpacity>
             <Text style={styles.title}>{t('completeProfile')}</Text>
-            <View style={styles.placeholder} />
+            <TouchableOpacity style={styles.profileIcon} onPress={handleSignOut}>
+              <View style={styles.userAvatar}>
+                <Text style={styles.userAvatarText}>
+                  {watch('name')?.charAt(0).toUpperCase() || 'U'}
+                </Text>
+              </View>
+            </TouchableOpacity>
           </View>
           <Text style={styles.subtitle}>{t('role')}: {roles.find(r => r.key === currentRole)?.label}</Text>
 
