@@ -67,13 +67,23 @@ export default function LandingScreen() {
     navigation.navigate('Emergency');
   };
 
+  const checkAuthAndNavigate = async (screen: keyof RootStackParamList) => {
+    const authToken = await SecureStore.getItemAsync('auth_token');
+    if (!authToken) {
+      console.log('Not authenticated, redirecting to Signup');
+      navigation.navigate('Signup');
+    } else {
+      navigation.navigate(screen);
+    }
+  };
+
   const handleFindDoctor = () => {
-    navigation.navigate('FindDoctor');
+    checkAuthAndNavigate('FindDoctor');
   };
 
   const handleRegularFeature = (feature: string, screen: keyof RootStackParamList) => {
     console.log(`Navigating to ${screen} for ${feature}`);
-    navigation.navigate(screen);
+    checkAuthAndNavigate(screen);
   };
 
   return (
@@ -146,6 +156,13 @@ export default function LandingScreen() {
             <Text style={styles.healthButtonText}>❤️ {t('myHealth')}</Text>
           </TouchableOpacity>
         </View>
+
+        <TouchableOpacity 
+          style={[styles.actionButton, styles.labTestButton]}
+          onPress={() => handleRegularFeature('lab tests', 'Signup')}
+        >
+          <Text style={styles.labTestButtonText}>🧪 Lab Tests</Text>
+        </TouchableOpacity>
       </View>
     </SafeAreaView>
   );
@@ -346,6 +363,24 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#FFFFFF',
     marginBottom: spacing.xs,
+  },
+  labTestButton: {
+    backgroundColor: '#9B59B6', // Purple
+    borderRadius: borderRadius.lg,
+    paddingVertical: spacing.lg,
+    paddingHorizontal: spacing.lg,
+    alignItems: 'center',
+    marginBottom: spacing.md,
+    shadowColor: colors.shadow,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 6,
+  },
+  labTestButtonText: {
+    fontSize: 20,
+    fontWeight: '600',
+    color: '#FFFFFF',
   },
   // Button Row - My Health & Prescription
   buttonRow: {
