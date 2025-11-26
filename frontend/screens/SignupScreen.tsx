@@ -861,14 +861,15 @@ export default function SignupScreen() {
 
   // Remove auto-test - let user manually select role and signup method
 
-  // Google OAuth setup - explicitly use Expo auth proxy redirect URI
-  // This is the only redirect URI that works with Google Web OAuth clients
-  const redirectUri = 'https://auth.expo.io/@anonymous/medic';
-
+  // Google OAuth setup - use platform-specific client IDs for development client
+  // Development client uses custom scheme from app.json (medic://)
+  const redirectUri = AuthSession.makeRedirectUri({
+    scheme: 'medic',
+  });
+  
   const [request, response, promptAsync] = Google.useAuthRequest({
-    clientId: process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID,
-    // Only use Web Client ID - it handles all platforms via auth.expo.io proxy
-    // Don't use iosClientId/androidClientId as they don't support redirect URIs
+    iosClientId: process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID,
+    androidClientId: process.env.EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID,
     redirectUri: redirectUri,
     scopes: ['openid', 'profile', 'email'],
   });
@@ -876,9 +877,13 @@ export default function SignupScreen() {
   // Log the redirect URI for debugging
   React.useEffect(() => {
     console.log('=== OAUTH CONFIGURATION ===');
+    console.log('Platform:', require('react-native').Platform.OS);
     console.log('Computed redirectUri:', redirectUri);
     console.log('Request redirectUri:', request?.redirectUri);
     console.log('Request clientId:', request?.clientId);
+    console.log('iOS Client ID:', process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID);
+    console.log('Android Client ID:', process.env.EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID);
+    console.log('Web Client ID:', process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID);
     console.log('==========================');
   }, [redirectUri, request]);
 
@@ -1074,7 +1079,7 @@ export default function SignupScreen() {
         },
         {
           text: 'Send OTP',
-          onPress: (phoneNumber) => {
+          onPress: (phoneNumber?: string) => {
             if (!phoneNumber || phoneNumber.trim() === '') {
               Alert.alert('Error', 'Please enter a valid phone number');
               return;

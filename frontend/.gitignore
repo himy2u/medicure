@@ -3,6 +3,9 @@
 # dependencies
 node_modules/
 
+#temp work
+tmp/
+
 # Expo
 .expo/
 dist/
@@ -12,7 +15,9 @@ expo-env.d.ts
 # Native
 .kotlin/
 *.orig.*
+*.env.*
 *.jks
+
 *.p8
 *.p12
 *.key

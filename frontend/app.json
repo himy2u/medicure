@@ -2,6 +2,7 @@
   "expo": {
     "name": "frontend",
     "slug": "medic",
+    "owner": "himy2u",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
