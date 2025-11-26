@@ -132,6 +132,9 @@ build/
 dist/
 out/
 
+#keys
+*.json 
+
 # Documentation files (as requested - but allow verification screenshots)
 *.md
 *.png
