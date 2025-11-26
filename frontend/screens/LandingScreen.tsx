@@ -19,6 +19,7 @@ export default function LandingScreen() {
   const [userName, setUserName] = useState<string>('');
   const [userEmail, setUserEmail] = useState<string>('');
   const [userRole, setUserRole] = useState<string>('');
+  const [showSignOutMenu, setShowSignOutMenu] = useState(false);
 
   // Load user data on mount
   useEffect(() => {
@@ -41,6 +42,8 @@ export default function LandingScreen() {
 
   const handleSignOut = async () => {
     try {
+      setShowSignOutMenu(false);
+      
       // Sign out from Google
       await GoogleSignin.signOut();
       
@@ -84,15 +87,28 @@ export default function LandingScreen() {
           <LanguageToggle />
           
           {userName && (
-            <TouchableOpacity style={styles.userProfile} onPress={handleSignOut}>
-              <View style={styles.userInfo}>
-                <Text style={styles.userName}>{userName}</Text>
-                <Text style={styles.userRole}>{userRole}</Text>
-              </View>
-              <View style={styles.userAvatar}>
-                <Text style={styles.userAvatarText}>{userName.charAt(0).toUpperCase()}</Text>
-              </View>
-            </TouchableOpacity>
+            <View>
+              <TouchableOpacity 
+                style={styles.userProfile} 
+                onPress={() => setShowSignOutMenu(!showSignOutMenu)}
+              >
+                <View style={styles.userInfo}>
+                  <Text style={styles.userName}>{userName}</Text>
+                  <Text style={styles.userRole}>{userRole}</Text>
+                </View>
+                <View style={styles.userAvatar}>
+                  <Text style={styles.userAvatarText}>{userName.charAt(0).toUpperCase()}</Text>
+                </View>
+              </TouchableOpacity>
+              {showSignOutMenu && (
+                <TouchableOpacity 
+                  style={styles.signOutMenu}
+                  onPress={handleSignOut}
+                >
+                  <Text style={styles.signOutText}>Sign Out</Text>
+                </TouchableOpacity>
+              )}
+            </View>
           )}
         </View>
 
@@ -194,6 +210,28 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '700',
     color: '#FFFFFF',
+  },
+  signOutMenu: {
+    position: 'absolute',
+    top: 55,
+    right: 0,
+    backgroundColor: colors.backgroundSecondary,
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.md,
+    borderRadius: borderRadius.md,
+    shadowColor: colors.shadowDark,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 6,
+    elevation: 5,
+    minWidth: 120,
+    zIndex: 1000,
+  },
+  signOutText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: colors.emergency,
+    textAlign: 'center',
   },
   header: {
     alignItems: 'center',
