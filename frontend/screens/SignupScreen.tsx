@@ -7,9 +7,7 @@ import { StackNavigationProp } from '@react-navigation/stack';
 import { useForm, Controller } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 import * as SecureStore from 'expo-secure-store';
-import * as Google from 'expo-auth-session/providers/google';
-import * as AuthSession from 'expo-auth-session';
-import * as WebBrowser from 'expo-web-browser';
+import { GoogleSignin } from '@react-native-google-signin/google-signin';
 import Constants from 'expo-constants';
 import { colors, spacing, borderRadius } from '../theme/colors';
 
@@ -861,43 +859,18 @@ export default function SignupScreen() {
 
   // Remove auto-test - let user manually select role and signup method
 
-  // Google OAuth setup for development client
-  // Use platform-specific client IDs (iOS/Android) configured in Google Cloud Console
-  // iOS Client ID must be configured with Bundle ID: com.medicure.app
-  // Android Client ID must be configured with package name: com.medicure.app and SHA-1
-  // The redirectUri uses the reversed client ID scheme from Info.plist
-  const [request, response, promptAsync] = Google.useAuthRequest({
-    iosClientId: process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID,
-    androidClientId: process.env.EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID,
-    webClientId: process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID,
-    redirectUri: 'com.googleusercontent.apps.920375448724-n0p1g2gbkenbmaduto9tcqt4fbq8hsr6:/oauthredirect',
-    scopes: ['openid', 'profile', 'email'],
-  });
-
-  // Log OAuth configuration for debugging
+  // Configure Google Sign-In
   React.useEffect(() => {
-    console.log('=== OAUTH CONFIGURATION ===');
-    console.log('Platform:', require('react-native').Platform.OS);
-    console.log('Request redirectUri:', request?.redirectUri);
-    console.log('Request clientId:', request?.clientId);
-    console.log('iOS Client ID:', process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID);
-    console.log('Android Client ID:', process.env.EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID);
+    GoogleSignin.configure({
+      webClientId: process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID, // Required for iOS
+      iosClientId: process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID, // Optional, auto-detected from GoogleService-Info.plist
+      offlineAccess: false, // We don't need offline access
+      forceCodeForRefreshToken: false, // We only need id_token
+    });
+    console.log('=== GoogleSignin configured ===');
     console.log('Web Client ID:', process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID);
-    console.log('==========================');
-  }, [request]);
-
-  // Debug: Log environment variables immediately
-  console.log('=== GOOGLE OAUTH DEBUG ===');
-  console.log('Environment variables loaded:', {
-    expoClientId: process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID,
-    androidClientId: process.env.EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID,
-    iosClientId: process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID,
-  });
-  console.log('Request object:', request);
-  console.log('Response object:', response);
-  console.log('========================');
-
-  WebBrowser.maybeCompleteAuthSession();
+    console.log('iOS Client ID:', process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID);
+  }, []);
 
   const roles = [
     { key: 'patient', label: t('patient') },
@@ -957,113 +930,81 @@ export default function SignupScreen() {
 
   const handleGoogleSignup = async () => {
     try {
-      console.log('=== GOOGLE AUTH STARTED ===');
-      console.log('Environment variables:', {
-        expoClientId: process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID,
-        androidClientId: process.env.EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID,
-        iosClientId: process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID,
-        apiBaseUrl: Constants.expoConfig?.extra?.apiBaseUrl || process.env.EXPO_PUBLIC_API_BASE_URL || 'http://localhost:8000'
-      });
-      console.log('Request configuration:', {
-        redirectUri: request?.redirectUri,
-        clientId: request?.clientId,
-        scopes: request?.scopes,
-      });
-
-      const result = await promptAsync();
-      console.log('=== GOOGLE AUTH RESULT ===');
-      console.log('Result type:', result.type);
-      console.log('Full result:', JSON.stringify(result, null, 2));
-
-      // Check for error in result
-      if (result.type === 'error') {
-        const errorDetails = {
-          type: result.type,
-          error: result.error,
-          params: result.params,
-          url: result.url,
-        };
-        console.error('=== GOOGLE AUTH ERROR ===');
-        console.error('Error details:', JSON.stringify(errorDetails, null, 2));
-
-        // Show detailed error to user
-        const errorMsg = result.params?.error_description || result.error?.message || 'Unknown error';
-        Alert.alert(
-          'Google Authentication Error',
-          `Type: ${result.type}\n\nError: ${errorMsg}\n\nRedirect URI: ${request?.redirectUri}\n\nPlease check console for full details.`,
-          [{ text: 'OK' }]
-        );
+      setLoading(true);
+      console.log('=== GOOGLE SIGN-IN STARTED ===');
+      
+      // Check if Google Play Services are available
+      await GoogleSignin.hasPlayServices({ showPlayServicesUpdateDialog: true });
+      
+      // Sign in and get user info with id_token
+      const signInResult = await GoogleSignin.signIn();
+      console.log('=== GOOGLE SIGN-IN SUCCESS ===');
+      console.log('User:', signInResult.data?.user.email);
+      
+      // Get id_token
+      const tokens = await GoogleSignin.getTokens();
+      const idToken = tokens.idToken;
+      
+      if (!idToken) {
+        console.error('No id_token received');
+        Alert.alert('Error', 'Failed to get authentication token');
+        setLoading(false);
         return;
       }
+      
+      // Get the selected role
+      const selectedRole = currentRole || 'patient';
+      
+      // Call backend Google auth endpoint
+      const apiBaseUrl = Constants.expoConfig?.extra?.apiBaseUrl || process.env.EXPO_PUBLIC_API_BASE_URL || 'http://localhost:8000';
+      console.log('Calling backend:', `${apiBaseUrl}/auth/google`);
+      
+      const response = await fetch(`${apiBaseUrl}/auth/google`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          id_token: idToken,
+          role: selectedRole,
+          name: signInResult.data?.user.name,
+          email: signInResult.data?.user.email,
+        }),
+      });
 
-      if (result.type === 'success') {
-        // Extract the ID token properly
-        let idToken = null;
-        
-        // Check different possible locations for the ID token
-        if (result.params && result.params.id_token) {
-          idToken = result.params.id_token;
-        } else if (result.authentication && result.authentication.idToken) {
-          idToken = result.authentication.idToken;
-        } else if (result.params && result.params.access_token) {
-          // If we get an access token, we might need to exchange it for ID token
-          console.log('Got access token, need to exchange for ID token');
-          Alert.alert('Error', 'ID token not found in Google response');
-          return;
-        }
-        
-        console.log('Extracted ID token:', idToken ? 'Present' : 'Missing');
-        
-        if (!idToken) {
-          console.error('No ID token found in Google auth result');
-          Alert.alert('Error', 'Google authentication failed - no ID token received');
-          return;
-        }
-        
-        // Get the selected role
-        const selectedRole = currentRole || 'patient';
-        
-        // Call backend Google auth endpoint
-        const apiBaseUrl = Constants.expoConfig?.extra?.apiBaseUrl || process.env.EXPO_PUBLIC_API_BASE_URL || 'http://localhost:8000';
-        console.log('Calling backend at:', apiBaseUrl);
-        
-        const response = await fetch(`${apiBaseUrl}/auth/google`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            id_token: idToken,
-            role: selectedRole
-          }),
-        });
+      const data = await response.json();
+      console.log('Backend response:', response.ok ? 'Success' : 'Failed');
 
-        const data = await response.json();
-        console.log('Backend response:', data);
-
-        if (response.ok) {
-          // Store token securely
-          await SecureStore.setItemAsync('auth_token', data.access_token);
-          await SecureStore.setItemAsync('user_role', data.role);
-          await SecureStore.setItemAsync('user_id', data.user_id);
-          
-          Alert.alert('Success', 'Google authentication successful!');
-          // Navigate to main app or dashboard
+      if (response.ok) {
+        // Store authentication data
+        await SecureStore.setItemAsync('auth_token', data.access_token);
+        await SecureStore.setItemAsync('user_role', data.role);
+        await SecureStore.setItemAsync('user_id', data.user_id);
+        await SecureStore.setItemAsync('user_name', signInResult.data?.user.name || '');
+        await SecureStore.setItemAsync('user_email', signInResult.data?.user.email || '');
+        
+        // Navigate based on profile completion - no popups
+        if (data.profile_complete) {
+          console.log('Profile complete, navigating to Landing');
           navigation.navigate('Landing');
         } else {
-          Alert.alert('Error', data.detail || 'Google authentication failed');
+          console.log('Profile incomplete, showing profile form');
+          setShowProfileStep(true);
         }
-      } else if (result.type === 'cancel') {
-        console.log('Google auth cancelled by user');
-        Alert.alert('Cancelled', 'Google authentication was cancelled');
       } else {
-        console.log('Google auth failed with type:', result.type);
-        Alert.alert('Error', `Google authentication failed: ${result.type}`);
+        console.error('Backend error:', data.detail);
+        Alert.alert('Authentication Failed', data.detail || 'Unable to authenticate with Google');
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Google auth error:', error);
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-      Alert.alert('Error', `Google authentication failed: ${errorMessage}`);
+      
+      // Only show error if it's not a user cancellation
+      if (error.code !== 'SIGN_IN_CANCELLED' && error.code !== '-5') {
+        const errorMessage = error.message || 'Authentication failed';
+        Alert.alert('Error', errorMessage);
+      }
+    } finally {
+      setLoading(false);
     }
   };
 

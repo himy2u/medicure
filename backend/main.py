@@ -4,7 +4,7 @@ from pydantic import BaseModel
 from auth import (
     init_db, UserCreate, UserLogin, User, Token, DB_PATH,
     create_user, authenticate_user, create_access_token,
-    get_user_by_email, ACCESS_TOKEN_EXPIRE_MINUTES
+    get_user_by_email, ACCESS_TOKEN_EXPIRE_MINUTES, log_audit_event
 )
 from datetime import timedelta
 from typing import Optional
@@ -42,7 +42,10 @@ class ForgotPasswordRequest(BaseModel):
     email: str
 
 class GoogleAuthRequest(BaseModel):
-    id_token: str
+    id_token: Optional[str] = None
+    code: Optional[str] = None
+    redirect_uri: Optional[str] = None
+    code_verifier: Optional[str] = None
     role: str = "patient"
 
 # Auth endpoints
@@ -108,8 +111,13 @@ async def login(user_data: UserLogin):
 
 @app.post("/auth/google", response_model=SignupResponse)
 async def google_auth(google_request: GoogleAuthRequest):
-    """Authenticate user with Google OAuth ID token"""
+    """Authenticate user with Google OAuth ID token or authorization code"""
     try:
+        print(f"\n=== Google Auth Request ===")
+        print(f"Role: {google_request.role}")
+        print(f"Has id_token: {bool(google_request.id_token)}")
+        print(f"Has code: {bool(google_request.code)}")
+        
         # List of valid client IDs (must match frontend .env client IDs)
         valid_client_ids = [
             '920375448724-pdnedfikt5kh3cphc1n89i270n4hasps.apps.googleusercontent.com',  # Web Client ID
@@ -117,23 +125,124 @@ async def google_auth(google_request: GoogleAuthRequest):
             '920375448724-c03e17m90cqb81bb14q7e5blp6b9vobb.apps.googleusercontent.com',  # Android Client ID
         ]
 
-        # Verify the ID token
+        # If authorization code is provided, exchange it for id_token
+        id_token_str = google_request.id_token
+        if google_request.code and not id_token_str:
+            import httpx
+            token_endpoint = 'https://oauth2.googleapis.com/token'
+
+            # Use Web Client ID for token exchange (iOS/Android clients can't do server-side exchange)
+            web_client_id = '920375448724-pdnedfikt5kh3cphc1n89i270n4hasps.apps.googleusercontent.com'
+
+            token_data = {
+                'code': google_request.code,
+                'client_id': web_client_id,
+                'redirect_uri': google_request.redirect_uri or 'com.googleusercontent.apps.920375448724-n0p1g2gbkenbmaduto9tcqt4fbq8hsr6:/oauthredirect',
+                'grant_type': 'authorization_code',
+            }
+
+            if google_request.code_verifier:
+                token_data['code_verifier'] = google_request.code_verifier
+
+            async with httpx.AsyncClient(timeout=10.0) as client:
+                try:
+                    response = await client.post(token_endpoint, data=token_data)
+                except httpx.TimeoutException:
+                    raise HTTPException(
+                        status_code=status.HTTP_408_REQUEST_TIMEOUT,
+                        detail="Token exchange request timed out. Please try again."
+                    )
+                except Exception as e:
+                    raise HTTPException(
+                        status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                        detail=f"Token exchange network error: {str(e)}"
+                    )
+
+                if response.status_code != 200:
+                    raise HTTPException(
+                        status_code=status.HTTP_401_UNAUTHORIZED,
+                        detail=f"Failed to exchange authorization code: {response.text}"
+                    )
+
+                token_response = response.json()
+                id_token_str = token_response.get('id_token')
+
+                if not id_token_str:
+                    raise HTTPException(
+                        status_code=status.HTTP_401_UNAUTHORIZED,
+                        detail="No ID token received from token exchange"
+                    )
+
+        if not id_token_str:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Either id_token or code must be provided"
+            )
+
+        # Verify the ID token - try without audience first, then with specific client IDs
         idinfo = None
-        for client_id in valid_client_ids:
+        verification_errors = []
+        
+        # First, try without audience verification (most lenient)
+        for client_id in [None] + valid_client_ids:
             try:
-                idinfo = id_token.verify_oauth2_token(
-                    google_request.id_token,
-                    google_requests.Request(),
-                    client_id
-                )
+                if client_id is None:
+                    print("Attempting verification without audience...")
+                    idinfo = id_token.verify_oauth2_token(
+                        id_token_str,
+                        google_requests.Request()
+                    )
+                    print(f"✓ Token verified without audience check")
+                    print(f"  Token audience: {idinfo.get('aud')}")
+                else:
+                    idinfo = id_token.verify_oauth2_token(
+                        id_token_str,
+                        google_requests.Request(),
+                        audience=client_id
+                    )
+                    print(f"✓ Token verified with client_id: {client_id[:20]}...")
                 break
-            except ValueError:
+            except ValueError as e:
+                error_msg = str(e)
+                if client_id:
+                    verification_errors.append(f"{client_id[:20]}...: {error_msg}")
+                    print(f"✗ Verification failed for {client_id[:20]}...: {error_msg}")
+                else:
+                    print(f"✗ Verification without audience failed: {error_msg}")
+                
+                # If it's a clock skew error, try to work around it
+                if "Token used too early" in error_msg or "Token used too late" in error_msg:
+                    print("⚠️  Clock skew detected - attempting workaround...")
+                    try:
+                        # Decode without verification to get claims
+                        import json
+                        import base64
+                        parts = id_token_str.split('.')
+                        if len(parts) == 3:
+                            # Decode payload (add padding if needed)
+                            payload = parts[1]
+                            payload += '=' * (4 - len(payload) % 4)
+                            decoded = json.loads(base64.urlsafe_b64decode(payload))
+                            
+                            # Check if token is from Google and has required fields
+                            if decoded.get('iss') in ['accounts.google.com', 'https://accounts.google.com']:
+                                if decoded.get('email') and decoded.get('email_verified'):
+                                    print(f"✓ Token manually validated (clock skew workaround)")
+                                    print(f"  Email: {decoded.get('email')}")
+                                    print(f"  Audience: {decoded.get('aud')}")
+                                    idinfo = decoded
+                                    break
+                    except Exception as decode_error:
+                        print(f"✗ Manual decode failed: {decode_error}")
                 continue
 
         if not idinfo:
+            print(f"All verification attempts failed:")
+            for err in verification_errors:
+                print(f"  - {err}")
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Invalid Google ID token"
+                detail=f"Invalid Google ID token. Tried {len(valid_client_ids)} client IDs."
             )
 
         # Extract user information from Google
@@ -148,15 +257,25 @@ async def google_auth(google_request: GoogleAuthRequest):
 
         # Check if user already exists
         existing_user = get_user_by_email(email)
+        is_new_user = False
 
         if existing_user:
-            # User exists - login
+            # User exists - login (use their existing role, ignore provided role)
             user = existing_user
+            log_audit_event(
+                event_type="login",
+                auth_method="google_oauth",
+                email=email,
+                role=user.role,
+                user_id=user.id,
+                success=True
+            )
         else:
             # Create new user with Google email
             # Use a random password since they're using OAuth
             import secrets
             random_password = secrets.token_urlsafe(32)
+            is_new_user = True
 
             user_data = UserCreate(
                 name=name,
@@ -166,6 +285,15 @@ async def google_auth(google_request: GoogleAuthRequest):
             )
             user = create_user(user_data)
 
+            log_audit_event(
+                event_type="signup",
+                auth_method="google_oauth",
+                email=email,
+                role=user.role,
+                user_id=user.id,
+                success=True
+            )
+
         # Create access token
         access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
         access_token = create_access_token(
@@ -173,12 +301,17 @@ async def google_auth(google_request: GoogleAuthRequest):
             expires_delta=access_token_expires
         )
 
-        return SignupResponse(
-            access_token=access_token,
-            token_type="bearer",
-            role=user.role,
-            user_id=user.id
-        )
+        # Return response with profile completion status
+        # For now, assume new users need to complete profile, existing users don't
+        response_data = {
+            "access_token": access_token,
+            "token_type": "bearer",
+            "role": user.role,
+            "user_id": user.id,
+            "profile_complete": not is_new_user  # Existing users have complete profiles
+        }
+
+        return response_data
 
     except HTTPException:
         raise

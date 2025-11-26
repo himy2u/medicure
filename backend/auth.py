@@ -37,6 +37,24 @@ def init_db(db_path: str = None):
         )
     ''')
 
+    # Create audit_log table for tracking authentication events
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS audit_log (
+            id TEXT PRIMARY KEY,
+            user_id TEXT,
+            event_type TEXT NOT NULL,
+            auth_method TEXT NOT NULL,
+            email TEXT NOT NULL,
+            role TEXT,
+            ip_address TEXT,
+            user_agent TEXT,
+            success BOOLEAN NOT NULL,
+            error_message TEXT,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (user_id) REFERENCES users(id)
+        )
+    ''')
+
     conn.commit()
     conn.close()
 
@@ -122,6 +140,35 @@ def create_user(user: UserCreate, db_path: str = None) -> User:
     conn.close()
 
     return User(id=user_id, name=user.name, email=user.email, role=user.role)
+
+def log_audit_event(
+    event_type: str,
+    auth_method: str,
+    email: str,
+    role: Optional[str] = None,
+    user_id: Optional[str] = None,
+    success: bool = True,
+    error_message: Optional[str] = None,
+    ip_address: Optional[str] = None,
+    user_agent: Optional[str] = None,
+    db_path: str = None
+):
+    """Log authentication events to audit_log table"""
+    if db_path is None:
+        db_path = DB_PATH
+    conn = sqlite3.connect(db_path)
+    cursor = conn.cursor()
+
+    audit_id = str(uuid.uuid4())
+    cursor.execute(
+        '''INSERT INTO audit_log
+           (id, user_id, event_type, auth_method, email, role, ip_address, user_agent, success, error_message)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)''',
+        (audit_id, user_id, event_type, auth_method, email, role, ip_address, user_agent, success, error_message)
+    )
+
+    conn.commit()
+    conn.close()
 
 def authenticate_user(email: str, password: str, db_path: str = None) -> Optional[User]:
     if db_path is None:
