@@ -1122,32 +1122,51 @@ export default function SignupScreen() {
   };
 
   const handleWhatsAppSignup = () => {
-    Alert.prompt(
-      'WhatsApp Sign Up',
-      'Enter your WhatsApp number to receive OTP',
+    Alert.alert(
+      'WhatsApp OTP Not Configured',
+      'WhatsApp OTP requires Twilio or WhatsApp Business API setup.\n\nTo enable:\n1. Set up Twilio account\n2. Add credentials to backend\n3. Configure WhatsApp messaging\n\nSee WHATSAPP_OTP_TODO.md for details.\n\nFor now, please use Google Sign-in.',
       [
         {
-          text: 'Cancel',
-          style: 'cancel',
+          text: 'OK',
+          style: 'default',
         },
         {
-          text: 'Send OTP',
-          onPress: (phoneNumber?: string) => {
-            if (!phoneNumber || phoneNumber.trim() === '') {
-              Alert.alert('Error', 'Please enter a valid phone number');
-              return;
-            }
-            // TODO: Implement WhatsApp OTP logic with phoneNumber
-            console.log('WhatsApp phone number:', phoneNumber);
-            Alert.alert('OTP Sent', `OTP has been sent to ${phoneNumber}`);
-            setShowProfileStep(true);
-          },
+          text: 'Use Google Instead',
+          onPress: handleGoogleSignup,
         },
-      ],
-      'plain-text',
-      '',
-      'phone-pad'
+      ]
     );
+    
+    // TODO: Implement actual WhatsApp OTP when Twilio is configured
+    // Alert.prompt(
+    //   'WhatsApp Sign Up',
+    //   'Enter your WhatsApp number to receive OTP',
+    //   [
+    //     {
+    //       text: 'Cancel',
+    //       style: 'cancel',
+    //     },
+    //     {
+    //       text: 'Send OTP',
+    //       onPress: async (phoneNumber?: string) => {
+    //         if (!phoneNumber || phoneNumber.trim() === '') {
+    //           Alert.alert('Error', 'Please enter a valid phone number');
+    //           return;
+    //         }
+    //         // Call backend to send OTP via Twilio
+    //         const response = await fetch(`${apiBaseUrl}/auth/whatsapp/send-otp`, {
+    //           method: 'POST',
+    //           headers: { 'Content-Type': 'application/json' },
+    //           body: JSON.stringify({ phone_number: phoneNumber, role: currentRole })
+    //         });
+    //         // Show OTP input screen
+    //       },
+    //     },
+    //   ],
+    //   'plain-text',
+    //   '',
+    //   'phone-pad'
+    // );
   };
 
   const handleSignOut = async () => {
