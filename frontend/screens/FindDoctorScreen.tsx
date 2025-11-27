@@ -206,22 +206,29 @@ export default function FindDoctorScreen() {
 
       {/* Fixed Bottom Buttons */}
       <View style={styles.bottomActions}>
-        <Button
-          mode="outlined"
-          onPress={() => navigation.goBack()}
+        <TouchableOpacity 
           style={styles.backButtonBottom}
+          onPress={() => {
+            console.log('Back button pressed on FindDoctor');
+            navigation.goBack();
+          }}
+          activeOpacity={0.7}
         >
-          Back
-        </Button>
-        <Button
-          mode="contained"
-          onPress={handleSearch}
-          style={styles.searchButtonBottom}
-          contentStyle={styles.buttonContent}
+          <Text style={styles.backButtonText}>Back</Text>
+        </TouchableOpacity>
+        <TouchableOpacity 
+          style={[styles.searchButtonBottom, !symptom.trim() && styles.buttonDisabled]}
+          onPress={() => {
+            console.log('Find Doctors button pressed');
+            if (symptom.trim()) {
+              handleSearch();
+            }
+          }}
+          activeOpacity={!symptom.trim() ? 1 : 0.7}
           disabled={!symptom.trim()}
         >
-          Find Doctors
-        </Button>
+          <Text style={styles.searchButtonText}>Find Doctors</Text>
+        </TouchableOpacity>
       </View>
     </SafeAreaView>
   );
@@ -320,6 +327,10 @@ const styles = StyleSheet.create({
     color: colors.accent,
   },
   bottomActions: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
     flexDirection: 'row',
     padding: spacing.lg,
     backgroundColor: colors.backgroundPrimary,
@@ -329,13 +340,35 @@ const styles = StyleSheet.create({
   },
   backButtonBottom: {
     flex: 1,
+    backgroundColor: colors.backgroundSecondary,
+    paddingVertical: spacing.md,
+    borderRadius: borderRadius.lg,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  backButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: colors.textPrimary,
   },
   searchButtonBottom: {
     flex: 2,
     backgroundColor: colors.accent,
+    paddingVertical: spacing.md,
+    borderRadius: borderRadius.lg,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  buttonContent: {
-    paddingVertical: spacing.sm,
+  searchButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#FFFFFF',
+  },
+  buttonDisabled: {
+    backgroundColor: colors.textLight,
+    opacity: 0.5,
   },
   resultsSection: {
     marginTop: spacing.lg,

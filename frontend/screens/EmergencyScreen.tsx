@@ -73,21 +73,8 @@ export default function EmergencyScreen() {
       return;
     }
     
-    // Navigate to doctor search/results with symptom
-    Alert.alert(
-      'Finding Doctors',
-      `Searching for doctors for: ${symptom}\n\nShowing available doctors from nearest to farthest.`,
-      [
-        {
-          text: 'OK',
-          onPress: () => {
-            console.log('Navigate to doctor results for:', symptom);
-            // TODO: Navigate to doctor results screen
-            // navigation.navigate('DoctorResults', { symptom });
-          },
-        },
-      ]
-    );
+    console.log('Navigating to FindDoctor with symptom:', symptom);
+    navigation.navigate('FindDoctor');
   };
 
   return (
@@ -159,21 +146,26 @@ export default function EmergencyScreen() {
 
       {/* Fixed Bottom Buttons */}
       <View style={styles.bottomActions}>
-        <Button
-          mode="outlined"
-          onPress={() => navigation.goBack()}
+        <TouchableOpacity 
           style={styles.backButtonBottom}
+          onPress={() => {
+            console.log('Back button pressed');
+            navigation.goBack();
+          }}
+          activeOpacity={0.7}
         >
-          Back
-        </Button>
-        <Button
-          mode="contained"
-          onPress={handleFindDoctors}
+          <Text style={styles.backButtonText}>Back</Text>
+        </TouchableOpacity>
+        <TouchableOpacity 
           style={styles.findDoctorsButtonBottom}
-          contentStyle={styles.buttonContent}
+          onPress={() => {
+            console.log('Find Doctors button pressed');
+            handleFindDoctors();
+          }}
+          activeOpacity={0.7}
         >
-          🔍 Find Doctors
-        </Button>
+          <Text style={styles.findDoctorsText}>🔍 Find Doctors</Text>
+        </TouchableOpacity>
       </View>
     </View>
   );
@@ -303,19 +295,41 @@ const styles = StyleSheet.create({
     bottom: 0,
     left: 0,
     right: 0,
+    flexDirection: 'row',
     paddingHorizontal: spacing.lg,
     paddingBottom: spacing.lg,
+    paddingTop: spacing.md,
     backgroundColor: colors.backgroundPrimary,
+    borderTopWidth: 1,
+    borderTopColor: colors.border,
+    gap: spacing.md,
   },
-  findDoctorsButton: {
-    backgroundColor: colors.accent,
-    paddingVertical: spacing.lg,
+  backButtonBottom: {
+    flex: 1,
+    backgroundColor: colors.backgroundSecondary,
+    paddingVertical: spacing.md,
     borderRadius: borderRadius.lg,
     alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  backButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: colors.textPrimary,
+  },
+  findDoctorsButtonBottom: {
+    flex: 2,
+    backgroundColor: colors.accent,
+    paddingVertical: spacing.md,
+    borderRadius: borderRadius.lg,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   findDoctorsText: {
     color: '#FFFFFF',
-    fontSize: 18,
-    fontWeight: '700',
+    fontSize: 16,
+    fontWeight: '600',
   },
 });
