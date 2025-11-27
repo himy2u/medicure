@@ -1122,51 +1122,114 @@ export default function SignupScreen() {
   };
 
   const handleWhatsAppSignup = () => {
-    Alert.alert(
-      'WhatsApp OTP Not Configured',
-      'WhatsApp OTP requires Twilio or WhatsApp Business API setup.\n\nTo enable:\n1. Set up Twilio account\n2. Add credentials to backend\n3. Configure WhatsApp messaging\n\nSee WHATSAPP_OTP_TODO.md for details.\n\nFor now, please use Google Sign-in.',
+    Alert.prompt(
+      'WhatsApp Sign Up',
+      'Enter your WhatsApp number (with country code, e.g., +1234567890)',
       [
         {
-          text: 'OK',
-          style: 'default',
+          text: 'Cancel',
+          style: 'cancel',
         },
         {
-          text: 'Use Google Instead',
-          onPress: handleGoogleSignup,
+          text: 'Send OTP',
+          onPress: async (phoneNumber?: string) => {
+            if (!phoneNumber || phoneNumber.trim() === '') {
+              Alert.alert('Error', 'Please enter a valid phone number');
+              return;
+            }
+            
+            setLoading(true);
+            try {
+              const apiBaseUrl = Constants.expoConfig?.extra?.apiBaseUrl || process.env.EXPO_PUBLIC_API_BASE_URL || 'http://192.168.100.6:8000';
+              
+              // Send OTP
+              const response = await fetch(`${apiBaseUrl}/auth/whatsapp/send-otp`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ 
+                  phone_number: phoneNumber, 
+                  role: currentRole 
+                })
+              });
+              
+              const data = await response.json();
+              
+              if (response.ok) {
+                console.log('OTP sent:', data.cost_status);
+                
+                // Show OTP input dialog
+                Alert.prompt(
+                  'Enter OTP',
+                  `We sent a verification code to ${phoneNumber}`,
+                  [
+                    {
+                      text: 'Cancel',
+                      style: 'cancel',
+                    },
+                    {
+                      text: 'Verify',
+                      onPress: async (otp?: string) => {
+                        if (!otp || otp.trim() === '') {
+                          Alert.alert('Error', 'Please enter the OTP');
+                          return;
+                        }
+                        
+                        // Verify OTP
+                        const verifyResponse = await fetch(`${apiBaseUrl}/auth/whatsapp/verify-otp`, {
+                          method: 'POST',
+                          headers: { 'Content-Type': 'application/json' },
+                          body: JSON.stringify({
+                            phone_number: phoneNumber,
+                            otp: otp,
+                            role: currentRole,
+                            name: watch('name') || phoneNumber
+                          })
+                        });
+                        
+                        const verifyData = await verifyResponse.json();
+                        
+                        if (verifyResponse.ok) {
+                          // Store auth data
+                          await SecureStore.setItemAsync('auth_token', verifyData.access_token);
+                          await SecureStore.setItemAsync('user_role', verifyData.role);
+                          await SecureStore.setItemAsync('user_id', verifyData.user_id);
+                          await SecureStore.setItemAsync('user_name', watch('name') || phoneNumber);
+                          await SecureStore.setItemAsync('user_email', phoneNumber);
+                          
+                          console.log('WhatsApp auth successful:', verifyData.cost_status);
+                          
+                          // Navigate based on profile completion
+                          if (verifyData.profile_complete) {
+                            navigation.navigate('Landing');
+                          } else {
+                            setShowProfileStep(true);
+                          }
+                        } else {
+                          Alert.alert('Verification Failed', verifyData.detail || 'Invalid OTP');
+                        }
+                      },
+                    },
+                  ],
+                  'plain-text',
+                  '',
+                  'number-pad'
+                );
+              } else {
+                Alert.alert('Error', data.detail || 'Failed to send OTP');
+              }
+            } catch (error) {
+              console.error('WhatsApp OTP error:', error);
+              Alert.alert('Error', 'Network error. Please try again.');
+            } finally {
+              setLoading(false);
+            }
+          },
         },
-      ]
+      ],
+      'plain-text',
+      '',
+      'phone-pad'
     );
-    
-    // TODO: Implement actual WhatsApp OTP when Twilio is configured
-    // Alert.prompt(
-    //   'WhatsApp Sign Up',
-    //   'Enter your WhatsApp number to receive OTP',
-    //   [
-    //     {
-    //       text: 'Cancel',
-    //       style: 'cancel',
-    //     },
-    //     {
-    //       text: 'Send OTP',
-    //       onPress: async (phoneNumber?: string) => {
-    //         if (!phoneNumber || phoneNumber.trim() === '') {
-    //           Alert.alert('Error', 'Please enter a valid phone number');
-    //           return;
-    //         }
-    //         // Call backend to send OTP via Twilio
-    //         const response = await fetch(`${apiBaseUrl}/auth/whatsapp/send-otp`, {
-    //           method: 'POST',
-    //           headers: { 'Content-Type': 'application/json' },
-    //           body: JSON.stringify({ phone_number: phoneNumber, role: currentRole })
-    //         });
-    //         // Show OTP input screen
-    //       },
-    //     },
-    //   ],
-    //   'plain-text',
-    //   '',
-    //   'phone-pad'
-    // );
   };
 
   const handleSignOut = async () => {
