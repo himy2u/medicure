@@ -154,16 +154,8 @@ export default function FindDoctorScreen() {
             ))}
           </View>
 
-          {/* Search Button */}
-          <Button
-            mode="contained"
-            onPress={handleSearch}
-            style={styles.searchButton}
-            contentStyle={styles.searchButtonContent}
-            disabled={!symptom.trim()}
-          >
-            Find Available Doctors
-          </Button>
+          {/* Bottom padding for button space */}
+          <View style={{ height: 80 }} />
 
           {/* Results */}
           {showResults && (
@@ -211,6 +203,26 @@ export default function FindDoctorScreen() {
           )}
         </View>
       </ScrollView>
+
+      {/* Fixed Bottom Buttons */}
+      <View style={styles.bottomActions}>
+        <Button
+          mode="outlined"
+          onPress={() => navigation.goBack()}
+          style={styles.backButtonBottom}
+        >
+          Back
+        </Button>
+        <Button
+          mode="contained"
+          onPress={handleSearch}
+          style={styles.searchButtonBottom}
+          contentStyle={styles.buttonContent}
+          disabled={!symptom.trim()}
+        >
+          Find Doctors
+        </Button>
+      </View>
     </SafeAreaView>
   );
 }
@@ -307,13 +319,22 @@ const styles = StyleSheet.create({
   timeWindowTextSelected: {
     color: colors.accent,
   },
-  searchButton: {
-    marginTop: spacing.md,
-    marginBottom: spacing.xl,
-    backgroundColor: colors.accent,
-    borderRadius: borderRadius.lg,
+  bottomActions: {
+    flexDirection: 'row',
+    padding: spacing.lg,
+    backgroundColor: colors.backgroundPrimary,
+    borderTopWidth: 1,
+    borderTopColor: colors.border,
+    gap: spacing.md,
   },
-  searchButtonContent: {
+  backButtonBottom: {
+    flex: 1,
+  },
+  searchButtonBottom: {
+    flex: 2,
+    backgroundColor: colors.accent,
+  },
+  buttonContent: {
     paddingVertical: spacing.sm,
   },
   resultsSection: {
