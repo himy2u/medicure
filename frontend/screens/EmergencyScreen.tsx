@@ -188,11 +188,6 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.sm,
     paddingHorizontal: spacing.sm,
   },
-  backButtonText: {
-    fontSize: 16,
-    color: colors.accent,
-    fontWeight: '600',
-  },
   placeholder: {
     width: 60, // Same width as back button for centering
   },

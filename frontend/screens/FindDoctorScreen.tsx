@@ -227,7 +227,7 @@ export default function FindDoctorScreen() {
           activeOpacity={!symptom.trim() ? 1 : 0.7}
           disabled={!symptom.trim()}
         >
-          <Text style={styles.searchButtonText}>Find Doctors</Text>
+          <Text style={styles.searchButtonText}>🔍 Find Doctors</Text>
         </TouchableOpacity>
       </View>
     </SafeAreaView>
