@@ -8,6 +8,10 @@ import secrets
 from datetime import datetime, timedelta
 from typing import Dict, Optional
 from twilio.rest import Client
+from dotenv import load_dotenv
+
+# Load environment variables
+load_dotenv()
 
 # Configuration
 TWILIO_ACCOUNT_SID = os.getenv("TWILIO_ACCOUNT_SID")

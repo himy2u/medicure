@@ -93,11 +93,7 @@ export default function EmergencyScreen() {
   return (
     <View style={styles.container}>
       <View style={styles.header}>
-        <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
-          <Text style={styles.backButtonText}>{t('backButtonText')}</Text>
-        </TouchableOpacity>
         <Text style={styles.title}>{t('emergencyTitle')}</Text>
-        <View style={styles.placeholder} />
       </View>
 
       {/* Emergency Call Buttons */}
@@ -161,14 +157,23 @@ export default function EmergencyScreen() {
         <View style={styles.bottomPadding} />
       </ScrollView>
 
-      {/* Fixed Bottom Button */}
+      {/* Fixed Bottom Buttons */}
       <View style={styles.bottomActions}>
-        <TouchableOpacity 
-          style={styles.findDoctorsButton}
-          onPress={handleFindDoctors}
+        <Button
+          mode="outlined"
+          onPress={() => navigation.goBack()}
+          style={styles.backButtonBottom}
         >
-          <Text style={styles.findDoctorsText}>🔍 {t('findAvailableDoctors')}</Text>
-        </TouchableOpacity>
+          Back
+        </Button>
+        <Button
+          mode="contained"
+          onPress={handleFindDoctors}
+          style={styles.findDoctorsButtonBottom}
+          contentStyle={styles.buttonContent}
+        >
+          🔍 Find Doctors
+        </Button>
       </View>
     </View>
   );
