@@ -10,7 +10,7 @@ from datetime import timedelta
 from typing import Optional, Dict
 from google.oauth2 import id_token
 from google.auth.transport import requests as google_requests
-from whatsapp_otp import whatsapp_service, handle_whatsapp_webhook
+from twilio_otp import twilio_otp_service
 
 app = FastAPI(title="Medicure API", version="1.0.0")
 
@@ -434,23 +434,19 @@ async def update_user_profile(user_id: str, profile_data: ProfileUpdateRequest):
 
 @app.post("/auth/whatsapp/send-otp")
 async def send_whatsapp_otp(request: WhatsAppOTPRequest):
-    """Send OTP via WhatsApp (FREE for new users via FEP)"""
+    """Send OTP via Twilio WhatsApp"""
     try:
         # Check if user exists
         existing_user = get_user_by_email(request.phone_number)
         is_new_user = existing_user is None
         
-        # Send OTP
-        result = await whatsapp_service.send_otp(
-            phone_number=request.phone_number,
-            is_new_user=is_new_user
-        )
+        # Send OTP via Twilio
+        result = twilio_otp_service.send_otp(phone_number=request.phone_number)
         
         if result.get("success"):
             return {
                 "success": True,
                 "message": "OTP sent successfully",
-                "cost_status": result.get("cost", "PAID"),
                 "is_new_user": is_new_user
             }
         else:
@@ -469,10 +465,10 @@ async def send_whatsapp_otp(request: WhatsAppOTPRequest):
 
 @app.post("/auth/whatsapp/verify-otp")
 async def verify_whatsapp_otp(request: WhatsAppOTPVerifyRequest):
-    """Verify WhatsApp OTP and create/login user"""
+    """Verify Twilio WhatsApp OTP and create/login user"""
     try:
         # Validate OTP
-        validation = whatsapp_service.validate_otp(request.phone_number, request.otp)
+        validation = twilio_otp_service.validate_otp(request.phone_number, request.otp)
         
         if not validation.get("valid"):
             raise HTTPException(
@@ -550,31 +546,6 @@ async def verify_whatsapp_otp(request: WhatsAppOTPVerifyRequest):
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Verification error: {str(e)}"
         )
-
-@app.post("/whatsapp/webhook")
-async def whatsapp_webhook(request: Request):
-    """Handle WhatsApp webhook events (FEP trigger)"""
-    try:
-        webhook_data = await request.json()
-        result = await handle_whatsapp_webhook(webhook_data)
-        return result
-    except Exception as e:
-        print(f"Webhook error: {str(e)}")
-        return {"status": "error", "error": str(e)}
-
-@app.get("/whatsapp/webhook")
-async def whatsapp_webhook_verify(request: Request):
-    """Verify WhatsApp webhook (Meta requirement)"""
-    mode = request.query_params.get("hub.mode")
-    token = request.query_params.get("hub.verify_token")
-    challenge = request.query_params.get("hub.challenge")
-    
-    verify_token = "medicure_webhook_token_2025"  # Set this in env vars
-    
-    if mode == "subscribe" and token == verify_token:
-        return int(challenge)
-    else:
-        raise HTTPException(status_code=403, detail="Verification failed")
 
 @app.get("/health")
 async def health_check():
