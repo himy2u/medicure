@@ -367,7 +367,6 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
   },
   buttonDisabled: {
-    backgroundColor: colors.textLight,
     opacity: 0.5,
   },
   resultsSection: {

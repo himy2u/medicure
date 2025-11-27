@@ -164,7 +164,7 @@ export default function EmergencyScreen() {
           }}
           activeOpacity={0.7}
         >
-          <Text style={styles.findDoctorsText}>🔍 Find Doctors</Text>
+          <Text style={styles.findDoctorsText}>🔍 Find Doctors Now</Text>
         </TouchableOpacity>
       </View>
     </View>
