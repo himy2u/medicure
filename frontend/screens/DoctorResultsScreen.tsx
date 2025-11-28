@@ -1,12 +1,15 @@
 import React, { useState } from 'react';
-import { StyleSheet, Text, View, ScrollView, TouchableOpacity, Alert, Linking } from 'react-native';
+import { StyleSheet, Text, View, ScrollView, TouchableOpacity, Alert, Linking, Dimensions } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
+import MapView, { Marker, PROVIDER_GOOGLE } from 'react-native-maps';
 import { colors, spacing, borderRadius } from '../theme/colors';
 import { RootStackParamList } from '../navigation/AppNavigator';
 import Constants from 'expo-constants';
 import * as SecureStore from 'expo-secure-store';
+
+const { width, height } = Dimensions.get('window');
 
 type DoctorResultsScreenNavigationProp = StackNavigationProp<RootStackParamList, 'DoctorResults'>;
 type DoctorResultsScreenRouteProp = RouteProp<RootStackParamList, 'DoctorResults'>;
@@ -46,6 +49,11 @@ export default function DoctorResultsScreen() {
   }
   
   const [requesting, setRequesting] = useState<number | null>(null);
+  const [viewMode, setViewMode] = useState<'list' | 'map'>('list');
+  
+  // Detect if this is emergency context (from EmergencyScreen) or regular booking (from FindDoctorScreen)
+  const isEmergency = route.name === 'DoctorResults' && symptom; // Emergency has symptom
+  const isBooking = !isEmergency; // Regular booking flow
 
   const handleEmergencyRequest = async (doctor: Doctor) => {
     try {
@@ -105,6 +113,29 @@ export default function DoctorResultsScreen() {
     Linking.openURL(url);
   };
 
+  const handleBookAppointment = (doctor: Doctor) => {
+    // TODO: Navigate to appointment booking screen
+    Alert.alert(
+      'Book Appointment',
+      `Book an appointment with ${doctor.full_name}?`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Continue',
+          onPress: () => {
+            // TODO: Implement booking flow
+            Alert.alert('Coming Soon', 'Appointment booking will be available soon!');
+          }
+        }
+      ]
+    );
+  };
+
+  const handleSaveDoctor = (doctor: Doctor) => {
+    // TODO: Save doctor to favorites
+    Alert.alert('Saved', `${doctor.full_name} has been saved to your favorites!`);
+  };
+
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
@@ -112,14 +143,79 @@ export default function DoctorResultsScreen() {
           <Text style={styles.backButtonText}>← Back</Text>
         </TouchableOpacity>
         <View style={styles.headerInfo}>
-          <Text style={styles.headerTitle}>Available Doctors</Text>
-          <Text style={styles.headerSubtitle}>
-            {doctors.length} doctor{doctors.length !== 1 ? 's' : ''} found for: {symptom}
+          <Text style={styles.headerTitle}>
+            {isEmergency ? 'Emergency Doctors' : 'Available Doctors'}
           </Text>
+          <Text style={styles.headerSubtitle}>
+            {doctors.length} doctor{doctors.length !== 1 ? 's' : ''} found
+            {symptom && ` for: ${symptom}`}
+          </Text>
+        </View>
+        
+        {/* View Toggle */}
+        <View style={styles.viewToggle}>
+          <TouchableOpacity
+            style={[styles.toggleButton, viewMode === 'list' && styles.toggleButtonActive]}
+            onPress={() => setViewMode('list')}
+          >
+            <Text style={[styles.toggleText, viewMode === 'list' && styles.toggleTextActive]}>
+              📋 List
+            </Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.toggleButton, viewMode === 'map' && styles.toggleButtonActive]}
+            onPress={() => setViewMode('map')}
+          >
+            <Text style={[styles.toggleText, viewMode === 'map' && styles.toggleTextActive]}>
+              🗺️ Map
+            </Text>
+          </TouchableOpacity>
         </View>
       </View>
 
-      <ScrollView style={styles.scrollView}>
+      {viewMode === 'map' ? (
+        <MapView
+          style={styles.map}
+          provider={PROVIDER_GOOGLE}
+          initialRegion={{
+            latitude: userLocation?.latitude || -0.1807,
+            longitude: userLocation?.longitude || -78.4678,
+            latitudeDelta: 0.1,
+            longitudeDelta: 0.1,
+          }}
+        >
+          {/* User location marker */}
+          {userLocation && (
+            <Marker
+              coordinate={{
+                latitude: userLocation.latitude,
+                longitude: userLocation.longitude,
+              }}
+              title="Your Location"
+              pinColor="blue"
+            />
+          )}
+          
+          {/* Doctor markers */}
+          {doctors.map((doctor: Doctor) => (
+            <Marker
+              key={doctor.doctor_id}
+              coordinate={{
+                latitude: doctor.latitude,
+                longitude: doctor.longitude,
+              }}
+              title={doctor.full_name}
+              description={`${doctor.specialty} • ${doctor.distance_km} km away`}
+              pinColor="red"
+            />
+          ))}
+        </MapView>
+      ) : (
+        <ScrollView 
+          style={styles.scrollView}
+          contentContainerStyle={styles.scrollViewContent}
+          showsVerticalScrollIndicator={false}
+        >
         {doctors.length === 0 ? (
           <View style={styles.emptyState}>
             <Text style={styles.emptyText}>😔 No doctors available</Text>
@@ -162,36 +258,68 @@ export default function DoctorResultsScreen() {
               </View>
 
               <View style={styles.doctorActions}>
-                <TouchableOpacity
-                  style={styles.alertButton}
-                  onPress={() => handleEmergencyRequest(doctor)}
-                  disabled={requesting === doctor.doctor_id}
-                >
-                  <Text style={styles.alertButtonText}>
-                    {requesting === doctor.doctor_id ? 'Sending...' : '🚨 Request Emergency'}
-                  </Text>
-                </TouchableOpacity>
-                
-                <View style={styles.secondaryActions}>
-                  <TouchableOpacity
-                    style={styles.callButton}
-                    onPress={() => handleCall(doctor.phone)}
-                  >
-                    <Text style={styles.callButtonText}>📞 Call</Text>
-                  </TouchableOpacity>
-                  
-                  <TouchableOpacity
-                    style={styles.directionsButton}
-                    onPress={() => handleDirections(doctor.latitude, doctor.longitude)}
-                  >
-                    <Text style={styles.directionsButtonText}>🗺️ Directions</Text>
-                  </TouchableOpacity>
-                </View>
+                {isEmergency ? (
+                  <>
+                    {/* Emergency Mode: Alert + Call + Directions */}
+                    <TouchableOpacity
+                      style={styles.alertButton}
+                      onPress={() => handleEmergencyRequest(doctor)}
+                      disabled={requesting === doctor.doctor_id}
+                    >
+                      <Text style={styles.alertButtonText}>
+                        {requesting === doctor.doctor_id ? 'Sending...' : '🚨 Alert Doctor'}
+                      </Text>
+                    </TouchableOpacity>
+                    
+                    <View style={styles.secondaryActions}>
+                      <TouchableOpacity
+                        style={styles.callButton}
+                        onPress={() => handleCall(doctor.phone)}
+                      >
+                        <Text style={styles.callButtonText}>📞 Call</Text>
+                      </TouchableOpacity>
+                      
+                      <TouchableOpacity
+                        style={styles.directionsButton}
+                        onPress={() => handleDirections(doctor.latitude, doctor.longitude)}
+                      >
+                        <Text style={styles.directionsButtonText}>🗺️ Directions</Text>
+                      </TouchableOpacity>
+                    </View>
+                  </>
+                ) : (
+                  <>
+                    {/* Booking Mode: Book Appointment + Save + Directions */}
+                    <TouchableOpacity
+                      style={styles.bookButton}
+                      onPress={() => handleBookAppointment(doctor)}
+                    >
+                      <Text style={styles.bookButtonText}>📅 Book Appointment</Text>
+                    </TouchableOpacity>
+                    
+                    <View style={styles.secondaryActions}>
+                      <TouchableOpacity
+                        style={styles.saveButton}
+                        onPress={() => handleSaveDoctor(doctor)}
+                      >
+                        <Text style={styles.saveButtonText}>💾 Save</Text>
+                      </TouchableOpacity>
+                      
+                      <TouchableOpacity
+                        style={styles.directionsButton}
+                        onPress={() => handleDirections(doctor.latitude, doctor.longitude)}
+                      >
+                        <Text style={styles.directionsButtonText}>🗺️ Directions</Text>
+                      </TouchableOpacity>
+                    </View>
+                  </>
+                )}
               </View>
             </View>
           ))
         )}
-      </ScrollView>
+        </ScrollView>
+      )}
     </SafeAreaView>
   );
 }
@@ -205,6 +333,36 @@ const styles = StyleSheet.create({
     backgroundColor: colors.emergency,
     paddingHorizontal: spacing.lg,
     paddingVertical: spacing.md,
+    paddingBottom: spacing.lg,
+  },
+  viewToggle: {
+    flexDirection: 'row',
+    marginTop: spacing.md,
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    borderRadius: borderRadius.md,
+    padding: 4,
+  },
+  toggleButton: {
+    flex: 1,
+    paddingVertical: spacing.sm,
+    alignItems: 'center',
+    borderRadius: borderRadius.sm,
+  },
+  toggleButtonActive: {
+    backgroundColor: '#FFFFFF',
+  },
+  toggleText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#FFFFFF',
+  },
+  toggleTextActive: {
+    color: colors.emergency,
+  },
+  map: {
+    flex: 1,
+    width: width,
+    height: height - 200,
   },
   backButton: {
     marginBottom: spacing.sm,
@@ -230,6 +388,9 @@ const styles = StyleSheet.create({
   },
   scrollView: {
     flex: 1,
+  },
+  scrollViewContent: {
+    paddingBottom: spacing.xl,
   },
   emptyState: {
     padding: spacing.xl,
@@ -344,6 +505,30 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 16,
     fontWeight: '700',
+  },
+  bookButton: {
+    backgroundColor: colors.accent,
+    paddingVertical: spacing.md,
+    borderRadius: borderRadius.md,
+    alignItems: 'center',
+    marginBottom: spacing.sm,
+  },
+  bookButtonText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '700',
+  },
+  saveButton: {
+    flex: 1,
+    backgroundColor: colors.success,
+    paddingVertical: spacing.sm,
+    borderRadius: borderRadius.md,
+    alignItems: 'center',
+  },
+  saveButtonText: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: '600',
   },
   secondaryActions: {
     flexDirection: 'row',
