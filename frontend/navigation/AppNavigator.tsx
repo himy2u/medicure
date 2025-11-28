@@ -8,6 +8,7 @@ import LandingScreen from '../screens/LandingScreen';
 import LoginScreen from '../screens/LoginScreen';
 import SignupScreen from '../screens/SignupScreen';
 import MedicalStaffSignupScreen from '../screens/MedicalStaffSignupScreen';
+import MedicalStaffLoginScreen from '../screens/MedicalStaffLoginScreen';
 import ForgotPasswordScreen from '../screens/ForgotPasswordScreen';
 import EmergencyScreen from '../screens/EmergencyScreen';
 import FindDoctorScreen from '../screens/FindDoctorScreen';
@@ -23,6 +24,7 @@ export type RootStackParamList = {
   Login: undefined;
   Signup: undefined;
   MedicalStaffSignup: undefined;
+  MedicalStaffLogin: undefined;
   ForgotPassword: undefined;
   Emergency: undefined;
   FindDoctor: undefined;
@@ -73,6 +75,11 @@ export default function AppNavigator() {
           <Stack.Screen 
             name="MedicalStaffSignup" 
             component={MedicalStaffSignupScreen}
+            options={{ headerShown: false }}
+          />
+          <Stack.Screen 
+            name="MedicalStaffLogin" 
+            component={MedicalStaffLoginScreen}
             options={{ headerShown: false }}
           />
           <Stack.Screen 

@@ -28,9 +28,6 @@ export default function MedicalStaffSignupScreen() {
     { key: 'doctor', label: '👨‍⚕️ Doctor', description: 'Licensed physician or surgeon' },
     { key: 'medical_staff', label: '👩‍⚕️ Medical Staff', description: 'Nurse, assistant, technician' },
     { key: 'ambulance_staff', label: '🚑 Ambulance Staff', description: 'Emergency medical services' },
-    { key: 'lab_staff', label: '🧪 Lab Staff', description: 'Laboratory technician' },
-    { key: 'pharmacy_staff', label: '💊 Pharmacy Staff', description: 'Pharmacist or pharmacy tech' },
-    { key: 'clinic_admin', label: '🏥 Clinic Admin', description: 'Hospital or clinic administrator' },
   ];
 
   // Configure Google Sign-In
@@ -246,8 +243,8 @@ export default function MedicalStaffSignupScreen() {
           <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
             <Text style={styles.backButtonText}>← Back</Text>
           </TouchableOpacity>
-          <Text style={styles.title}>Healthcare Professional</Text>
-          <Text style={styles.subtitle}>Register or Login</Text>
+          <Text style={styles.title}>Register</Text>
+          <Text style={styles.subtitle}>Healthcare Professional Registration</Text>
         </View>
 
         <View style={styles.content}>
@@ -369,7 +366,9 @@ const styles = StyleSheet.create({
     flexGrow: 1,
   },
   header: {
-    padding: spacing.lg,
+    paddingTop: spacing.md,
+    paddingBottom: spacing.md,
+    paddingHorizontal: spacing.lg,
     backgroundColor: colors.accent,
   },
   backButton: {
@@ -393,9 +392,10 @@ const styles = StyleSheet.create({
   },
   content: {
     padding: spacing.lg,
+    paddingBottom: spacing.sm,
   },
   section: {
-    marginBottom: spacing.lg,
+    marginBottom: spacing.md,
   },
   sectionTitle: {
     fontSize: 18,
@@ -406,8 +406,8 @@ const styles = StyleSheet.create({
   roleCard: {
     backgroundColor: colors.backgroundSecondary,
     borderRadius: borderRadius.lg,
-    padding: spacing.md,
-    marginBottom: spacing.sm,
+    padding: spacing.sm,
+    marginBottom: spacing.xs,
     borderWidth: 2,
     borderColor: 'transparent',
   },
@@ -473,7 +473,7 @@ const styles = StyleSheet.create({
   },
   input: {
     backgroundColor: colors.backgroundSecondary,
-    marginBottom: spacing.md,
+    marginBottom: spacing.sm,
   },
   noteBox: {
     backgroundColor: colors.accentSoft,

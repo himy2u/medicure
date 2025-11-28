@@ -95,15 +95,23 @@ export default function LandingScreen() {
           <Text style={styles.labTestButtonText}>🧪 Lab Tests</Text>
         </TouchableOpacity>
 
-        {/* Medical Staff Login/Registration */}
+        {/* Healthcare Professional Section */}
         <View style={styles.medicalStaffSection}>
           <Text style={styles.medicalStaffLabel}>Healthcare Professional?</Text>
-          <TouchableOpacity
-            style={styles.medicalStaffButton}
-            onPress={() => navigation.navigate('MedicalStaffSignup')}
-          >
-            <Text style={styles.medicalStaffButtonText}>👨‍⚕️ Not a Patient - Login Here</Text>
-          </TouchableOpacity>
+          <View style={styles.medicalStaffButtons}>
+            <TouchableOpacity 
+              style={styles.medicalStaffRegisterButton}
+              onPress={() => navigation.navigate('MedicalStaffSignup')}
+            >
+              <Text style={styles.medicalStaffRegisterText}>Register</Text>
+            </TouchableOpacity>
+            <TouchableOpacity 
+              style={styles.medicalStaffLoginButton}
+              onPress={() => navigation.navigate('MedicalStaffLogin')}
+            >
+              <Text style={styles.medicalStaffLoginText}>Login</Text>
+            </TouchableOpacity>
+          </View>
         </View>
       </View>
     </SafeAreaView>
@@ -326,15 +334,35 @@ const styles = StyleSheet.create({
     marginBottom: spacing.sm,
     fontWeight: '500',
   },
-  medicalStaffButton: {
+  medicalStaffButtons: {
+    flexDirection: 'row',
+    gap: spacing.md,
+    width: '100%',
+  },
+  medicalStaffRegisterButton: {
+    flex: 1,
+    backgroundColor: colors.accent,
+    borderRadius: borderRadius.lg,
+    paddingVertical: spacing.md,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  medicalStaffRegisterText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#FFFFFF',
+  },
+  medicalStaffLoginButton: {
+    flex: 1,
     backgroundColor: colors.backgroundSecondary,
     borderRadius: borderRadius.lg,
     paddingVertical: spacing.md,
-    paddingHorizontal: spacing.lg,
+    alignItems: 'center',
+    justifyContent: 'center',
     borderWidth: 2,
     borderColor: colors.accent,
   },
-  medicalStaffButtonText: {
+  medicalStaffLoginText: {
     fontSize: 16,
     fontWeight: '600',
     color: colors.accent,
