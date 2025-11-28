@@ -101,11 +101,16 @@ export default function FindDoctorScreen() {
       return;
     }
 
-    // Use location or default to Quito center for testing
-    const searchLocation = location || {
+    // For testing: Always use Quito coordinates since doctors are in Ecuador
+    const searchLocation = {
       latitude: -0.1807,
       longitude: -78.4678
     };
+    
+    if (location) {
+      console.log('User actual location:', location);
+      console.log('Using Quito coordinates for demo');
+    }
 
     setSearching(true);
     try {

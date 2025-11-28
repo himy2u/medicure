@@ -477,6 +477,7 @@ interface SignupFormData {
   confirmPassword: string;
   role: string;
   nationalId?: string;
+  dateOfBirth?: string;
   insurance?: string[];
   specialty?: string;
   subSpecialty?: string;
@@ -520,6 +521,31 @@ const PatientProfileForm = ({ control, errors }: any) => (
       name="nationalId"
     />
     {errors.nationalId && <Text style={styles.errorTextCompact}>{errors.nationalId.message}</Text>}
+    
+    <Controller
+      control={control}
+      rules={{ 
+        required: 'Date of birth is required',
+        pattern: {
+          value: /^\d{4}-\d{2}-\d{2}$/,
+          message: 'Please use format YYYY-MM-DD'
+        }
+      }}
+      render={({ field: { onChange, onBlur, value } }) => (
+        <TextInput
+          label="Date of Birth (YYYY-MM-DD) *"
+          value={value}
+          onBlur={onBlur}
+          onChangeText={onChange}
+          error={!!errors.dateOfBirth}
+          style={styles.inputCompact}
+          dense
+          placeholder="e.g., 1990-05-15"
+        />
+      )}
+      name="dateOfBirth"
+    />
+    {errors.dateOfBirth && <Text style={styles.errorTextCompact}>{errors.dateOfBirth.message}</Text>}
     
     <Text style={styles.sectionTitle}>Insurance (Optional)</Text>
     <Controller
