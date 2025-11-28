@@ -8,6 +8,7 @@ import * as SecureStore from 'expo-secure-store';
 import { colors, spacing, borderRadius } from '../theme/colors';
 
 import { RootStackParamList } from '../navigation/AppNavigator';
+import { getRoleBasedHomeScreen } from '../utils/navigationHelper';
 
 type LoginScreenNavigationProp = StackNavigationProp<RootStackParamList, 'Login'>;
 
@@ -36,13 +37,14 @@ export default function LoginScreen() {
 
       if (response.ok) {
         const result = await response.json();
-        // Store JWT token
+        // Store JWT token and user info
         await SecureStore.setItemAsync('auth_token', result.access_token);
         await SecureStore.setItemAsync('user_role', result.role);
-        
-        Alert.alert('Success', 'Login successful!');
-        // TODO: Navigate based on role
-        // navigation.navigate(result.role === 'doctor' ? 'DoctorDashboard' : 'PatientDashboard');
+        await SecureStore.setItemAsync('user_id', result.user_id || '');
+
+        // Navigate to role-based home screen
+        const homeScreen = getRoleBasedHomeScreen(result.role);
+        navigation.navigate(homeScreen);
       } else {
         Alert.alert('Error', 'Invalid credentials');
       }

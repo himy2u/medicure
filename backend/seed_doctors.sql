@@ -4,8 +4,8 @@
 -- First, let's insert some sample doctors
 INSERT INTO doctors (full_name, specialty, sub_specialty, phone, email, license_number) VALUES
 -- Required doctors
-('Andrea Ortiz', 'Neurosurgeon', 'Geriatría', '+593-2-1234567', 'andrea.ortiz@medicure.ec', 'EC-NS-001'),
-('Himanshu Pandey', 'Neurosurgeon', 'Geriatría', '+593-2-1234568', 'himanshu.pandey@medicure.ec', 'EC-NS-002'),
+('Andrea', 'Neurosurgeon', 'Geriatrics', '+593-2-1234567', 'andrea@medicure.ec', 'EC-NS-001'),
+('Julio Iglesias', 'Neurosurgeon', 'Geriatrics', '+593-2-1234568', 'julio.iglesias@medicure.ec', 'EC-NS-002'),
 
 -- Additional doctors in Quito
 ('Dr. María González', 'Cardiologist', 'Interventional Cardiology', '+593-2-2345678', 'maria.gonzalez@medicure.ec', 'EC-CA-001'),
@@ -24,13 +24,13 @@ INSERT INTO doctors (full_name, specialty, sub_specialty, phone, email, license_
 ('Dr. Jorge Salazar', 'Urologist', 'Oncology', '+593-2-5678904', 'jorge.salazar@medicure.ec', 'EC-UR-001');
 
 -- Insert service locations for doctors
--- Andrea Ortiz - Lumbisi, Cumbaya
+-- Andrea - Lumbisí, Cumbayá
 INSERT INTO doctor_service_locations (doctor_id, location_type, name, address, city, country, latitude, longitude) VALUES
-(1, 'private_clinic', 'Clínica Ortiz Neurología', 'Lumbisi, Cumbaya', 'Quito', 'Ecuador', -0.2054, -78.4310);
+(1, 'private_clinic', 'Clínica Andrea Neurología', 'Lumbisí, Cumbayá', 'Quito', 'Ecuador', -0.2054, -78.4310);
 
--- Himanshu Pandey - Jipijapa
+-- Julio Iglesias - Jipijapa
 INSERT INTO doctor_service_locations (doctor_id, location_type, name, address, city, country, latitude, longitude) VALUES
-(2, 'private_clinic', 'Centro Neurológico Pandey', 'Jipijapa, Quito', 'Quito', 'Ecuador', -0.1865, -78.4810);
+(2, 'private_clinic', 'Centro Neurológico Julio Iglesias', 'Jipijapa', 'Quito', 'Ecuador', -0.1865, -78.4810);
 
 -- Other doctors - various locations in Quito
 INSERT INTO doctor_service_locations (doctor_id, location_type, name, address, city, country, latitude, longitude) VALUES

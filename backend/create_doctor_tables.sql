@@ -1,7 +1,7 @@
 -- Doctors table with specialties and sub-specialties
 CREATE TABLE IF NOT EXISTS doctors (
     id SERIAL PRIMARY KEY,
-    user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+    user_id TEXT REFERENCES users(id) ON DELETE CASCADE,
     full_name VARCHAR(255) NOT NULL,
     specialty VARCHAR(255) NOT NULL,
     sub_specialty VARCHAR(255),
@@ -26,6 +26,21 @@ CREATE TABLE IF NOT EXISTS doctor_service_locations (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
+-- Add city_id column for geo-structure integration (added after cities table exists)
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.columns
+        WHERE table_name = 'doctor_service_locations'
+        AND column_name = 'city_id'
+    ) THEN
+        ALTER TABLE doctor_service_locations
+        ADD COLUMN city_id INTEGER REFERENCES cities(id) ON DELETE SET NULL;
+
+        CREATE INDEX IF NOT EXISTS idx_service_locations_city ON doctor_service_locations(city_id);
+    END IF;
+END $$;
+
 -- Doctor availability schedule
 CREATE TABLE IF NOT EXISTS doctor_availability (
     id SERIAL PRIMARY KEY,
@@ -42,12 +57,14 @@ CREATE TABLE IF NOT EXISTS doctor_availability (
 -- Emergency appointment requests
 CREATE TABLE IF NOT EXISTS emergency_requests (
     id SERIAL PRIMARY KEY,
-    patient_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+    patient_id TEXT REFERENCES users(id) ON DELETE CASCADE,
     doctor_id INTEGER REFERENCES doctors(id) ON DELETE SET NULL,
     symptom TEXT NOT NULL,
-    status VARCHAR(50) DEFAULT 'pending', -- 'pending', 'accepted', 'rejected', 'completed'
+    status VARCHAR(50) DEFAULT 'pending', -- 'pending', 'accepted', 'rejected', 'completed', 'timeout'
     patient_latitude DECIMAL(10, 8),
     patient_longitude DECIMAL(11, 8),
+    distance_km DECIMAL(10, 2), -- Distance from doctor to patient
+    timeout_at TIMESTAMP, -- 5-minute timeout for Uber-style dispatch
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );

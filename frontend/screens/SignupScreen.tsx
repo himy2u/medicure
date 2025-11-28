@@ -12,6 +12,7 @@ import Constants from 'expo-constants';
 import { colors, spacing, borderRadius } from '../theme/colors';
 
 import { RootStackParamList } from '../navigation/AppNavigator';
+import { getRoleBasedHomeScreen } from '../utils/navigationHelper';
 
 // Move styles to top to fix "styles used before declaration" errors
 const styles = StyleSheet.create({
@@ -273,30 +274,38 @@ const styles = StyleSheet.create({
     marginBottom: spacing.xs,
   },
   roleRowCompact: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: spacing.sm,
-    flexWrap: 'wrap',
+    flexDirection: 'column',
+    marginBottom: spacing.md,
   },
   radioItemCompact: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    width: '48%', // 2 per row
-    paddingVertical: spacing.sm,
-    paddingHorizontal: spacing.sm,
-    borderRadius: borderRadius.md,
-    marginHorizontal: '1%',
-    marginVertical: 2,
+    backgroundColor: colors.backgroundSecondary,
+    borderRadius: borderRadius.lg,
+    padding: spacing.md,
+    marginBottom: spacing.sm,
+    borderWidth: 2,
+    borderColor: 'transparent',
   },
   radioItemSelected: {
-    backgroundColor: colors.accent + '20',
+    backgroundColor: colors.accentSoft,
+    borderColor: colors.accent,
   },
   radioLabelCompact: {
-    fontSize: 14,
+    fontSize: 18,
     color: colors.textPrimary,
-    marginLeft: spacing.xs,
     fontWeight: '600',
-    flex: 1,
+    marginBottom: spacing.xs,
+  },
+  radioLabelSelected: {
+    color: colors.accent,
+  },
+  roleDescriptionText: {
+    fontSize: 14,
+    color: colors.textSecondary,
+    marginTop: spacing.xs,
+  },
+  roleDescriptionSelected: {
+    color: colors.accent,
+    opacity: 0.8,
   },
   authButtons: {
     marginBottom: spacing.lg,
@@ -953,10 +962,12 @@ export default function SignupScreen() {
     try {
       const authToken = await SecureStore.getItemAsync('auth_token');
       const userId = await SecureStore.getItemAsync('user_id');
-      
+      const userRole = await SecureStore.getItemAsync('user_role');
+
       if (authToken && userId) {
-        console.log('User already authenticated, redirecting to Landing');
-        navigation.navigate('Landing');
+        console.log('User already authenticated, redirecting to role-based home');
+        const homeScreen = getRoleBasedHomeScreen(userRole || 'patient');
+        navigation.navigate(homeScreen);
       }
     } catch (error) {
       console.error('Error checking auth status:', error);
@@ -977,11 +988,8 @@ export default function SignupScreen() {
   }, []);
 
   const roles = [
-    { key: 'patient', label: t('patient') },
-    { key: 'doctor', label: t('doctor') },
-    { key: 'caregiver', label: t('caregiver') },
-    { key: 'medical_staff', label: t('medicalStaff') },
-    { key: 'ambulance_staff', label: t('ambulanceStaff') }
+    { key: 'patient', label: '🩺 ' + t('patient'), description: 'Seeking medical care for yourself' },
+    { key: 'caregiver', label: '👨‍👩‍👧 ' + t('caregiver'), description: 'Managing health for a family member or dependent' }
   ];
 
   const password = watch('password');
@@ -1027,8 +1035,10 @@ export default function SignupScreen() {
 
       if (response.ok) {
         console.log('Profile updated successfully');
-        // Navigate to Landing/Dashboard
-        navigation.navigate('Landing');
+        // Navigate to role-based home screen
+        const userRole = await SecureStore.getItemAsync('user_role');
+        const homeScreen = getRoleBasedHomeScreen(userRole || 'patient');
+        navigation.navigate(homeScreen);
       } else {
         const errorData = await response.json().catch(() => ({}));
         Alert.alert('Error', errorData.detail || 'Failed to update profile');
@@ -1098,8 +1108,9 @@ export default function SignupScreen() {
         
         // Navigate based on profile completion - no popups
         if (data.profile_complete) {
-          console.log('Profile complete, navigating to Landing');
-          navigation.navigate('Landing');
+          console.log('Profile complete, navigating to role-based home');
+          const homeScreen = getRoleBasedHomeScreen(data.role);
+          navigation.navigate(homeScreen);
         } else {
           console.log('Profile incomplete, showing profile form');
           setShowProfileStep(true);
@@ -1197,10 +1208,11 @@ export default function SignupScreen() {
                           await SecureStore.setItemAsync('user_email', phoneNumber);
                           
                           console.log('WhatsApp auth successful:', verifyData.cost_status);
-                          
+
                           // Navigate based on profile completion
                           if (verifyData.profile_complete) {
-                            navigation.navigate('Landing');
+                            const homeScreen = getRoleBasedHomeScreen(verifyData.role);
+                            navigation.navigate(homeScreen);
                           } else {
                             setShowProfileStep(true);
                           }
@@ -1339,16 +1351,26 @@ export default function SignupScreen() {
             <RadioButton.Group onValueChange={onChange} value={value}>
               <View style={styles.roleRowCompact}>
                 {roles.map((role) => (
-                  <TouchableOpacity 
-                    key={role.key} 
+                  <TouchableOpacity
+                    key={role.key}
                     style={[
                       styles.radioItemCompact,
                       value === role.key ? styles.radioItemSelected : {}
                     ]}
                     onPress={() => onChange(role.key)}
                   >
-                    <RadioButton value={role.key} />
-                    <Text style={styles.radioLabelCompact}>{role.label}</Text>
+                    <Text style={[
+                      styles.radioLabelCompact,
+                      value === role.key ? styles.radioLabelSelected : {}
+                    ]}>
+                      {role.label}
+                    </Text>
+                    <Text style={[
+                      styles.roleDescriptionText,
+                      value === role.key ? styles.roleDescriptionSelected : {}
+                    ]}>
+                      {role.description}
+                    </Text>
                   </TouchableOpacity>
                 ))}
               </View>

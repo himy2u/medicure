@@ -1,16 +1,18 @@
 from fastapi import FastAPI, HTTPException, status, Depends, Request
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
-from auth import (
-    init_db, UserCreate, UserLogin, User, Token, DB_PATH,
+from auth_pg import (
+    UserCreate, UserLogin, User, Token,
     create_user, authenticate_user, create_access_token,
     get_user_by_email, ACCESS_TOKEN_EXPIRE_MINUTES, log_audit_event
 )
+from database import get_pool, close_pool
 from datetime import timedelta
 from typing import Optional, Dict
 from google.oauth2 import id_token
 from google.auth.transport import requests as google_requests
 from twilio_otp import twilio_otp_service
+import json
 
 app = FastAPI(title="Medicure API", version="1.0.0")
 
@@ -23,8 +25,18 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Initialize database
-init_db()
+# Startup and shutdown events
+@app.on_event("startup")
+async def startup():
+    """Initialize database connection pool on startup"""
+    await get_pool()
+    print("✓ Database connection pool initialized")
+
+@app.on_event("shutdown")
+async def shutdown():
+    """Close database connection pool on shutdown"""
+    await close_pool()
+    print("✓ Database connection pool closed")
 
 # Pydantic models for responses
 class SignupResponse(BaseModel):
@@ -79,7 +91,11 @@ async def signup(user_data: UserCreate):
     """Create a new user account"""
     try:
         # Validate role
-        valid_roles = ["patient", "doctor", "caregiver", "super_admin"]
+        valid_roles = [
+            "patient", "caregiver", "doctor", "medical_staff",
+            "ambulance_staff", "lab_staff", "pharmacy_staff",
+            "clinic_admin", "super_admin"
+        ]
         if user_data.role not in valid_roles:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
@@ -87,7 +103,7 @@ async def signup(user_data: UserCreate):
             )
         
         # Create user
-        user = create_user(user_data)
+        user = await create_user(user_data)
         
         # Create access token
         access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
@@ -113,7 +129,7 @@ async def signup(user_data: UserCreate):
 @app.post("/auth/login", response_model=LoginResponse)
 async def login(user_data: UserLogin):
     """Authenticate user and return JWT token"""
-    user = authenticate_user(user_data.email, user_data.password)
+    user = await authenticate_user(user_data.email, user_data.password)
     if not user:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -281,13 +297,13 @@ async def google_auth(google_request: GoogleAuthRequest):
             )
 
         # Check if user already exists
-        existing_user = get_user_by_email(email)
+        existing_user = await get_user_by_email(email)
         is_new_user = False
 
         if existing_user:
             # User exists - login (use their existing role, ignore provided role)
             user = existing_user
-            log_audit_event(
+            await log_audit_event(
                 event_type="login",
                 auth_method="google_oauth",
                 email=email,
@@ -308,9 +324,9 @@ async def google_auth(google_request: GoogleAuthRequest):
                 password=random_password,  # Will be hashed
                 role=google_request.role
             )
-            user = create_user(user_data)
+            user = await create_user(user_data)
 
-            log_audit_event(
+            await log_audit_event(
                 event_type="signup",
                 auth_method="google_oauth",
                 email=email,
@@ -327,14 +343,14 @@ async def google_auth(google_request: GoogleAuthRequest):
         )
 
         # Check if user has completed their profile
-        import sqlite3
-        conn = sqlite3.connect(DB_PATH)
-        cursor = conn.cursor()
-        cursor.execute('SELECT profile_complete FROM user_profiles WHERE user_id = ?', (user.id,))
-        profile_result = cursor.fetchone()
-        conn.close()
-        
-        profile_complete = profile_result[0] if profile_result else False
+        pool = await get_pool()
+        async with pool.acquire() as conn:
+            profile_result = await conn.fetchrow(
+                'SELECT profile_complete FROM user_profiles WHERE user_id = $1',
+                user.id
+            )
+
+        profile_complete = profile_result['profile_complete'] if profile_result else False
 
         # Return response with profile completion status
         response_data = {
@@ -358,7 +374,7 @@ async def google_auth(google_request: GoogleAuthRequest):
 @app.post("/auth/forgot-password")
 async def forgot_password(request: ForgotPasswordRequest):
     """Send password reset email (mock implementation)"""
-    user = get_user_by_email(request.email)
+    user = await get_user_by_email(request.email)
     if not user:
         # Don't reveal whether email exists for security
         return {"message": "If email exists, reset instructions will be sent"}
@@ -371,52 +387,32 @@ async def forgot_password(request: ForgotPasswordRequest):
 async def update_user_profile(user_id: str, profile_data: ProfileUpdateRequest):
     """Update user profile with additional information"""
     try:
-        import sqlite3
-        import json
-        
-        conn = sqlite3.connect(DB_PATH)
-        cursor = conn.cursor()
-        
-        # Check if user exists
-        cursor.execute('SELECT id, email FROM users WHERE id = ?', (user_id,))
-        user = cursor.fetchone()
-        
-        if not user:
-            conn.close()
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="User not found"
-            )
-        
-        # Create profile_data table if it doesn't exist
-        cursor.execute('''
-            CREATE TABLE IF NOT EXISTS user_profiles (
-                user_id TEXT PRIMARY KEY,
-                profile_data TEXT NOT NULL,
-                profile_complete BOOLEAN DEFAULT FALSE,
-                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                FOREIGN KEY (user_id) REFERENCES users(id)
-            )
-        ''')
-        
-        # Convert profile data to JSON
-        profile_json = json.dumps(profile_data.dict())
-        
-        # Insert or update profile
-        cursor.execute('''
-            INSERT INTO user_profiles (user_id, profile_data, profile_complete)
-            VALUES (?, ?, ?)
-            ON CONFLICT(user_id) DO UPDATE SET
-                profile_data = excluded.profile_data,
-                profile_complete = excluded.profile_complete,
-                updated_at = CURRENT_TIMESTAMP
-        ''', (user_id, profile_json, profile_data.profile_complete))
-        
-        conn.commit()
-        conn.close()
-        
+        pool = await get_pool()
+        async with pool.acquire() as conn:
+            # Check if user exists
+            user = await conn.fetchrow('SELECT id, email FROM users WHERE id = $1', user_id)
+
+            if not user:
+                raise HTTPException(
+                    status_code=status.HTTP_404_NOT_FOUND,
+                    detail="User not found"
+                )
+
+            # Convert profile data to JSON
+            profile_json = json.dumps(profile_data.dict())
+
+            # Insert or update profile
+            await conn.execute('''
+                INSERT INTO user_profiles (user_id, profile_data, profile_complete)
+                VALUES ($1, $2, $3)
+                ON CONFLICT(user_id) DO UPDATE SET
+                    profile_data = EXCLUDED.profile_data,
+                    profile_complete = EXCLUDED.profile_complete,
+                    updated_at = CURRENT_TIMESTAMP
+            ''', user_id, profile_json, profile_data.profile_complete)
+
         print(f"✓ Profile updated for user {user_id}")
-        
+
         return {
             "message": "Profile updated successfully",
             "user_id": user_id,
@@ -437,7 +433,7 @@ async def send_whatsapp_otp(request: WhatsAppOTPRequest):
     """Send OTP via Twilio WhatsApp"""
     try:
         # Check if user exists
-        existing_user = get_user_by_email(request.phone_number)
+        existing_user = await get_user_by_email(request.phone_number)
         is_new_user = existing_user is None
         
         # Send OTP via Twilio
@@ -477,24 +473,24 @@ async def verify_whatsapp_otp(request: WhatsAppOTPVerifyRequest):
             )
         
         # Check if user exists
-        user = get_user_by_email(request.phone_number)
+        user = await get_user_by_email(request.phone_number)
         is_new_user = False
-        
+
         if not user:
             # Create new user
             is_new_user = True
             import secrets
             random_password = secrets.token_urlsafe(32)
-            
+
             user_data = UserCreate(
                 name=request.name or request.phone_number,
                 email=request.phone_number,
                 password=random_password,
                 role=request.role
             )
-            user = create_user(user_data)
-            
-            log_audit_event(
+            user = await create_user(user_data)
+
+            await log_audit_event(
                 event_type="signup",
                 auth_method="whatsapp_otp",
                 email=request.phone_number,
@@ -503,7 +499,7 @@ async def verify_whatsapp_otp(request: WhatsAppOTPVerifyRequest):
                 success=True
             )
         else:
-            log_audit_event(
+            await log_audit_event(
                 event_type="login",
                 auth_method="whatsapp_otp",
                 email=request.phone_number,
@@ -511,23 +507,23 @@ async def verify_whatsapp_otp(request: WhatsAppOTPVerifyRequest):
                 user_id=user.id,
                 success=True
             )
-        
+
         # Create access token
         access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
         access_token = create_access_token(
             data={"sub": user.email, "role": user.role, "user_id": user.id},
             expires_delta=access_token_expires
         )
-        
+
         # Check profile completion
-        import sqlite3
-        conn = sqlite3.connect(DB_PATH)
-        cursor = conn.cursor()
-        cursor.execute('SELECT profile_complete FROM user_profiles WHERE user_id = ?', (user.id,))
-        profile_result = cursor.fetchone()
-        conn.close()
-        
-        profile_complete = profile_result[0] if profile_result else False
+        pool = await get_pool()
+        async with pool.acquire() as conn:
+            profile_result = await conn.fetchrow(
+                'SELECT profile_complete FROM user_profiles WHERE user_id = $1',
+                user.id
+            )
+
+        profile_complete = profile_result['profile_complete'] if profile_result else False
         
         return {
             "access_token": access_token,
@@ -545,6 +541,111 @@ async def verify_whatsapp_otp(request: WhatsAppOTPVerifyRequest):
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Verification error: {str(e)}"
+        )
+
+class EmergencyDoctorRequest(BaseModel):
+    symptom: str
+    patient_latitude: float
+    patient_longitude: float
+    radius_km: float = 50.0  # Default 50km radius
+
+@app.post("/emergency/find-doctors")
+async def find_emergency_doctors(request: EmergencyDoctorRequest):
+    """Find nearest available doctors for emergency based on location and symptom"""
+    try:
+        pool = await get_pool()
+        async with pool.acquire() as conn:
+            # Haversine formula to calculate distance in SQL
+            # Get doctors with their locations, sorted by distance
+            query = """
+                SELECT
+                    d.id,
+                    d.full_name,
+                    d.specialty,
+                    d.sub_specialty,
+                    d.phone,
+                    d.email,
+                    dsl.name as clinic_name,
+                    dsl.address,
+                    dsl.city,
+                    dsl.latitude,
+                    dsl.longitude,
+                    da.is_24_hours,
+                    da.is_available,
+                    -- Haversine distance formula
+                    (
+                        6371 * acos(
+                            cos(radians($1)) * cos(radians(dsl.latitude)) *
+                            cos(radians(dsl.longitude) - radians($2)) +
+                            sin(radians($1)) * sin(radians(dsl.latitude))
+                        )
+                    ) AS distance_km
+                FROM doctors d
+                JOIN doctor_service_locations dsl ON d.id = dsl.doctor_id
+                JOIN doctor_availability da ON d.id = da.doctor_id AND dsl.id = da.location_id
+                WHERE da.is_available = TRUE
+                AND (
+                    da.is_24_hours = TRUE
+                    OR (
+                        da.day_of_week = EXTRACT(DOW FROM CURRENT_TIMESTAMP)::INTEGER
+                        AND CURRENT_TIME BETWEEN da.start_time AND da.end_time
+                    )
+                )
+                AND (
+                    6371 * acos(
+                        cos(radians($1)) * cos(radians(dsl.latitude)) *
+                        cos(radians(dsl.longitude) - radians($2)) +
+                        sin(radians($1)) * sin(radians(dsl.latitude))
+                    )
+                ) <= $3
+                ORDER BY distance_km ASC
+                LIMIT 20
+            """
+
+            doctors = await conn.fetch(
+                query,
+                request.patient_latitude,
+                request.patient_longitude,
+                request.radius_km
+            )
+
+            # Convert to list of dicts
+            doctors_list = []
+            for doctor in doctors:
+                doctors_list.append({
+                    "id": doctor['id'],
+                    "full_name": doctor['full_name'],
+                    "specialty": doctor['specialty'],
+                    "sub_specialty": doctor['sub_specialty'],
+                    "phone": doctor['phone'],
+                    "email": doctor['email'],
+                    "clinic_name": doctor['clinic_name'],
+                    "address": doctor['address'],
+                    "city": doctor['city'],
+                    "latitude": float(doctor['latitude']) if doctor['latitude'] else None,
+                    "longitude": float(doctor['longitude']) if doctor['longitude'] else None,
+                    "distance_km": round(float(doctor['distance_km']), 2),
+                    "distance_mi": round(float(doctor['distance_km']) * 0.621371, 2),
+                    "is_24_hours": doctor['is_24_hours'],
+                    "is_available": doctor['is_available']
+                })
+
+            return {
+                "symptom": request.symptom,
+                "patient_location": {
+                    "latitude": request.patient_latitude,
+                    "longitude": request.patient_longitude
+                },
+                "radius_km": request.radius_km,
+                "doctors_found": len(doctors_list),
+                "doctors": doctors_list
+            }
+
+    except Exception as e:
+        print(f"Error finding emergency doctors: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to find emergency doctors: {str(e)}"
         )
 
 @app.get("/health")

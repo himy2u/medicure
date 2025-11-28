@@ -29,15 +29,23 @@ async def init_tables():
     
     try:
         print("Creating base tables...")
-        
+
         # Read and execute base table creation SQL
         with open('create_base_tables.sql', 'r') as f:
             base_sql = f.read()
         await conn.execute(base_sql)
         print("✓ Base tables created successfully")
-        
+
+        print("\nCreating geo-structure tables...")
+
+        # Read and execute geo-structure SQL
+        with open('create_geo_structure.sql', 'r') as f:
+            geo_sql = f.read()
+        await conn.execute(geo_sql)
+        print("✓ Geo-structure tables created successfully")
+
         print("\nCreating doctor tables...")
-        
+
         # Read and execute table creation SQL
         with open('create_doctor_tables.sql', 'r') as f:
             create_sql = f.read()

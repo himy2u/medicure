@@ -1,19 +1,40 @@
-import React, { useState } from 'react';
-import { StyleSheet, Text, View, Alert, ScrollView, TouchableOpacity, Linking } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { StyleSheet, Text, View, Alert, ScrollView, TouchableOpacity, Linking, ActivityIndicator } from 'react-native';
 import { Button, Card, TextInput } from 'react-native-paper';
 import { useNavigation } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { useTranslation } from 'react-i18next';
 import { colors, spacing, borderRadius } from '../theme/colors';
 import { RootStackParamList } from '../navigation/AppNavigator';
+import * as Location from 'expo-location';
+import Constants from 'expo-constants';
 
 type EmergencyScreenNavigationProp = StackNavigationProp<RootStackParamList, 'Emergency'>;
+
+interface EmergencyDoctor {
+  id: number;
+  full_name: string;
+  specialty: string;
+  sub_specialty: string;
+  phone: string;
+  clinic_name: string;
+  address: string;
+  city: string;
+  distance_km: number;
+  distance_mi: number;
+  is_24_hours: boolean;
+}
 
 export default function EmergencyScreen() {
   const navigation = useNavigation<EmergencyScreenNavigationProp>();
   const { t } = useTranslation();
   const [selectedSymptom, setSelectedSymptom] = useState('');
   const [customSymptom, setCustomSymptom] = useState('');
+  const [location, setLocation] = useState<{ latitude: number; longitude: number } | null>(null);
+  const [loadingLocation, setLoadingLocation] = useState(false);
+  const [loadingDoctors, setLoadingDoctors] = useState(false);
+  const [emergencyDoctors, setEmergencyDoctors] = useState<EmergencyDoctor[]>([]);
+  const [showDoctorsList, setShowDoctorsList] = useState(false);
 
   const commonSymptoms = [
     t('chestPain'),
@@ -65,22 +86,168 @@ export default function EmergencyScreen() {
     );
   };
 
-  const handleFindDoctors = () => {
+  // Get user location on mount
+  useEffect(() => {
+    (async () => {
+      setLoadingLocation(true);
+      try {
+        const { status } = await Location.requestForegroundPermissionsAsync();
+        if (status !== 'granted') {
+          Alert.alert('Permission Denied', 'Location permission is required for emergency services');
+          setLoadingLocation(false);
+          return;
+        }
+
+        const userLocation = await Location.getCurrentPositionAsync({});
+        setLocation({
+          latitude: userLocation.coords.latitude,
+          longitude: userLocation.coords.longitude
+        });
+        console.log('User location:', userLocation.coords);
+      } catch (error) {
+        console.error('Error getting location:', error);
+        Alert.alert('Location Error', 'Unable to get your location. Please enable location services.');
+      } finally {
+        setLoadingLocation(false);
+      }
+    })();
+  }, []);
+
+  const handleFindDoctors = async () => {
     const symptom = selectedSymptom || customSymptom;
-    
+
     if (!symptom) {
       Alert.alert(t('symptomRequired'), t('selectSymptomFirst'));
       return;
     }
-    
-    console.log('Navigating to FindDoctor with symptom:', symptom);
-    navigation.navigate('FindDoctor');
+
+    if (!location) {
+      Alert.alert('Location Required', 'Getting your location...');
+      return;
+    }
+
+    setLoadingDoctors(true);
+    try {
+      const apiBaseUrl = Constants.expoConfig?.extra?.apiBaseUrl || process.env.EXPO_PUBLIC_API_BASE_URL || 'http://192.168.100.6:8000';
+
+      const response = await fetch(`${apiBaseUrl}/emergency/find-doctors`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          symptom: symptom,
+          patient_latitude: location.latitude,
+          patient_longitude: location.longitude,
+          radius_km: 50
+        })
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        if (data.doctors_found === 0) {
+          Alert.alert('No Doctors Available', 'No doctors are available nearby for emergency. Please call 911 or go to the nearest hospital.');
+        } else {
+          setEmergencyDoctors(data.doctors);
+          setShowDoctorsList(true);
+        }
+      } else {
+        Alert.alert('Error', data.detail || 'Failed to find doctors');
+      }
+    } catch (error) {
+      console.error('Error finding doctors:', error);
+      Alert.alert('Error', 'Network error. Please try again.');
+    } finally {
+      setLoadingDoctors(false);
+    }
   };
+
+  const handleAlertDoctor = (doctor: EmergencyDoctor) => {
+    Alert.alert(
+      'Alert Doctor',
+      `Send emergency alert to ${doctor.full_name}?`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Alert Now',
+          style: 'destructive',
+          onPress: () => {
+            // TODO: Implement Uber-style dispatch
+            Alert.alert('Alert Sent', `${doctor.full_name} has been alerted and will respond shortly.`);
+          }
+        }
+      ]
+    );
+  };
+
+  const handleCallDoctor = (phone: string) => {
+    Linking.openURL(`tel:${phone}`);
+  };
+
+  // If showing doctors list, render that view
+  if (showDoctorsList) {
+    return (
+      <View style={styles.container}>
+        <View style={styles.header}>
+          <TouchableOpacity onPress={() => setShowDoctorsList(false)} style={styles.backButton}>
+            <Text style={styles.backButtonText}>← Back</Text>
+          </TouchableOpacity>
+          <Text style={styles.title}>Emergency Doctors</Text>
+          <View style={styles.placeholder} />
+        </View>
+
+        <ScrollView style={styles.doctorsListContainer} showsVerticalScrollIndicator={false}>
+          <Text style={styles.sectionTitle}>
+            {emergencyDoctors.length} Doctors Available Near You
+          </Text>
+          <Text style={styles.subtitle}>Sorted by distance - Nearest first</Text>
+
+          {emergencyDoctors.map((doctor) => (
+            <Card key={doctor.id} style={styles.doctorCard}>
+              <Card.Content>
+                <View style={styles.doctorHeader}>
+                  <View style={styles.doctorInfo}>
+                    <Text style={styles.doctorName}>{doctor.full_name}</Text>
+                    <Text style={styles.doctorSpecialty}>
+                      {doctor.specialty} {doctor.sub_specialty && `· ${doctor.sub_specialty}`}
+                    </Text>
+                    <Text style={styles.doctorClinic}>📍 {doctor.clinic_name}</Text>
+                    <Text style={styles.doctorAddress}>{doctor.address}, {doctor.city}</Text>
+                    <Text style={styles.doctorDistance}>
+                      🚗 {doctor.distance_mi} mi ({doctor.distance_km} km) away
+                      {doctor.is_24_hours && ' · 24/7'}
+                    </Text>
+                  </View>
+                </View>
+
+                <View style={styles.doctorActions}>
+                  <TouchableOpacity
+                    style={styles.alertButton}
+                    onPress={() => handleAlertDoctor(doctor)}
+                  >
+                    <Text style={styles.alertButtonText}>🚨 Alert Now</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={styles.callButton}
+                    onPress={() => handleCallDoctor(doctor.phone)}
+                  >
+                    <Text style={styles.callButtonText}>📞 Call</Text>
+                  </TouchableOpacity>
+                </View>
+              </Card.Content>
+            </Card>
+          ))}
+
+          <View style={styles.bottomPadding} />
+        </ScrollView>
+      </View>
+    );
+  }
 
   return (
     <View style={styles.container}>
       <View style={styles.header}>
         <Text style={styles.title}>{t('emergencyTitle')}</Text>
+        {loadingLocation && <ActivityIndicator size="small" color={colors.accent} />}
       </View>
 
       {/* Emergency Call Buttons */}
@@ -156,15 +323,20 @@ export default function EmergencyScreen() {
         >
           <Text style={styles.backButtonText}>Back</Text>
         </TouchableOpacity>
-        <TouchableOpacity 
+        <TouchableOpacity
           style={styles.findDoctorsButtonBottom}
           onPress={() => {
             console.log('Find Doctors button pressed');
             handleFindDoctors();
           }}
           activeOpacity={0.7}
+          disabled={loadingDoctors || loadingLocation}
         >
-          <Text style={styles.findDoctorsText}>🔍 Find Doctors Now</Text>
+          {loadingDoctors ? (
+            <ActivityIndicator size="small" color="#FFFFFF" />
+          ) : (
+            <Text style={styles.findDoctorsText}>🔍 Find Doctors Now</Text>
+          )}
         </TouchableOpacity>
       </View>
     </View>
@@ -325,6 +497,79 @@ const styles = StyleSheet.create({
   findDoctorsText: {
     color: '#FFFFFF',
     fontSize: 16,
+    fontWeight: '600',
+  },
+  doctorsListContainer: {
+    flex: 1,
+    paddingHorizontal: spacing.lg,
+  },
+  doctorCard: {
+    marginBottom: spacing.md,
+    borderRadius: borderRadius.lg,
+    elevation: 3,
+    backgroundColor: colors.backgroundSecondary,
+  },
+  doctorHeader: {
+    flexDirection: 'row',
+    marginBottom: spacing.md,
+  },
+  doctorInfo: {
+    flex: 1,
+  },
+  doctorName: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: colors.textPrimary,
+    marginBottom: spacing.xs,
+  },
+  doctorSpecialty: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: colors.accent,
+    marginBottom: spacing.xs,
+  },
+  doctorClinic: {
+    fontSize: 14,
+    color: colors.textPrimary,
+    marginBottom: 2,
+  },
+  doctorAddress: {
+    fontSize: 13,
+    color: colors.textSecondary,
+    marginBottom: spacing.xs,
+  },
+  doctorDistance: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: colors.success,
+    marginTop: spacing.xs,
+  },
+  doctorActions: {
+    flexDirection: 'row',
+    gap: spacing.sm,
+  },
+  alertButton: {
+    flex: 2,
+    backgroundColor: colors.emergency,
+    paddingVertical: spacing.md,
+    borderRadius: borderRadius.md,
+    alignItems: 'center',
+  },
+  alertButtonText: {
+    color: '#FFFFFF',
+    fontSize: 15,
+    fontWeight: '700',
+  },
+  callButton: {
+    flex: 1,
+    backgroundColor: colors.accent,
+    paddingVertical: spacing.md,
+    borderRadius: borderRadius.md,
+    alignItems: 'center',
+  },
+  callButtonText: {
+    color: '#FFFFFF',
+    fontSize: 15,
     fontWeight: '600',
   },
 });

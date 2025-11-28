@@ -95,14 +95,14 @@ export default function LandingScreen() {
           <Text style={styles.labTestButtonText}>🧪 Lab Tests</Text>
         </TouchableOpacity>
 
-        {/* Medical Staff Registration */}
+        {/* Medical Staff Login/Registration */}
         <View style={styles.medicalStaffSection}>
           <Text style={styles.medicalStaffLabel}>Healthcare Professional?</Text>
-          <TouchableOpacity 
+          <TouchableOpacity
             style={styles.medicalStaffButton}
             onPress={() => navigation.navigate('MedicalStaffSignup')}
           >
-            <Text style={styles.medicalStaffButtonText}>👨‍⚕️ Not a Patient - Register Here</Text>
+            <Text style={styles.medicalStaffButtonText}>👨‍⚕️ Not a Patient - Login Here</Text>
           </TouchableOpacity>
         </View>
       </View>
@@ -119,6 +119,7 @@ const styles = StyleSheet.create({
     flex: 1,
     paddingHorizontal: spacing.lg,
     paddingTop: spacing.lg,
+    paddingBottom: 100, // Reserve space for fixed bottom button
     justifyContent: 'flex-start',
   },
   topBar: {
@@ -147,12 +148,12 @@ const styles = StyleSheet.create({
   emergencyButton: {
     backgroundColor: colors.emergency,
     borderRadius: borderRadius.xl,
-    paddingVertical: spacing.xl,
+    paddingVertical: spacing.lg,
     paddingHorizontal: spacing.lg,
-    marginBottom: spacing.lg,
+    marginBottom: spacing.md,
     alignItems: 'center',
     justifyContent: 'center',
-    minHeight: 100,
+    minHeight: 80,
     shadowColor: colors.shadowDark,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
@@ -164,7 +165,7 @@ const styles = StyleSheet.create({
     transform: [{ scale: 0.98 }],
   },
   emergencyButtonText: {
-    fontSize: 28,
+    fontSize: 24,
     fontWeight: '700',
     color: colors.backgroundSecondary,
     marginBottom: spacing.xs,
@@ -188,10 +189,9 @@ const styles = StyleSheet.create({
     elevation: 6,
   },
   primaryButtonText: {
-    fontSize: 22,
+    fontSize: 20,
     fontWeight: '600',
     color: colors.backgroundSecondary,
-    marginBottom: spacing.xs,
   },
   buttonSubtext: {
     fontSize: 15,
@@ -201,15 +201,15 @@ const styles = StyleSheet.create({
   },
   actionButton: {
     borderRadius: borderRadius.lg,
-    paddingVertical: spacing.lg,
-    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.md,
+    paddingHorizontal: spacing.md,
     alignItems: 'center',
-    marginBottom: spacing.md,
+    marginBottom: spacing.sm,
     shadowColor: '#000000',
-    shadowOffset: { width: 0, height: 4 },
+    shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.15,
-    shadowRadius: 8,
-    elevation: 8,
+    shadowRadius: 4,
+    elevation: 4,
   },
   secondaryButton: {
     backgroundColor: '#95E1D3',
@@ -304,11 +304,21 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
   },
   medicalStaffSection: {
-    marginTop: spacing.xl,
-    paddingTop: spacing.lg,
-    borderTopWidth: 1,
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    backgroundColor: colors.backgroundPrimary,
+    paddingVertical: spacing.md,
+    paddingHorizontal: spacing.lg,
+    borderTopWidth: 2,
     borderTopColor: colors.border,
     alignItems: 'center',
+    shadowColor: colors.shadowDark,
+    shadowOffset: { width: 0, height: -2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 10,
   },
   medicalStaffLabel: {
     fontSize: 14,
