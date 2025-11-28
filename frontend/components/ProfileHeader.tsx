@@ -9,7 +9,11 @@ import { RootStackParamList } from '../navigation/AppNavigator';
 
 type NavigationProp = StackNavigationProp<RootStackParamList>;
 
-export default function ProfileHeader() {
+interface ProfileHeaderProps {
+  hideHomeButton?: boolean;
+}
+
+export default function ProfileHeader({ hideHomeButton = false }: ProfileHeaderProps) {
   const navigation = useNavigation<NavigationProp>();
   const [userName, setUserName] = useState<string>('');
   const [userRole, setUserRole] = useState<string>('');
@@ -60,26 +64,28 @@ export default function ProfileHeader() {
   const handleGoHome = () => {
     // Navigate to role-based home screen
     const homeScreenMap: { [key: string]: keyof RootStackParamList } = {
-      'patient': 'PatientHome',
-      'caregiver': 'PatientHome',
+      'patient': 'Landing',
+      'caregiver': 'Landing',
       'doctor': 'DoctorHome',
       'medical_staff': 'MedicalStaffHome',
-      'ambulance_staff': 'AmbulanceHome',
+      'ambulance_staff': 'AmbulanceStaffHome',
     };
     
-    const homeScreen = homeScreenMap[userRole] || 'PatientHome';
+    const homeScreen = homeScreenMap[userRole] || 'Landing';
     navigation.navigate(homeScreen);
   };
 
   return (
     <View style={styles.container}>
       <View style={styles.headerRow}>
-        <TouchableOpacity 
-          style={styles.homeButton}
-          onPress={handleGoHome}
-        >
-          <Text style={styles.homeIcon}>🏠</Text>
-        </TouchableOpacity>
+        {!hideHomeButton && (
+          <TouchableOpacity 
+            style={styles.homeButton}
+            onPress={handleGoHome}
+          >
+            <Text style={styles.homeIcon}>🏠</Text>
+          </TouchableOpacity>
+        )}
         
         <TouchableOpacity 
           style={styles.userProfile} 

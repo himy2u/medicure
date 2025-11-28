@@ -47,7 +47,7 @@ export default function LandingScreen() {
         {/* Top Bar with Language Toggle and User Profile */}
         <View style={styles.topBar}>
           <LanguageToggle />
-          <ProfileHeader />
+          <ProfileHeader hideHomeButton={true} />
         </View>
 
         {/* App Title */}

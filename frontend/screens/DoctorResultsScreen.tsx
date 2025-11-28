@@ -3,7 +3,6 @@ import { StyleSheet, Text, View, ScrollView, TouchableOpacity, Alert, Linking, D
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
-import MapView, { Marker } from 'react-native-maps';
 import { colors, spacing, borderRadius } from '../theme/colors';
 import { RootStackParamList } from '../navigation/AppNavigator';
 import Constants from 'expo-constants';
@@ -180,60 +179,38 @@ export default function DoctorResultsScreen() {
       </View>
 
       {viewMode === 'map' ? (
-        mapError ? (
-          <View style={styles.mapPlaceholder}>
-            <Text style={styles.mapPlaceholderText}>🗺️ Map Unavailable</Text>
-            <Text style={styles.mapPlaceholderSubtext}>
-              Map requires native rebuild. Run: npx expo run:ios
-            </Text>
-            <TouchableOpacity 
-              style={styles.backToListButton}
-              onPress={() => setViewMode('list')}
-            >
-              <Text style={styles.backToListText}>← Back to List</Text>
-            </TouchableOpacity>
-          </View>
-        ) : (
-          <MapView
-            style={styles.map}
-            initialRegion={{
-              latitude: userLocation?.latitude || -0.1807,
-              longitude: userLocation?.longitude || -78.4678,
-              latitudeDelta: 0.1,
-              longitudeDelta: 0.1,
-            }}
-            onError={() => {
-              console.log('Map error - native modules not available');
-              setMapError(true);
-            }}
-          >
-            {/* User location marker */}
-            {userLocation && (
-              <Marker
-                coordinate={{
-                  latitude: userLocation.latitude,
-                  longitude: userLocation.longitude,
-                }}
-                title="Your Location"
-                pinColor="blue"
-              />
-            )}
-            
-            {/* Doctor markers */}
-            {doctors.map((doctor: Doctor) => (
-              <Marker
-                key={doctor.doctor_id}
-                coordinate={{
-                  latitude: doctor.latitude,
-                  longitude: doctor.longitude,
-                }}
-                title={doctor.full_name}
-                description={`${doctor.specialty} • ${doctor.distance_km} km away`}
-                pinColor="red"
-              />
+        <View style={styles.mapPlaceholder}>
+          <Text style={styles.mapPlaceholderText}>🗺️</Text>
+          <Text style={styles.mapPlaceholderTitle}>Map View</Text>
+          <Text style={styles.mapPlaceholderSubtext}>
+            Map requires native modules to be rebuilt.{'\n'}
+            Run: npx expo run:ios
+          </Text>
+          <View style={styles.doctorLocationsList}>
+            <Text style={styles.locationsTitle}>Doctor Locations:</Text>
+            {doctors.slice(0, 5).map((doctor: Doctor, index: number) => (
+              <View key={doctor.doctor_id} style={styles.locationItem}>
+                <Text style={styles.locationPin}>📍</Text>
+                <View style={styles.locationInfo}>
+                  <Text style={styles.locationName}>{doctor.full_name}</Text>
+                  <Text style={styles.locationAddress}>{doctor.clinic_name}</Text>
+                  <Text style={styles.locationDistance}>{doctor.distance_km} km away</Text>
+                </View>
+              </View>
             ))}
-          </MapView>
-        )
+            {doctors.length > 5 && (
+              <Text style={styles.moreLocations}>
+                + {doctors.length - 5} more locations
+              </Text>
+            )}
+          </View>
+          <TouchableOpacity 
+            style={styles.backToListButton}
+            onPress={() => setViewMode('list')}
+          >
+            <Text style={styles.backToListText}>← Back to List View</Text>
+          </TouchableOpacity>
+        </View>
       ) : (
         <ScrollView 
           style={styles.scrollView}
@@ -391,26 +368,82 @@ const styles = StyleSheet.create({
   mapPlaceholder: {
     flex: 1,
     alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: colors.backgroundSecondary,
+    backgroundColor: colors.backgroundPrimary,
     padding: spacing.xl,
+    paddingTop: spacing.xxl,
   },
   mapPlaceholderText: {
-    fontSize: 48,
-    marginBottom: spacing.md,
+    fontSize: 64,
+    marginBottom: spacing.sm,
+  },
+  mapPlaceholderTitle: {
+    fontSize: 24,
+    fontWeight: '700',
+    color: colors.textPrimary,
+    marginBottom: spacing.sm,
   },
   mapPlaceholderSubtext: {
     fontSize: 14,
     color: colors.textSecondary,
     textAlign: 'center',
+    marginBottom: spacing.xl,
+    lineHeight: 20,
+  },
+  doctorLocationsList: {
+    width: '100%',
+    backgroundColor: colors.backgroundSecondary,
+    borderRadius: borderRadius.lg,
+    padding: spacing.md,
     marginBottom: spacing.lg,
+  },
+  locationsTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: colors.textPrimary,
+    marginBottom: spacing.md,
+  },
+  locationItem: {
+    flexDirection: 'row',
+    marginBottom: spacing.md,
+    paddingBottom: spacing.md,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
+  },
+  locationPin: {
+    fontSize: 20,
+    marginRight: spacing.sm,
+  },
+  locationInfo: {
+    flex: 1,
+  },
+  locationName: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: colors.textPrimary,
+    marginBottom: 2,
+  },
+  locationAddress: {
+    fontSize: 13,
+    color: colors.textSecondary,
+    marginBottom: 2,
+  },
+  locationDistance: {
+    fontSize: 12,
+    color: colors.success,
+    fontWeight: '600',
+  },
+  moreLocations: {
+    fontSize: 13,
+    color: colors.textSecondary,
+    textAlign: 'center',
+    marginTop: spacing.sm,
+    fontStyle: 'italic',
   },
   backToListButton: {
     backgroundColor: colors.accent,
     paddingVertical: spacing.md,
     paddingHorizontal: spacing.xl,
     borderRadius: borderRadius.lg,
-    marginTop: spacing.md,
   },
   backToListText: {
     color: '#FFFFFF',
