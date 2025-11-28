@@ -24,13 +24,13 @@ export default function MedicalStaffSignupScreen() {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [role, setRole] = useState<string>('doctor');
 
-  // All roles expanded by default since there's space
+  // All roles with shorter descriptions for compact layout
   const allRoles = [
-    { key: 'doctor', label: '👨‍⚕️ Doctor', description: 'Licensed physician providing medical care' },
-    { key: 'medical_staff', label: '👩‍⚕️ Medical Staff', description: 'Nurses, medical assistants, and support staff' },
-    { key: 'ambulance_staff', label: '🚑 Ambulance Staff', description: 'Emergency medical services and paramedics' },
-    { key: 'lab_staff', label: '🧪 Lab Staff', description: 'Laboratory technicians and analysts' },
-    { key: 'pharmacy_staff', label: '💊 Pharmacy Staff', description: 'Pharmacists and pharmacy technicians' },
+    { key: 'doctor', label: '👨‍⚕️ Doctor', description: 'Licensed physician' },
+    { key: 'medical_staff', label: '👩‍⚕️ Medical Staff', description: 'Nurses & assistants' },
+    { key: 'ambulance_staff', label: '🚑 Ambulance', description: 'Emergency services' },
+    { key: 'lab_staff', label: '🧪 Lab Staff', description: 'Lab technicians' },
+    { key: 'pharmacy_staff', label: '💊 Pharmacy', description: 'Pharmacists' },
   ];
 
   // Configure Google Sign-In
@@ -286,16 +286,18 @@ const styles = StyleSheet.create({
   roleCard: { 
     backgroundColor: colors.backgroundSecondary, 
     borderRadius: borderRadius.md, 
-    padding: spacing.md, 
-    marginBottom: spacing.sm, 
+    padding: spacing.sm, 
+    marginBottom: spacing.xs, 
     borderWidth: 2, 
     borderColor: 'transparent', 
-    flexDirection: 'column',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
   },
   roleCardSelected: { backgroundColor: colors.accentSoft, borderColor: colors.accent },
-  roleLabel: { fontSize: 18, fontWeight: '700', color: colors.textPrimary, marginBottom: spacing.xs },
+  roleLabel: { fontSize: 15, fontWeight: '700', color: colors.textPrimary, flex: 1 },
   roleLabelSelected: { color: colors.accent },
-  roleDescription: { fontSize: 15, color: colors.textSecondary, lineHeight: 20 },
+  roleDescription: { fontSize: 13, color: colors.textSecondary, flex: 1, textAlign: 'right' },
   roleDescriptionSelected: { color: colors.accent, opacity: 0.9 },
   authButtonsRow: { flexDirection: 'row', gap: spacing.sm, marginBottom: spacing.xs },
   googleButtonCompact: { flex: 1, backgroundColor: '#FFFFFF', borderRadius: borderRadius.md, paddingVertical: spacing.sm, alignItems: 'center', borderWidth: 1, borderColor: colors.border },
