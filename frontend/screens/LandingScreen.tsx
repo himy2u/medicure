@@ -94,6 +94,17 @@ export default function LandingScreen() {
         >
           <Text style={styles.labTestButtonText}>🧪 Lab Tests</Text>
         </TouchableOpacity>
+
+        {/* Medical Staff Registration */}
+        <View style={styles.medicalStaffSection}>
+          <Text style={styles.medicalStaffLabel}>Healthcare Professional?</Text>
+          <TouchableOpacity 
+            style={styles.medicalStaffButton}
+            onPress={() => navigation.navigate('MedicalStaffSignup')}
+          >
+            <Text style={styles.medicalStaffButtonText}>👨‍⚕️ Not a Patient - Register Here</Text>
+          </TouchableOpacity>
+        </View>
       </View>
     </SafeAreaView>
   );
@@ -291,5 +302,31 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
     color: '#FFFFFF',
+  },
+  medicalStaffSection: {
+    marginTop: spacing.xl,
+    paddingTop: spacing.lg,
+    borderTopWidth: 1,
+    borderTopColor: colors.border,
+    alignItems: 'center',
+  },
+  medicalStaffLabel: {
+    fontSize: 14,
+    color: colors.textSecondary,
+    marginBottom: spacing.sm,
+    fontWeight: '500',
+  },
+  medicalStaffButton: {
+    backgroundColor: colors.backgroundSecondary,
+    borderRadius: borderRadius.lg,
+    paddingVertical: spacing.md,
+    paddingHorizontal: spacing.lg,
+    borderWidth: 2,
+    borderColor: colors.accent,
+  },
+  medicalStaffButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: colors.accent,
   },
 });

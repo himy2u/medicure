@@ -7,6 +7,7 @@ import { colors } from '../theme/colors';
 import LandingScreen from '../screens/LandingScreen';
 import LoginScreen from '../screens/LoginScreen';
 import SignupScreen from '../screens/SignupScreen';
+import MedicalStaffSignupScreen from '../screens/MedicalStaffSignupScreen';
 import ForgotPasswordScreen from '../screens/ForgotPasswordScreen';
 import EmergencyScreen from '../screens/EmergencyScreen';
 import FindDoctorScreen from '../screens/FindDoctorScreen';
@@ -15,6 +16,7 @@ export type RootStackParamList = {
   Landing: undefined;
   Login: undefined;
   Signup: undefined;
+  MedicalStaffSignup: undefined;
   ForgotPassword: undefined;
   Emergency: undefined;
   FindDoctor: undefined;
@@ -55,6 +57,11 @@ export default function AppNavigator() {
             name="Signup" 
             component={SignupScreen}
             options={{ title: 'Create Account' }}
+          />
+          <Stack.Screen 
+            name="MedicalStaffSignup" 
+            component={MedicalStaffSignupScreen}
+            options={{ headerShown: false }}
           />
           <Stack.Screen 
             name="ForgotPassword" 
