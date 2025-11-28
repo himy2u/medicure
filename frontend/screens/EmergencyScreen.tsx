@@ -118,9 +118,6 @@ export default function EmergencyScreen() {
     console.log('=== FIND DOCTORS DEBUG ===');
     console.log('Symptom:', symptom);
     console.log('Location:', location);
-    
-    // Show alert to confirm function is called
-    Alert.alert('Debug', `Symptom: ${symptom}\nLocation: ${location ? 'Available' : 'Not available'}`);
 
     if (!symptom) {
       console.log('ERROR: No symptom selected');
@@ -128,12 +125,19 @@ export default function EmergencyScreen() {
       return;
     }
 
-    if (!location) {
-      console.log('ERROR: No location available');
-      Alert.alert('Location Required', 'Getting your location...');
-      return;
+    // For testing: Always use Quito coordinates since doctors are in Ecuador
+    const searchLocation = {
+      latitude: -0.1807,
+      longitude: -78.4678
+    };
+    
+    console.log('Using Quito coordinates for doctor search (testing mode)');
+    if (location) {
+      console.log('User actual location:', location);
+      console.log('Distance from user to Quito: ~8000km - using Quito for demo');
     }
-
+    
+    console.log('Searching with location:', searchLocation);
     setLoadingDoctors(true);
     try {
       const apiBaseUrl = Constants.expoConfig?.extra?.apiBaseUrl || process.env.EXPO_PUBLIC_API_BASE_URL || 'http://192.168.100.6:8000';
@@ -142,8 +146,8 @@ export default function EmergencyScreen() {
       console.log('API URL:', url);
       console.log('Request body:', {
         symptom: symptom,
-        latitude: location.latitude,
-        longitude: location.longitude,
+        latitude: searchLocation.latitude,
+        longitude: searchLocation.longitude,
         radius_km: 50
       });
 
@@ -152,8 +156,8 @@ export default function EmergencyScreen() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           symptom: symptom,
-          latitude: location.latitude,
-          longitude: location.longitude,
+          latitude: searchLocation.latitude,
+          longitude: searchLocation.longitude,
           radius_km: 50
         })
       });
@@ -176,20 +180,32 @@ export default function EmergencyScreen() {
           );
         } else {
           console.log('Navigating to results with', data.count, 'doctors');
-          // Navigate to results screen
-          navigation.navigate('DoctorResults' as any, {
-            doctors: data.doctors,
+          console.log('Navigation params:', {
+            doctors: data.doctors.length,
             symptom: symptom,
-            userLocation: location
+            userLocation: searchLocation
           });
+          
+          try {
+            // Navigate to results screen
+            navigation.navigate('DoctorResults', {
+              doctors: data.doctors,
+              symptom: symptom,
+              userLocation: searchLocation
+            });
+            console.log('Navigation call completed');
+          } catch (navError) {
+            console.error('Navigation error:', navError);
+            Alert.alert('Navigation Error', 'Failed to show results. Please try again.');
+          }
         }
       } else {
         console.log('API Error:', data);
         Alert.alert('Error', data.detail || 'Failed to find doctors');
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Exception in handleFindDoctors:', error);
-      Alert.alert('Error', `Network error: ${error.message}`);
+      Alert.alert('Error', `Network error: ${error?.message || 'Unknown error'}`);
     } finally {
       setLoadingDoctors(false);
       console.log('=== END DEBUG ===');

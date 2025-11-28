@@ -28,7 +28,22 @@ interface Doctor {
 export default function DoctorResultsScreen() {
   const navigation = useNavigation<DoctorResultsScreenNavigationProp>();
   const route = useRoute<DoctorResultsScreenRouteProp>();
-  const { doctors, symptom, userLocation } = route.params;
+  
+  console.log('=== DOCTOR RESULTS SCREEN LOADED ===');
+  console.log('Route params:', JSON.stringify(route.params, null, 2));
+  
+  const { doctors, symptom, userLocation } = route.params || {};
+  
+  console.log('Doctors received:', doctors?.length || 0);
+  console.log('Doctors array:', doctors);
+  console.log('Symptom:', symptom);
+  console.log('User location:', userLocation);
+  
+  if (!doctors || doctors.length === 0) {
+    console.log('❌ EMPTY DOCTORS ARRAY - This will show "No doctors available"');
+  } else {
+    console.log('✅ DOCTORS FOUND - Will show doctor list');
+  }
   
   const [requesting, setRequesting] = useState<number | null>(null);
 
