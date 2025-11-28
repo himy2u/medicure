@@ -9,7 +9,7 @@ export function getRoleBasedHomeScreen(role: string): keyof RootStackParamList {
   switch (role) {
     case 'patient':
     case 'caregiver':
-      return 'Landing';
+      return 'PatientHome'; // Changed from 'Landing' to 'PatientHome' for dashboard access
     case 'doctor':
       return 'DoctorHome';
     case 'medical_staff':
@@ -23,7 +23,7 @@ export function getRoleBasedHomeScreen(role: string): keyof RootStackParamList {
     case 'clinic_admin':
       return 'ClinicAdminHome';
     default:
-      // Default to Landing for unknown roles
-      return 'Landing';
+      // Default to PatientHome for unknown roles
+      return 'PatientHome';
   }
 }

@@ -479,6 +479,11 @@ interface SignupFormData {
   nationalId?: string;
   dateOfBirth?: string;
   insurance?: string[];
+  // Caregiver-specific fields
+  caregiverName?: string;
+  caregiverContact?: string;
+  caregiverAge?: string;
+  relationship?: string;
   specialty?: string;
   subSpecialty?: string;
   locations?: string[];
@@ -534,6 +539,153 @@ const PatientProfileForm = ({ control, errors }: any) => (
       render={({ field: { onChange, onBlur, value } }) => (
         <TextInput
           label="Date of Birth (YYYY-MM-DD) *"
+          value={value}
+          onBlur={onBlur}
+          onChangeText={onChange}
+          error={!!errors.dateOfBirth}
+          style={styles.inputCompact}
+          dense
+          placeholder="e.g., 1990-05-15"
+        />
+      )}
+      name="dateOfBirth"
+    />
+    {errors.dateOfBirth && <Text style={styles.errorTextCompact}>{errors.dateOfBirth.message}</Text>}
+    
+    <Text style={styles.sectionTitle}>Insurance (Optional)</Text>
+    <Controller
+      control={control}
+      render={({ field: { onChange, value } }) => (
+        <TextInput
+          label="Insurance Providers (comma separated)"
+          value={value}
+          onBlur={() => {}}
+          onChangeText={onChange}
+          style={styles.inputCompact}
+          dense
+          placeholder="e.g., Blue Cross, Aetna"
+        />
+      )}
+      name="insurance"
+    />
+  </View>
+);
+
+const CaregiverProfileForm = ({ control, errors }: any) => (
+  <View>
+    <Text style={styles.sectionTitle}>Caregiver Information</Text>
+    
+    <Controller
+      control={control}
+      rules={{ required: 'Caregiver name is required' }}
+      render={({ field: { onChange, onBlur, value } }) => (
+        <TextInput
+          label="Caregiver Full Name *"
+          value={value}
+          onBlur={onBlur}
+          onChangeText={onChange}
+          error={!!errors.caregiverName}
+          style={styles.inputCompact}
+          dense
+        />
+      )}
+      name="caregiverName"
+    />
+    {errors.caregiverName && <Text style={styles.errorTextCompact}>{errors.caregiverName.message}</Text>}
+    
+    <Controller
+      control={control}
+      rules={{ required: 'Caregiver contact is required' }}
+      render={({ field: { onChange, onBlur, value } }) => (
+        <TextInput
+          label="Caregiver Contact Number *"
+          value={value}
+          onBlur={onBlur}
+          onChangeText={onChange}
+          error={!!errors.caregiverContact}
+          style={styles.inputCompact}
+          dense
+          placeholder="e.g., +593-2-1234567"
+        />
+      )}
+      name="caregiverContact"
+    />
+    {errors.caregiverContact && <Text style={styles.errorTextCompact}>{errors.caregiverContact.message}</Text>}
+    
+    <Controller
+      control={control}
+      rules={{ 
+        required: 'Caregiver age is required',
+        min: { value: 18, message: 'Caregiver must be at least 18 years old' }
+      }}
+      render={({ field: { onChange, onBlur, value } }) => (
+        <TextInput
+          label="Caregiver Age *"
+          value={value}
+          onBlur={onBlur}
+          onChangeText={onChange}
+          error={!!errors.caregiverAge}
+          style={styles.inputCompact}
+          dense
+          keyboardType="numeric"
+          placeholder="e.g., 35"
+        />
+      )}
+      name="caregiverAge"
+    />
+    {errors.caregiverAge && <Text style={styles.errorTextCompact}>{errors.caregiverAge.message}</Text>}
+    
+    <Controller
+      control={control}
+      rules={{ required: 'Relationship is required' }}
+      render={({ field: { onChange, onBlur, value } }) => (
+        <TextInput
+          label="Relationship to Patient *"
+          value={value}
+          onBlur={onBlur}
+          onChangeText={onChange}
+          error={!!errors.relationship}
+          style={styles.inputCompact}
+          dense
+          placeholder="e.g., Parent, Spouse, Child, Sibling"
+        />
+      )}
+      name="relationship"
+    />
+    {errors.relationship && <Text style={styles.errorTextCompact}>{errors.relationship.message}</Text>}
+    
+    <Text style={styles.sectionTitle}>Patient Information</Text>
+    
+    <Controller
+      control={control}
+      rules={{ required: 'Patient National ID is required' }}
+      render={({ field: { onChange, onBlur, value } }) => (
+        <TextInput
+          label="Patient National ID (Cedula) *"
+          value={value}
+          onBlur={onBlur}
+          onChangeText={onChange}
+          error={!!errors.nationalId}
+          style={styles.inputCompact}
+          dense
+        />
+      )}
+      name="nationalId"
+    />
+    {errors.nationalId && <Text style={styles.errorTextCompact}>{errors.nationalId.message}</Text>}
+    
+    <Controller
+      control={control}
+      rules={{ 
+        required: 'Patient date of birth is required',
+        pattern: {
+          value: /^\d{4}-\d{2}-\d{2}$/,
+          message: 'Please use format YYYY-MM-DD'
+        }
+      }}
+      render={({ field: { onChange, onBlur, value } }) => (
+        <TextInput
+          label="Patient Date of Birth (YYYY-MM-DD) *"
           value={value}
           onBlur={onBlur}
           onChangeText={onChange}
@@ -1349,8 +1501,10 @@ export default function SignupScreen() {
             </View>
           </View>
 
-          {currentRole === 'patient' || currentRole === 'caregiver' ? (
+          {currentRole === 'patient' ? (
             <PatientProfileForm control={control} errors={errors} />
+          ) : currentRole === 'caregiver' ? (
+            <CaregiverProfileForm control={control} errors={errors} />
           ) : currentRole === 'doctor' ? (
             <DoctorProfileForm control={control} errors={errors} watch={watch} />
           ) : currentRole === 'medical_staff' ? (

@@ -3,7 +3,7 @@ import { StyleSheet, Text, View, ScrollView, TouchableOpacity, Alert, Linking, D
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
-import MapView, { Marker, PROVIDER_GOOGLE } from 'react-native-maps';
+import MapView, { Marker } from 'react-native-maps';
 import { colors, spacing, borderRadius } from '../theme/colors';
 import { RootStackParamList } from '../navigation/AppNavigator';
 import Constants from 'expo-constants';
@@ -50,6 +50,7 @@ export default function DoctorResultsScreen() {
   
   const [requesting, setRequesting] = useState<number | null>(null);
   const [viewMode, setViewMode] = useState<'list' | 'map'>('list');
+  const [mapEnabled, setMapEnabled] = useState(false); // Temporarily disable map until native rebuild
   
   // Detect if this is emergency context (from EmergencyScreen) or regular booking (from FindDoctorScreen)
   // Emergency mode: has symptom (from EmergencyScreen)
@@ -154,64 +155,36 @@ export default function DoctorResultsScreen() {
           </Text>
         </View>
         
-        {/* View Toggle */}
-        <View style={styles.viewToggle}>
-          <TouchableOpacity
-            style={[styles.toggleButton, viewMode === 'list' && styles.toggleButtonActive]}
-            onPress={() => setViewMode('list')}
-          >
-            <Text style={[styles.toggleText, viewMode === 'list' && styles.toggleTextActive]}>
-              📋 List
-            </Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[styles.toggleButton, viewMode === 'map' && styles.toggleButtonActive]}
-            onPress={() => setViewMode('map')}
-          >
-            <Text style={[styles.toggleText, viewMode === 'map' && styles.toggleTextActive]}>
-              🗺️ Map
-            </Text>
-          </TouchableOpacity>
-        </View>
+        {/* View Toggle - Temporarily disabled until native rebuild */}
+        {mapEnabled && (
+          <View style={styles.viewToggle}>
+            <TouchableOpacity
+              style={[styles.toggleButton, viewMode === 'list' && styles.toggleButtonActive]}
+              onPress={() => setViewMode('list')}
+            >
+              <Text style={[styles.toggleText, viewMode === 'list' && styles.toggleTextActive]}>
+                📋 List
+              </Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.toggleButton, viewMode === 'map' && styles.toggleButtonActive]}
+              onPress={() => setViewMode('map')}
+            >
+              <Text style={[styles.toggleText, viewMode === 'map' && styles.toggleTextActive]}>
+                🗺️ Map
+              </Text>
+            </TouchableOpacity>
+          </View>
+        )}
       </View>
 
-      {viewMode === 'map' ? (
-        <MapView
-          style={styles.map}
-          provider={PROVIDER_GOOGLE}
-          initialRegion={{
-            latitude: userLocation?.latitude || -0.1807,
-            longitude: userLocation?.longitude || -78.4678,
-            latitudeDelta: 0.1,
-            longitudeDelta: 0.1,
-          }}
-        >
-          {/* User location marker */}
-          {userLocation && (
-            <Marker
-              coordinate={{
-                latitude: userLocation.latitude,
-                longitude: userLocation.longitude,
-              }}
-              title="Your Location"
-              pinColor="blue"
-            />
-          )}
-          
-          {/* Doctor markers */}
-          {doctors.map((doctor: Doctor) => (
-            <Marker
-              key={doctor.doctor_id}
-              coordinate={{
-                latitude: doctor.latitude,
-                longitude: doctor.longitude,
-              }}
-              title={doctor.full_name}
-              description={`${doctor.specialty} • ${doctor.distance_km} km away`}
-              pinColor="red"
-            />
-          ))}
-        </MapView>
+      {viewMode === 'map' && mapEnabled ? (
+        <View style={styles.mapPlaceholder}>
+          <Text style={styles.mapPlaceholderText}>🗺️ Map View</Text>
+          <Text style={styles.mapPlaceholderSubtext}>
+            Map requires native rebuild. Run: npx expo run:ios
+          </Text>
+        </View>
       ) : (
         <ScrollView 
           style={styles.scrollView}
@@ -365,6 +338,22 @@ const styles = StyleSheet.create({
     flex: 1,
     width: width,
     height: height - 200,
+  },
+  mapPlaceholder: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: colors.backgroundSecondary,
+    padding: spacing.xl,
+  },
+  mapPlaceholderText: {
+    fontSize: 48,
+    marginBottom: spacing.md,
+  },
+  mapPlaceholderSubtext: {
+    fontSize: 14,
+    color: colors.textSecondary,
+    textAlign: 'center',
   },
   backButton: {
     marginBottom: spacing.sm,

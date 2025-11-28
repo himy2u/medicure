@@ -57,20 +57,43 @@ export default function ProfileHeader() {
     return null; // Don't show anything if not logged in
   }
 
+  const handleGoHome = () => {
+    // Navigate to role-based home screen
+    const homeScreenMap: { [key: string]: keyof RootStackParamList } = {
+      'patient': 'PatientHome',
+      'caregiver': 'PatientHome',
+      'doctor': 'DoctorHome',
+      'medical_staff': 'MedicalStaffHome',
+      'ambulance_staff': 'AmbulanceHome',
+    };
+    
+    const homeScreen = homeScreenMap[userRole] || 'PatientHome';
+    navigation.navigate(homeScreen);
+  };
+
   return (
     <View style={styles.container}>
-      <TouchableOpacity 
-        style={styles.userProfile} 
-        onPress={() => setShowSignOutMenu(!showSignOutMenu)}
-      >
-        <View style={styles.userInfo}>
-          <Text style={styles.userName}>{userName}</Text>
-          <Text style={styles.userRole}>{userRole}</Text>
-        </View>
-        <View style={styles.userAvatar}>
-          <Text style={styles.userAvatarText}>{userName.charAt(0).toUpperCase()}</Text>
-        </View>
-      </TouchableOpacity>
+      <View style={styles.headerRow}>
+        <TouchableOpacity 
+          style={styles.homeButton}
+          onPress={handleGoHome}
+        >
+          <Text style={styles.homeIcon}>🏠</Text>
+        </TouchableOpacity>
+        
+        <TouchableOpacity 
+          style={styles.userProfile} 
+          onPress={() => setShowSignOutMenu(!showSignOutMenu)}
+        >
+          <View style={styles.userInfo}>
+            <Text style={styles.userName}>{userName}</Text>
+            <Text style={styles.userRole}>{userRole}</Text>
+          </View>
+          <View style={styles.userAvatar}>
+            <Text style={styles.userAvatarText}>{userName.charAt(0).toUpperCase()}</Text>
+          </View>
+        </TouchableOpacity>
+      </View>
       {showSignOutMenu && (
         <TouchableOpacity 
           style={styles.signOutMenu}
@@ -86,6 +109,27 @@ export default function ProfileHeader() {
 const styles = StyleSheet.create({
   container: {
     position: 'relative',
+  },
+  headerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+  },
+  homeButton: {
+    backgroundColor: colors.backgroundSecondary,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: colors.shadow,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  homeIcon: {
+    fontSize: 24,
   },
   userProfile: {
     flexDirection: 'row',
