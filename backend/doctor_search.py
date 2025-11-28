@@ -17,6 +17,8 @@ SYMPTOM_SPECIALTY_MAP = {
     "migraine": ["Neurosurgeon", "General Practitioner"],
     "dizziness": ["Neurosurgeon", "General Practitioner", "Internal Medicine"],
     "seizure": ["Neurosurgeon", "Emergency Medicine"],
+    "geriatric": ["Neurosurgeon", "General Practitioner", "Internal Medicine"],
+    "elderly": ["Neurosurgeon", "General Practitioner", "Internal Medicine"],
     
     # Respiratory
     "breathing": ["Pulmonologist", "Emergency Medicine", "General Practitioner"],
@@ -40,6 +42,8 @@ SYMPTOM_SPECIALTY_MAP = {
     # Pediatric
     "child": ["Pediatrician", "General Practitioner"],
     "baby": ["Pediatrician"],
+    "infant": ["Pediatrician"],
+    "pediatric": ["Pediatrician", "General Practitioner"],
     
     # Orthopedic
     "bone": ["Orthopedic Surgeon", "Emergency Medicine"],
@@ -72,6 +76,7 @@ SYMPTOM_SPECIALTY_MAP = {
 def match_symptom_to_specialties(symptom: str) -> List[str]:
     """
     Match a symptom description to relevant medical specialties
+    Returns empty list if no match (will show all doctors)
     """
     symptom_lower = symptom.lower()
     matched_specialties = set()
@@ -81,11 +86,9 @@ def match_symptom_to_specialties(symptom: str) -> List[str]:
         if keyword in symptom_lower:
             matched_specialties.update(specialties)
     
-    # If no match, default to general practitioners and emergency medicine
-    if not matched_specialties:
-        matched_specialties = {"General Practitioner", "Emergency Medicine", "Internal Medicine"}
-    
-    return list(matched_specialties)
+    # If no specific match, return empty list to show all available doctors
+    # This ensures patients can always find help
+    return list(matched_specialties) if matched_specialties else []
 
 def calculate_distance(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
     """
@@ -126,33 +129,61 @@ async def search_doctors(
     specialties = match_symptom_to_specialties(symptom)
     
     # Query doctors with matching specialties
-    query = """
-        SELECT 
-            d.id as doctor_id,
-            d.full_name,
-            d.specialty,
-            d.sub_specialty,
-            d.phone,
-            d.email,
-            dsl.id as location_id,
-            dsl.location_type,
-            dsl.name as clinic_name,
-            dsl.address,
-            dsl.city,
-            dsl.latitude,
-            dsl.longitude,
-            da.is_24_hours,
-            da.is_available
-        FROM doctors d
-        JOIN doctor_service_locations dsl ON d.id = dsl.doctor_id
-        JOIN doctor_availability da ON d.id = da.doctor_id AND dsl.id = da.location_id
-        WHERE d.specialty = ANY($1)
-        AND da.is_available = TRUE
-        AND dsl.latitude IS NOT NULL
-        AND dsl.longitude IS NOT NULL
-    """
-    
-    rows = await conn.fetch(query, specialties)
+    if specialties:
+        # Specific specialty match
+        query = """
+            SELECT 
+                d.id as doctor_id,
+                d.full_name,
+                d.specialty,
+                d.sub_specialty,
+                d.phone,
+                d.email,
+                dsl.id as location_id,
+                dsl.location_type,
+                dsl.name as clinic_name,
+                dsl.address,
+                dsl.city,
+                dsl.latitude,
+                dsl.longitude,
+                da.is_24_hours,
+                da.is_available
+            FROM doctors d
+            JOIN doctor_service_locations dsl ON d.id = dsl.doctor_id
+            JOIN doctor_availability da ON d.id = da.doctor_id AND dsl.id = da.location_id
+            WHERE d.specialty = ANY($1)
+            AND da.is_available = TRUE
+            AND dsl.latitude IS NOT NULL
+            AND dsl.longitude IS NOT NULL
+        """
+        rows = await conn.fetch(query, specialties)
+    else:
+        # No specific match - show all available doctors
+        query = """
+            SELECT 
+                d.id as doctor_id,
+                d.full_name,
+                d.specialty,
+                d.sub_specialty,
+                d.phone,
+                d.email,
+                dsl.id as location_id,
+                dsl.location_type,
+                dsl.name as clinic_name,
+                dsl.address,
+                dsl.city,
+                dsl.latitude,
+                dsl.longitude,
+                da.is_24_hours,
+                da.is_available
+            FROM doctors d
+            JOIN doctor_service_locations dsl ON d.id = dsl.doctor_id
+            JOIN doctor_availability da ON d.id = da.doctor_id AND dsl.id = da.location_id
+            WHERE da.is_available = TRUE
+            AND dsl.latitude IS NOT NULL
+            AND dsl.longitude IS NOT NULL
+        """
+        rows = await conn.fetch(query)
     
     # Calculate distances and sort
     doctors_with_distance = []
