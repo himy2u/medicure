@@ -118,6 +118,9 @@ export default function EmergencyScreen() {
     console.log('=== FIND DOCTORS DEBUG ===');
     console.log('Symptom:', symptom);
     console.log('Location:', location);
+    
+    // Show alert to confirm function is called
+    Alert.alert('Debug', `Symptom: ${symptom}\nLocation: ${location ? 'Available' : 'Not available'}`);
 
     if (!symptom) {
       console.log('ERROR: No symptom selected');
