@@ -12,6 +12,7 @@ import MedicalStaffLoginScreen from '../screens/MedicalStaffLoginScreen';
 import ForgotPasswordScreen from '../screens/ForgotPasswordScreen';
 import EmergencyScreen from '../screens/EmergencyScreen';
 import FindDoctorScreen from '../screens/FindDoctorScreen';
+import DoctorResultsScreen from '../screens/DoctorResultsScreen';
 import DoctorHomeScreen from '../screens/DoctorHomeScreen';
 import MedicalStaffHomeScreen from '../screens/MedicalStaffHomeScreen';
 import AmbulanceStaffHomeScreen from '../screens/AmbulanceStaffHomeScreen';
@@ -28,6 +29,11 @@ export type RootStackParamList = {
   ForgotPassword: undefined;
   Emergency: undefined;
   FindDoctor: undefined;
+  DoctorResults: {
+    doctors: any[];
+    symptom: string;
+    userLocation: { latitude: number; longitude: number };
+  };
   DoctorHome: undefined;
   MedicalStaffHome: undefined;
   AmbulanceStaffHome: undefined;
@@ -112,6 +118,11 @@ export default function AppNavigator() {
                 fontSize: 20,
               },
             }}
+          />
+          <Stack.Screen
+            name="DoctorResults"
+            component={DoctorResultsScreen}
+            options={{ headerShown: false }}
           />
           <Stack.Screen
             name="DoctorHome"

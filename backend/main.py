@@ -661,3 +661,129 @@ async def root():
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=8000)
+
+
+# Doctor Search Models
+class DoctorSearchRequest(BaseModel):
+    symptom: str
+    latitude: float
+    longitude: float
+    radius_km: Optional[float] = 50
+
+class EmergencyRequestCreate(BaseModel):
+    doctor_id: int
+    symptom: str
+    latitude: float
+    longitude: float
+
+# Doctor Search Endpoints
+@app.post("/api/doctors/search")
+async def search_doctors_endpoint(request: DoctorSearchRequest):
+    """
+    Search for available doctors based on symptom and location
+    """
+    from doctor_search import search_doctors
+    
+    try:
+        pool = await get_pool()
+        async with pool.acquire() as conn:
+            doctors = await search_doctors(
+                conn,
+                request.symptom,
+                request.latitude,
+                request.longitude,
+                request.radius_km
+            )
+            
+            return {
+                "success": True,
+                "count": len(doctors),
+                "doctors": doctors,
+                "search_params": {
+                    "symptom": request.symptom,
+                    "radius_km": request.radius_km
+                }
+            }
+    except Exception as e:
+        print(f"Error searching doctors: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to search doctors: {str(e)}"
+        )
+
+@app.post("/api/emergency/request")
+async def create_emergency_request_endpoint(
+    request: EmergencyRequestCreate,
+    current_user: Dict = Depends(get_user_by_email)  # Add auth dependency
+):
+    """
+    Create an emergency appointment request
+    """
+    from doctor_search import create_emergency_request
+    
+    try:
+        pool = await get_pool()
+        async with pool.acquire() as conn:
+            # Get user_id from current_user
+            user_id = current_user.get('id')
+            
+            request_id = await create_emergency_request(
+                conn,
+                user_id,
+                request.doctor_id,
+                request.symptom,
+                request.latitude,
+                request.longitude
+            )
+            
+            # TODO: Send notification to doctor
+            # TODO: Send confirmation to patient
+            
+            return {
+                "success": True,
+                "request_id": request_id,
+                "message": "Emergency request sent to doctor",
+                "status": "pending"
+            }
+    except Exception as e:
+        print(f"Error creating emergency request: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to create emergency request: {str(e)}"
+        )
+
+@app.get("/api/emergency/requests/{user_id}")
+async def get_user_emergency_requests(user_id: int):
+    """
+    Get all emergency requests for a user
+    """
+    try:
+        pool = await get_pool()
+        async with pool.acquire() as conn:
+            query = """
+                SELECT 
+                    er.*,
+                    d.full_name as doctor_name,
+                    d.specialty,
+                    d.phone as doctor_phone
+                FROM emergency_requests er
+                LEFT JOIN doctors d ON er.doctor_id = d.id
+                WHERE er.patient_id = $1
+                ORDER BY er.created_at DESC
+            """
+            
+            rows = await conn.fetch(query, user_id)
+            
+            requests = [dict(row) for row in rows]
+            
+            return {
+                "success": True,
+                "count": len(requests),
+                "requests": requests
+            }
+    except Exception as e:
+        print(f"Error fetching emergency requests: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to fetch emergency requests: {str(e)}"
+        )

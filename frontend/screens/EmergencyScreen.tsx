@@ -130,25 +130,36 @@ export default function EmergencyScreen() {
     try {
       const apiBaseUrl = Constants.expoConfig?.extra?.apiBaseUrl || process.env.EXPO_PUBLIC_API_BASE_URL || 'http://192.168.100.6:8000';
 
-      const response = await fetch(`${apiBaseUrl}/emergency/find-doctors`, {
+      const response = await fetch(`${apiBaseUrl}/api/doctors/search`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           symptom: symptom,
-          patient_latitude: location.latitude,
-          patient_longitude: location.longitude,
+          latitude: location.latitude,
+          longitude: location.longitude,
           radius_km: 50
         })
       });
 
       const data = await response.json();
 
-      if (response.ok) {
-        if (data.doctors_found === 0) {
-          Alert.alert('No Doctors Available', 'No doctors are available nearby for emergency. Please call 911 or go to the nearest hospital.');
+      if (response.ok && data.success) {
+        if (data.count === 0) {
+          Alert.alert(
+            'No Doctors Available',
+            'No doctors are available nearby for emergency. Please call 911 or go to the nearest hospital.',
+            [
+              { text: 'Call 911', onPress: () => Linking.openURL('tel:911') },
+              { text: 'OK' }
+            ]
+          );
         } else {
-          setEmergencyDoctors(data.doctors);
-          setShowDoctorsList(true);
+          // Navigate to results screen
+          navigation.navigate('DoctorResults' as any, {
+            doctors: data.doctors,
+            symptom: symptom,
+            userLocation: location
+          });
         }
       } else {
         Alert.alert('Error', data.detail || 'Failed to find doctors');
