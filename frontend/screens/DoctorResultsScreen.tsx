@@ -52,8 +52,10 @@ export default function DoctorResultsScreen() {
   const [viewMode, setViewMode] = useState<'list' | 'map'>('list');
   
   // Detect if this is emergency context (from EmergencyScreen) or regular booking (from FindDoctorScreen)
-  const isEmergency = route.name === 'DoctorResults' && symptom; // Emergency has symptom
-  const isBooking = !isEmergency; // Regular booking flow
+  // Emergency mode: has symptom (from EmergencyScreen)
+  // Booking mode: no symptom or empty symptom (from FindDoctorScreen)
+  const isEmergency = symptom && symptom.trim().length > 0;
+  const isBooking = !isEmergency;
 
   const handleEmergencyRequest = async (doctor: Doctor) => {
     try {

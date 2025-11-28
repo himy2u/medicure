@@ -1,10 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { StyleSheet, Text, View, ScrollView, TouchableOpacity } from 'react-native';
+import { StyleSheet, Text, View, ScrollView, TouchableOpacity, Alert, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { TextInput } from 'react-native-paper';
 import * as SecureStore from 'expo-secure-store';
+import * as Location from 'expo-location';
+import Constants from 'expo-constants';
 import { colors, spacing, borderRadius } from '../theme/colors';
 import { RootStackParamList } from '../navigation/AppNavigator';
 import ProfileHeader from '../components/ProfileHeader';
@@ -26,12 +28,14 @@ export default function FindDoctorScreen() {
   const [symptom, setSymptom] = useState('');
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [selectedTimeWindow, setSelectedTimeWindow] = useState('morning');
-  const [doctors, setDoctors] = useState<Doctor[]>([]);
-  const [showResults, setShowResults] = useState(false);
+  const [location, setLocation] = useState<{ latitude: number; longitude: number } | null>(null);
+  const [loadingLocation, setLoadingLocation] = useState(false);
+  const [searching, setSearching] = useState(false);
 
-  // Check authentication on mount
+  // Check authentication and get location on mount
   useEffect(() => {
     checkAuth();
+    getLocation();
   }, []);
 
   const checkAuth = async () => {
@@ -39,6 +43,28 @@ export default function FindDoctorScreen() {
     if (!authToken) {
       console.log('Not authenticated, redirecting to Signup');
       navigation.navigate('Signup');
+    }
+  };
+
+  const getLocation = async () => {
+    setLoadingLocation(true);
+    try {
+      const { status } = await Location.requestForegroundPermissionsAsync();
+      if (status !== 'granted') {
+        Alert.alert('Permission Denied', 'Location permission is required to find nearby doctors');
+        setLoadingLocation(false);
+        return;
+      }
+
+      const userLocation = await Location.getCurrentPositionAsync({});
+      setLocation({
+        latitude: userLocation.coords.latitude,
+        longitude: userLocation.coords.longitude
+      });
+    } catch (error) {
+      console.error('Error getting location:', error);
+    } finally {
+      setLoadingLocation(false);
     }
   };
 
@@ -69,18 +95,75 @@ export default function FindDoctorScreen() {
     };
   };
 
-  const handleSearch = () => {
-    // Mock doctor data - sorted by distance
-    const mockDoctors: Doctor[] = [
-      { id: '1', name: 'Dr. Sarah Johnson', specialty: 'General Practice', distance: 0.5, available: true, rating: 4.8, nextAvailable: '9:00 AM' },
-      { id: '2', name: 'Dr. Michael Chen', specialty: 'Internal Medicine', distance: 1.2, available: true, rating: 4.9, nextAvailable: '10:30 AM' },
-      { id: '3', name: 'Dr. Emily Rodriguez', specialty: 'Family Medicine', distance: 2.1, available: true, rating: 4.7, nextAvailable: '2:00 PM' },
-      { id: '4', name: 'Dr. James Wilson', specialty: 'General Practice', distance: 3.5, available: false, rating: 4.6, nextAvailable: 'Tomorrow' },
-      { id: '5', name: 'Dr. Lisa Anderson', specialty: 'Internal Medicine', distance: 4.2, available: true, rating: 4.8, nextAvailable: '4:30 PM' },
-    ];
+  const handleSearch = async () => {
+    if (!symptom.trim()) {
+      Alert.alert('Symptom Required', 'Please describe your symptoms');
+      return;
+    }
 
-    setDoctors(mockDoctors);
-    setShowResults(true);
+    // Use location or default to Quito center for testing
+    const searchLocation = location || {
+      latitude: -0.1807,
+      longitude: -78.4678
+    };
+
+    setSearching(true);
+    try {
+      const apiBaseUrl = Constants.expoConfig?.extra?.apiBaseUrl || process.env.EXPO_PUBLIC_API_BASE_URL || 'http://192.168.100.6:8000';
+      const url = `${apiBaseUrl}/api/doctors/search`;
+      
+      console.log('FindDoctor: Searching for doctors...');
+      console.log('Symptom:', symptom);
+      console.log('Date:', selectedDate.toDateString());
+      console.log('Time window:', selectedTimeWindow);
+      console.log('Location:', searchLocation);
+
+      const response = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          symptom: symptom,
+          latitude: searchLocation.latitude,
+          longitude: searchLocation.longitude,
+          radius_km: 50,
+          // TODO: Add date and time filtering on backend
+          date: selectedDate.toISOString(),
+          time_window: selectedTimeWindow
+        })
+      });
+
+      const data = await response.json();
+      console.log('FindDoctor: API response:', data);
+
+      if (response.ok && data.success) {
+        if (data.count === 0) {
+          Alert.alert(
+            'No Doctors Available',
+            'No doctors found matching your criteria. Try adjusting your search.',
+            [{ text: 'OK' }]
+          );
+        } else {
+          // Navigate to DoctorResults with booking context (no symptom = booking mode)
+          navigation.navigate('DoctorResults', {
+            doctors: data.doctors,
+            symptom: '', // Empty symptom = booking mode
+            userLocation: searchLocation,
+            searchCriteria: {
+              symptom: symptom,
+              date: selectedDate.toISOString(),
+              timeWindow: selectedTimeWindow
+            }
+          });
+        }
+      } else {
+        Alert.alert('Error', data.detail || 'Failed to find doctors');
+      }
+    } catch (error: any) {
+      console.error('FindDoctor: Search error:', error);
+      Alert.alert('Error', `Network error: ${error?.message || 'Unknown error'}`);
+    } finally {
+      setSearching(false);
+    }
   };
 
   return (
@@ -156,51 +239,6 @@ export default function FindDoctorScreen() {
 
           {/* Bottom padding for button space */}
           <View style={{ height: 80 }} />
-
-          {/* Results */}
-          {showResults && (
-            <View style={styles.resultsSection}>
-              <Text style={styles.resultsTitle}>
-                Available Doctors ({doctors.filter(d => d.available).length})
-              </Text>
-              <Text style={styles.resultsSubtitle}>Sorted by distance (nearest first)</Text>
-
-              {doctors.map((doctor) => (
-                <View key={doctor.id} style={styles.doctorCard}>
-                  <View style={styles.doctorHeader}>
-                    <View style={styles.doctorAvatar}>
-                      <Text style={styles.doctorAvatarText}>{doctor.name.charAt(3)}</Text>
-                    </View>
-                    <View style={styles.doctorInfo}>
-                      <Text style={styles.doctorName}>{doctor.name}</Text>
-                      <Text style={styles.doctorSpecialty}>{doctor.specialty}</Text>
-                      <View style={styles.doctorMeta}>
-                        <Text style={styles.doctorDistance}>📍 {doctor.distance} mi</Text>
-                        <Text style={styles.doctorRating}>⭐ {doctor.rating}</Text>
-                      </View>
-                    </View>
-                  </View>
-
-                  <View style={styles.doctorFooter}>
-                    {doctor.available ? (
-                      <>
-                        <Text style={styles.availableText}>
-                          Next available: {doctor.nextAvailable}
-                        </Text>
-                        <TouchableOpacity style={styles.bookButton}>
-                          <Text style={styles.bookButtonText}>Book Appointment</Text>
-                        </TouchableOpacity>
-                      </>
-                    ) : (
-                      <Text style={styles.unavailableText}>
-                        Not available today • Next: {doctor.nextAvailable}
-                      </Text>
-                    )}
-                  </View>
-                </View>
-              ))}
-            </View>
-          )}
         </View>
       </ScrollView>
 
@@ -217,17 +255,16 @@ export default function FindDoctorScreen() {
           <Text style={styles.backButtonText}>Back</Text>
         </TouchableOpacity>
         <TouchableOpacity 
-          style={[styles.searchButtonBottom, !symptom.trim() && styles.buttonDisabled]}
-          onPress={() => {
-            console.log('Find Doctors button pressed');
-            if (symptom.trim()) {
-              handleSearch();
-            }
-          }}
-          activeOpacity={!symptom.trim() ? 1 : 0.7}
-          disabled={!symptom.trim()}
+          style={[styles.searchButtonBottom, (!symptom.trim() || searching || loadingLocation) && styles.buttonDisabled]}
+          onPress={handleSearch}
+          activeOpacity={(!symptom.trim() || searching || loadingLocation) ? 1 : 0.7}
+          disabled={!symptom.trim() || searching || loadingLocation}
         >
-          <Text style={styles.searchButtonText}>🔍 Find Doctors</Text>
+          {searching ? (
+            <ActivityIndicator size="small" color="#FFFFFF" />
+          ) : (
+            <Text style={styles.searchButtonText}>🔍 Find Doctors</Text>
+          )}
         </TouchableOpacity>
       </View>
     </SafeAreaView>
@@ -368,104 +405,5 @@ const styles = StyleSheet.create({
   },
   buttonDisabled: {
     opacity: 0.5,
-  },
-  resultsSection: {
-    marginTop: spacing.lg,
-  },
-  resultsTitle: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: colors.textPrimary,
-    marginBottom: spacing.xs,
-  },
-  resultsSubtitle: {
-    fontSize: 14,
-    color: colors.textSecondary,
-    marginBottom: spacing.md,
-  },
-  doctorCard: {
-    backgroundColor: colors.backgroundSecondary,
-    borderRadius: borderRadius.lg,
-    padding: spacing.md,
-    marginBottom: spacing.md,
-    shadowColor: colors.shadow,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 2,
-  },
-  doctorHeader: {
-    flexDirection: 'row',
-    marginBottom: spacing.md,
-  },
-  doctorAvatar: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
-    backgroundColor: colors.accent,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: spacing.md,
-  },
-  doctorAvatarText: {
-    fontSize: 20,
-    fontWeight: '700',
-    color: '#FFFFFF',
-  },
-  doctorInfo: {
-    flex: 1,
-  },
-  doctorName: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: colors.textPrimary,
-    marginBottom: spacing.xs,
-  },
-  doctorSpecialty: {
-    fontSize: 14,
-    color: colors.textSecondary,
-    marginBottom: spacing.xs,
-  },
-  doctorMeta: {
-    flexDirection: 'row',
-    gap: spacing.md,
-  },
-  doctorDistance: {
-    fontSize: 13,
-    color: colors.textSecondary,
-  },
-  doctorRating: {
-    fontSize: 13,
-    color: colors.textSecondary,
-  },
-  doctorFooter: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingTop: spacing.sm,
-    borderTopWidth: 1,
-    borderTopColor: colors.border,
-  },
-  availableText: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: colors.success,
-    flex: 1,
-  },
-  unavailableText: {
-    fontSize: 14,
-    color: colors.textSecondary,
-    flex: 1,
-  },
-  bookButton: {
-    backgroundColor: colors.accent,
-    paddingVertical: spacing.sm,
-    paddingHorizontal: spacing.md,
-    borderRadius: borderRadius.md,
-  },
-  bookButtonText: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#FFFFFF',
   },
 });
