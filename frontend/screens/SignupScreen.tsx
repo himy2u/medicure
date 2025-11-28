@@ -20,6 +20,28 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: colors.backgroundPrimary,
   },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.md,
+    backgroundColor: colors.backgroundPrimary,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
+  },
+  headerBackButton: {
+    marginRight: spacing.md,
+  },
+  headerBackText: {
+    fontSize: 16,
+    color: colors.accent,
+    fontWeight: '600',
+  },
+  headerTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: colors.textPrimary,
+  },
   scrollView: {
     flex: 1,
   },
@@ -1340,6 +1362,14 @@ export default function SignupScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
+      {/* Header with Back Button */}
+      <View style={styles.header}>
+        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.headerBackButton}>
+          <Text style={styles.headerBackText}>← Back</Text>
+        </TouchableOpacity>
+        <Text style={styles.headerTitle}>Signup</Text>
+      </View>
+
       <View style={styles.content}>
 
       {/* Role Selection First */}

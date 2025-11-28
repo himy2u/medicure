@@ -233,24 +233,30 @@ const styles = StyleSheet.create({
     borderWidth: 2,
     borderColor: '#5A7A8A',
     flex: 1,
+    minWidth: 150,
+    minHeight: 85,
   },
   prescriptionButtonText: {
     fontSize: 16,
     fontWeight: '600',
     color: '#FFFFFF',
     marginBottom: spacing.xs,
+    flexShrink: 1,
   },
   healthButton: {
     backgroundColor: '#8FBC8F', // Soft sage green
     borderWidth: 2,
     borderColor: '#7AB87A',
     flex: 1,
+    minWidth: 150,
+    minHeight: 85,
   },
   healthButtonText: {
     fontSize: 16,
     fontWeight: '600',
     color: '#FFFFFF',
     marginBottom: spacing.xs,
+    flexShrink: 1,
   },
   labTestButton: {
     backgroundColor: '#9B59B6', // Purple
@@ -273,6 +279,7 @@ const styles = StyleSheet.create({
   // Button Row - My Health & Prescription
   buttonRow: {
     flexDirection: 'row',
+    flexWrap: 'wrap',
     gap: spacing.md,
     marginBottom: spacing.lg,
   },
