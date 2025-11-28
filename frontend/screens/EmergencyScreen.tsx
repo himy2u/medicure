@@ -115,13 +115,18 @@ export default function EmergencyScreen() {
 
   const handleFindDoctors = async () => {
     const symptom = selectedSymptom || customSymptom;
+    console.log('=== FIND DOCTORS DEBUG ===');
+    console.log('Symptom:', symptom);
+    console.log('Location:', location);
 
     if (!symptom) {
+      console.log('ERROR: No symptom selected');
       Alert.alert(t('symptomRequired'), t('selectSymptomFirst'));
       return;
     }
 
     if (!location) {
+      console.log('ERROR: No location available');
       Alert.alert('Location Required', 'Getting your location...');
       return;
     }
@@ -129,8 +134,17 @@ export default function EmergencyScreen() {
     setLoadingDoctors(true);
     try {
       const apiBaseUrl = Constants.expoConfig?.extra?.apiBaseUrl || process.env.EXPO_PUBLIC_API_BASE_URL || 'http://192.168.100.6:8000';
+      const url = `${apiBaseUrl}/api/doctors/search`;
+      
+      console.log('API URL:', url);
+      console.log('Request body:', {
+        symptom: symptom,
+        latitude: location.latitude,
+        longitude: location.longitude,
+        radius_km: 50
+      });
 
-      const response = await fetch(`${apiBaseUrl}/api/doctors/search`, {
+      const response = await fetch(url, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -141,10 +155,14 @@ export default function EmergencyScreen() {
         })
       });
 
+      console.log('Response status:', response.status);
       const data = await response.json();
+      console.log('Response data:', JSON.stringify(data, null, 2));
 
       if (response.ok && data.success) {
+        console.log('Success! Doctor count:', data.count);
         if (data.count === 0) {
+          console.log('No doctors found');
           Alert.alert(
             'No Doctors Available',
             'No doctors are available nearby for emergency. Please call 911 or go to the nearest hospital.',
@@ -154,6 +172,7 @@ export default function EmergencyScreen() {
             ]
           );
         } else {
+          console.log('Navigating to results with', data.count, 'doctors');
           // Navigate to results screen
           navigation.navigate('DoctorResults' as any, {
             doctors: data.doctors,
@@ -162,13 +181,15 @@ export default function EmergencyScreen() {
           });
         }
       } else {
+        console.log('API Error:', data);
         Alert.alert('Error', data.detail || 'Failed to find doctors');
       }
     } catch (error) {
-      console.error('Error finding doctors:', error);
-      Alert.alert('Error', 'Network error. Please try again.');
+      console.error('Exception in handleFindDoctors:', error);
+      Alert.alert('Error', `Network error: ${error.message}`);
     } finally {
       setLoadingDoctors(false);
+      console.log('=== END DEBUG ===');
     }
   };
 
