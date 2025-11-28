@@ -50,7 +50,7 @@ export default function DoctorResultsScreen() {
   
   const [requesting, setRequesting] = useState<number | null>(null);
   const [viewMode, setViewMode] = useState<'list' | 'map'>('list');
-  const [mapEnabled, setMapEnabled] = useState(false); // Temporarily disable map until native rebuild
+  const [mapError, setMapError] = useState(false);
   
   // Detect if this is emergency context (from EmergencyScreen) or regular booking (from FindDoctorScreen)
   // Emergency mode: has symptom (from EmergencyScreen)
@@ -155,36 +155,85 @@ export default function DoctorResultsScreen() {
           </Text>
         </View>
         
-        {/* View Toggle - Temporarily disabled until native rebuild */}
-        {mapEnabled && (
-          <View style={styles.viewToggle}>
-            <TouchableOpacity
-              style={[styles.toggleButton, viewMode === 'list' && styles.toggleButtonActive]}
-              onPress={() => setViewMode('list')}
-            >
-              <Text style={[styles.toggleText, viewMode === 'list' && styles.toggleTextActive]}>
-                📋 List
-              </Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={[styles.toggleButton, viewMode === 'map' && styles.toggleButtonActive]}
-              onPress={() => setViewMode('map')}
-            >
-              <Text style={[styles.toggleText, viewMode === 'map' && styles.toggleTextActive]}>
-                🗺️ Map
-              </Text>
-            </TouchableOpacity>
-          </View>
-        )}
+        {/* View Toggle */}
+        <View style={styles.viewToggle}>
+          <TouchableOpacity
+            style={[styles.toggleButton, viewMode === 'list' && styles.toggleButtonActive]}
+            onPress={() => setViewMode('list')}
+          >
+            <Text style={[styles.toggleText, viewMode === 'list' && styles.toggleTextActive]}>
+              📋 List
+            </Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.toggleButton, viewMode === 'map' && styles.toggleButtonActive]}
+            onPress={() => {
+              setViewMode('map');
+              setMapError(false);
+            }}
+          >
+            <Text style={[styles.toggleText, viewMode === 'map' && styles.toggleTextActive]}>
+              🗺️ Map
+            </Text>
+          </TouchableOpacity>
+        </View>
       </View>
 
-      {viewMode === 'map' && mapEnabled ? (
-        <View style={styles.mapPlaceholder}>
-          <Text style={styles.mapPlaceholderText}>🗺️ Map View</Text>
-          <Text style={styles.mapPlaceholderSubtext}>
-            Map requires native rebuild. Run: npx expo run:ios
-          </Text>
-        </View>
+      {viewMode === 'map' ? (
+        mapError ? (
+          <View style={styles.mapPlaceholder}>
+            <Text style={styles.mapPlaceholderText}>🗺️ Map Unavailable</Text>
+            <Text style={styles.mapPlaceholderSubtext}>
+              Map requires native rebuild. Run: npx expo run:ios
+            </Text>
+            <TouchableOpacity 
+              style={styles.backToListButton}
+              onPress={() => setViewMode('list')}
+            >
+              <Text style={styles.backToListText}>← Back to List</Text>
+            </TouchableOpacity>
+          </View>
+        ) : (
+          <MapView
+            style={styles.map}
+            initialRegion={{
+              latitude: userLocation?.latitude || -0.1807,
+              longitude: userLocation?.longitude || -78.4678,
+              latitudeDelta: 0.1,
+              longitudeDelta: 0.1,
+            }}
+            onError={() => {
+              console.log('Map error - native modules not available');
+              setMapError(true);
+            }}
+          >
+            {/* User location marker */}
+            {userLocation && (
+              <Marker
+                coordinate={{
+                  latitude: userLocation.latitude,
+                  longitude: userLocation.longitude,
+                }}
+                title="Your Location"
+                pinColor="blue"
+              />
+            )}
+            
+            {/* Doctor markers */}
+            {doctors.map((doctor: Doctor) => (
+              <Marker
+                key={doctor.doctor_id}
+                coordinate={{
+                  latitude: doctor.latitude,
+                  longitude: doctor.longitude,
+                }}
+                title={doctor.full_name}
+                description={`${doctor.specialty} • ${doctor.distance_km} km away`}
+                pinColor="red"
+              />
+            ))}
+          </MapView>
+        )
       ) : (
         <ScrollView 
           style={styles.scrollView}
@@ -354,6 +403,19 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: colors.textSecondary,
     textAlign: 'center',
+    marginBottom: spacing.lg,
+  },
+  backToListButton: {
+    backgroundColor: colors.accent,
+    paddingVertical: spacing.md,
+    paddingHorizontal: spacing.xl,
+    borderRadius: borderRadius.lg,
+    marginTop: spacing.md,
+  },
+  backToListText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '600',
   },
   backButton: {
     marginBottom: spacing.sm,

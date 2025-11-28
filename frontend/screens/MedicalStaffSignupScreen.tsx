@@ -16,7 +16,6 @@ type MedicalStaffSignupScreenNavigationProp = StackNavigationProp<RootStackParam
 export default function MedicalStaffSignupScreen() {
   const navigation = useNavigation<MedicalStaffSignupScreenNavigationProp>();
   const [loading, setLoading] = useState(false);
-  const [showMoreRoles, setShowMoreRoles] = useState(false);
 
   // Form fields
   const [fullName, setFullName] = useState('');
@@ -25,18 +24,14 @@ export default function MedicalStaffSignupScreen() {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [role, setRole] = useState<string>('doctor');
 
-  const mainRoles = [
-    { key: 'doctor', label: '👨‍⚕️ Doctor', description: 'Licensed physician' },
-    { key: 'medical_staff', label: '👩‍⚕️ Medical Staff', description: 'Nurse, assistant' },
-    { key: 'ambulance_staff', label: '🚑 Ambulance', description: 'Emergency services' },
+  // All roles expanded by default since there's space
+  const allRoles = [
+    { key: 'doctor', label: '👨‍⚕️ Doctor', description: 'Licensed physician providing medical care' },
+    { key: 'medical_staff', label: '👩‍⚕️ Medical Staff', description: 'Nurses, medical assistants, and support staff' },
+    { key: 'ambulance_staff', label: '🚑 Ambulance Staff', description: 'Emergency medical services and paramedics' },
+    { key: 'lab_staff', label: '🧪 Lab Staff', description: 'Laboratory technicians and analysts' },
+    { key: 'pharmacy_staff', label: '💊 Pharmacy Staff', description: 'Pharmacists and pharmacy technicians' },
   ];
-
-  const additionalRoles = [
-    { key: 'lab_staff', label: '🧪 Lab Staff', description: 'Laboratory technician' },
-    { key: 'pharmacy_staff', label: '💊 Pharmacy', description: 'Pharmacist' },
-  ];
-
-  const allRoles = showMoreRoles ? [...mainRoles, ...additionalRoles] : mainRoles;
 
   // Configure Google Sign-In
   React.useEffect(() => {
@@ -229,11 +224,6 @@ export default function MedicalStaffSignupScreen() {
                   </Text>
                 </TouchableOpacity>
               ))}
-              {!showMoreRoles && (
-                <TouchableOpacity onPress={() => setShowMoreRoles(true)} style={styles.moreRolesLink}>
-                  <Text style={styles.moreRolesText}>+ See more roles</Text>
-                </TouchableOpacity>
-              )}
             </View>
 
             {/* Auth Methods - Compact Row */}
@@ -293,14 +283,20 @@ const styles = StyleSheet.create({
   content: { padding: spacing.md },
   section: { marginBottom: spacing.sm },
   sectionTitle: { fontSize: 18, fontWeight: '700', color: colors.textPrimary, marginBottom: spacing.xs },
-  roleCard: { backgroundColor: colors.backgroundSecondary, borderRadius: borderRadius.md, padding: spacing.xs, marginBottom: spacing.xs, borderWidth: 2, borderColor: 'transparent', flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  roleCard: { 
+    backgroundColor: colors.backgroundSecondary, 
+    borderRadius: borderRadius.md, 
+    padding: spacing.md, 
+    marginBottom: spacing.sm, 
+    borderWidth: 2, 
+    borderColor: 'transparent', 
+    flexDirection: 'column',
+  },
   roleCardSelected: { backgroundColor: colors.accentSoft, borderColor: colors.accent },
-  roleLabel: { fontSize: 16, fontWeight: '600', color: colors.textPrimary, flex: 1 },
+  roleLabel: { fontSize: 18, fontWeight: '700', color: colors.textPrimary, marginBottom: spacing.xs },
   roleLabelSelected: { color: colors.accent },
-  roleDescription: { fontSize: 14, color: colors.textSecondary, flex: 1 },
-  roleDescriptionSelected: { color: colors.accent, opacity: 0.8 },
-  moreRolesLink: { paddingVertical: spacing.xs, alignItems: 'center' },
-  moreRolesText: { fontSize: 14, color: colors.accent, fontWeight: '600' },
+  roleDescription: { fontSize: 15, color: colors.textSecondary, lineHeight: 20 },
+  roleDescriptionSelected: { color: colors.accent, opacity: 0.9 },
   authButtonsRow: { flexDirection: 'row', gap: spacing.sm, marginBottom: spacing.xs },
   googleButtonCompact: { flex: 1, backgroundColor: '#FFFFFF', borderRadius: borderRadius.md, paddingVertical: spacing.sm, alignItems: 'center', borderWidth: 1, borderColor: colors.border },
   whatsappButtonCompact: { flex: 1, backgroundColor: '#25D366', borderRadius: borderRadius.md, paddingVertical: spacing.sm, alignItems: 'center' },
