@@ -364,7 +364,7 @@ const styles = StyleSheet.create({
     width: 60, // Same width as back button for centering
   },
   title: {
-    fontSize: 24,
+    fontSize: 28,
     fontWeight: '700',
     color: colors.textPrimary,
   },
@@ -407,7 +407,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.lg,
   },
   sectionTitle: {
-    fontSize: 20,
+    fontSize: 18,
     fontWeight: '600',
     color: colors.textPrimary,
     marginBottom: spacing.md,
@@ -446,7 +446,7 @@ const styles = StyleSheet.create({
     marginBottom: spacing.lg,
   },
   customSymptomTitle: {
-    fontSize: 16,
+    fontSize: 14,
     fontWeight: '600',
     color: colors.textPrimary,
     marginBottom: spacing.sm,
@@ -517,7 +517,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   doctorName: {
-    fontSize: 18,
+    fontSize: 16,
     fontWeight: '700',
     color: colors.textPrimary,
     marginBottom: spacing.xs,
@@ -557,7 +557,7 @@ const styles = StyleSheet.create({
   },
   alertButtonText: {
     color: '#FFFFFF',
-    fontSize: 15,
+    fontSize: 14,
     fontWeight: '700',
   },
   callButton: {
@@ -569,7 +569,7 @@ const styles = StyleSheet.create({
   },
   callButtonText: {
     color: '#FFFFFF',
-    fontSize: 15,
+    fontSize: 14,
     fontWeight: '600',
   },
 });

@@ -142,7 +142,7 @@ const styles = StyleSheet.create({
     paddingTop: spacing.md,
   },
   appTitle: {
-    fontSize: 36,
+    fontSize: 32,
     fontWeight: '700',
     color: colors.textPrimary,
     marginBottom: spacing.xs,
@@ -173,7 +173,7 @@ const styles = StyleSheet.create({
     transform: [{ scale: 0.98 }],
   },
   emergencyButtonText: {
-    fontSize: 24,
+    fontSize: 20,
     fontWeight: '700',
     color: colors.backgroundSecondary,
     marginBottom: spacing.xs,
@@ -197,7 +197,7 @@ const styles = StyleSheet.create({
     elevation: 6,
   },
   primaryButtonText: {
-    fontSize: 20,
+    fontSize: 18,
     fontWeight: '600',
     color: colors.backgroundSecondary,
   },
@@ -223,7 +223,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#95E1D3',
   },
   secondaryButtonText: {
-    fontSize: 20,
+    fontSize: 18,
     fontWeight: '600',
     color: '#2C3E50',
     marginBottom: spacing.xs,
@@ -272,7 +272,7 @@ const styles = StyleSheet.create({
     elevation: 6,
   },
   labTestButtonText: {
-    fontSize: 20,
+    fontSize: 18,
     fontWeight: '600',
     color: '#FFFFFF',
   },

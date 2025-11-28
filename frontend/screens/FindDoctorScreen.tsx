@@ -259,7 +259,7 @@ const styles = StyleSheet.create({
     marginBottom: spacing.xl,
   },
   sectionTitle: {
-    fontSize: 18,
+    fontSize: 16,
     fontWeight: '700',
     color: colors.textPrimary,
     marginBottom: spacing.md,
@@ -292,7 +292,7 @@ const styles = StyleSheet.create({
     marginBottom: spacing.xs,
   },
   dateNumber: {
-    fontSize: 24,
+    fontSize: 20,
     fontWeight: '700',
     color: colors.textPrimary,
     marginBottom: spacing.xs,
@@ -373,7 +373,7 @@ const styles = StyleSheet.create({
     marginTop: spacing.lg,
   },
   resultsTitle: {
-    fontSize: 20,
+    fontSize: 18,
     fontWeight: '700',
     color: colors.textPrimary,
     marginBottom: spacing.xs,
@@ -408,7 +408,7 @@ const styles = StyleSheet.create({
     marginRight: spacing.md,
   },
   doctorAvatarText: {
-    fontSize: 24,
+    fontSize: 20,
     fontWeight: '700',
     color: '#FFFFFF',
   },
@@ -416,7 +416,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   doctorName: {
-    fontSize: 18,
+    fontSize: 16,
     fontWeight: '700',
     color: colors.textPrimary,
     marginBottom: spacing.xs,
