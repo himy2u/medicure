@@ -114,7 +114,7 @@ export default function FindDoctorScreen() {
 
     setSearching(true);
     try {
-      const apiBaseUrl = Constants.expoConfig?.extra?.apiBaseUrl || process.env.EXPO_PUBLIC_API_BASE_URL || 'http://192.168.100.6:8000';
+      const apiBaseUrl = Constants.expoConfig?.extra?.apiBaseUrl || process.env.EXPO_PUBLIC_API_BASE_URL || 'http://192.168.100.91:8000';
       const url = `${apiBaseUrl}/api/doctors/search`;
       
       console.log('FindDoctor: Searching for doctors...');

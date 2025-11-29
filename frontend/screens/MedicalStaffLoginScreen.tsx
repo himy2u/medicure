@@ -44,7 +44,7 @@ export default function MedicalStaffLoginScreen() {
         return;
       }
 
-      const apiBaseUrl = Constants.expoConfig?.extra?.apiBaseUrl || process.env.EXPO_PUBLIC_API_BASE_URL || 'http://192.168.100.6:8000';
+      const apiBaseUrl = Constants.expoConfig?.extra?.apiBaseUrl || process.env.EXPO_PUBLIC_API_BASE_URL || 'http://192.168.100.91:8000';
 
       const response = await fetch(`${apiBaseUrl}/auth/google-login`, {
         method: 'POST',
@@ -89,7 +89,7 @@ export default function MedicalStaffLoginScreen() {
 
             try {
               setLoading(true);
-              const apiBaseUrl = Constants.expoConfig?.extra?.apiBaseUrl || process.env.EXPO_PUBLIC_API_BASE_URL || 'http://192.168.100.6:8000';
+              const apiBaseUrl = Constants.expoConfig?.extra?.apiBaseUrl || process.env.EXPO_PUBLIC_API_BASE_URL || 'http://192.168.100.91:8000';
 
               const response = await fetch(`${apiBaseUrl}/auth/whatsapp-login`, {
                 method: 'POST',
@@ -159,7 +159,7 @@ export default function MedicalStaffLoginScreen() {
 
     setLoading(true);
     try {
-      const apiBaseUrl = Constants.expoConfig?.extra?.apiBaseUrl || process.env.EXPO_PUBLIC_API_BASE_URL || 'http://192.168.100.6:8000';
+      const apiBaseUrl = Constants.expoConfig?.extra?.apiBaseUrl || process.env.EXPO_PUBLIC_API_BASE_URL || 'http://192.168.100.91:8000';
 
       const response = await fetch(`${apiBaseUrl}/auth/login`, {
         method: 'POST',

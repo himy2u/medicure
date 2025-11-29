@@ -1203,7 +1203,7 @@ export default function SignupScreen() {
 
     setLoading(true);
     try {
-      const apiBaseUrl = Constants.expoConfig?.extra?.apiBaseUrl || process.env.EXPO_PUBLIC_API_BASE_URL || 'http://192.168.100.6:8000';
+      const apiBaseUrl = Constants.expoConfig?.extra?.apiBaseUrl || process.env.EXPO_PUBLIC_API_BASE_URL || 'http://192.168.100.91:8000';
       
       console.log('=== EMAIL/PASSWORD SIGNUP ===');
       console.log('API URL:', `${apiBaseUrl}/auth/signup`);
@@ -1261,7 +1261,7 @@ export default function SignupScreen() {
       }
 
       // Update user profile with additional information
-      const apiBaseUrl = Constants.expoConfig?.extra?.apiBaseUrl || process.env.EXPO_PUBLIC_API_BASE_URL || 'http://192.168.100.6:8000';
+      const apiBaseUrl = Constants.expoConfig?.extra?.apiBaseUrl || process.env.EXPO_PUBLIC_API_BASE_URL || 'http://192.168.100.91:8000';
       
       const response = await fetch(`${apiBaseUrl}/users/${userId}/profile`, {
         method: 'PUT',
@@ -1393,7 +1393,7 @@ export default function SignupScreen() {
             
             setLoading(true);
             try {
-              const apiBaseUrl = Constants.expoConfig?.extra?.apiBaseUrl || process.env.EXPO_PUBLIC_API_BASE_URL || 'http://192.168.100.6:8000';
+              const apiBaseUrl = Constants.expoConfig?.extra?.apiBaseUrl || process.env.EXPO_PUBLIC_API_BASE_URL || 'http://192.168.100.91:8000';
               
               // Send OTP
               const response = await fetch(`${apiBaseUrl}/auth/whatsapp/send-otp`, {

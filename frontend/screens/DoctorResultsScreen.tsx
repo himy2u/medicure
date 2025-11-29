@@ -62,7 +62,7 @@ export default function DoctorResultsScreen() {
       setRequesting(doctor.doctor_id);
       
       const authToken = await SecureStore.getItemAsync('auth_token');
-      const apiBaseUrl = Constants.expoConfig?.extra?.apiBaseUrl || process.env.EXPO_PUBLIC_API_BASE_URL || 'http://192.168.100.6:8000';
+      const apiBaseUrl = Constants.expoConfig?.extra?.apiBaseUrl || process.env.EXPO_PUBLIC_API_BASE_URL || 'http://192.168.100.91:8000';
       
       const response = await fetch(`${apiBaseUrl}/api/emergency/request`, {
         method: 'POST',
