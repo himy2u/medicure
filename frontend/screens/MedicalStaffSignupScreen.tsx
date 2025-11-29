@@ -103,8 +103,8 @@ export default function MedicalStaffSignupScreen() {
             if (!phoneNumber) return;
             try {
               setLoading(true);
-              const apiBaseUrl = Constants.expoConfig?.extra?.apiBaseUrl || process.env.EXPO_PUBLIC_API_BASE_URL || 'http://192.168.100.6:8000';
-              const response = await fetch(`${apiBaseUrl}/auth/whatsapp-signup`, {
+              const apiBaseUrl = Constants.expoConfig?.extra?.apiBaseUrl || process.env.EXPO_PUBLIC_API_BASE_URL || 'http://192.168.100.91:8000';
+              const response = await fetch(`${apiBaseUrl}/auth/whatsapp/send-otp`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ phone: phoneNumber, role: role }),
