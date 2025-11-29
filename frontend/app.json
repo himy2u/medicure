@@ -16,7 +16,17 @@
     },
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.medicure.app"
+      "bundleIdentifier": "com.medicure.app",
+      "googleServicesFile": "./GoogleService-Info.plist",
+      "infoPlist": {
+        "CFBundleURLTypes": [
+          {
+            "CFBundleURLSchemes": [
+              "com.googleusercontent.apps.920375448724-n0p1g2gbkenbmaduto9tcqt4fbq8hsr6"
+            ]
+          }
+        ]
+      }
     },
     "android": {
       "adaptiveIcon": {

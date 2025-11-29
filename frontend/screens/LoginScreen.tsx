@@ -5,6 +5,7 @@ import { useForm, Controller } from 'react-hook-form';
 import { useNavigation } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import * as SecureStore from 'expo-secure-store';
+import Constants from 'expo-constants';
 import { colors, spacing, borderRadius } from '../theme/colors';
 
 import { RootStackParamList } from '../navigation/AppNavigator';
@@ -26,30 +27,46 @@ export default function LoginScreen() {
   const onSubmit = async (data: LoginFormData) => {
     setLoading(true);
     try {
-      // TODO: Replace with actual API call
-      const response = await fetch('http://localhost:8000/auth/login', {
+      const apiBaseUrl = Constants.expoConfig?.extra?.apiBaseUrl || process.env.EXPO_PUBLIC_API_BASE_URL || 'http://192.168.100.6:8000';
+      
+      console.log('=== EMAIL/PASSWORD LOGIN ===');
+      console.log('API URL:', `${apiBaseUrl}/auth/login`);
+      console.log('Login data:', { email: data.email });
+      
+      const response = await fetch(`${apiBaseUrl}/auth/login`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(data),
+        body: JSON.stringify({
+          email: data.email,
+          password: data.password,
+        }),
       });
 
+      const result = await response.json();
+      console.log('Login response:', result);
+
       if (response.ok) {
-        const result = await response.json();
         // Store JWT token and user info
         await SecureStore.setItemAsync('auth_token', result.access_token);
         await SecureStore.setItemAsync('user_role', result.role);
-        await SecureStore.setItemAsync('user_id', result.user_id || '');
+        await SecureStore.setItemAsync('user_id', result.user_id?.toString() || '');
+        await SecureStore.setItemAsync('user_name', result.full_name || '');
+        await SecureStore.setItemAsync('user_email', data.email);
+
+        console.log('Login successful, navigating to home');
 
         // Navigate to role-based home screen
         const homeScreen = getRoleBasedHomeScreen(result.role);
         navigation.navigate(homeScreen);
       } else {
-        Alert.alert('Error', 'Invalid credentials');
+        console.error('Login failed:', result);
+        Alert.alert('Error', result.detail || 'Invalid credentials');
       }
-    } catch (error) {
-      Alert.alert('Error', 'Network error. Please try again.');
+    } catch (error: any) {
+      console.error('Login error:', error);
+      Alert.alert('Error', `Network error: ${error?.message || 'Please try again'}`);
     } finally {
       setLoading(false);
     }

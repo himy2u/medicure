@@ -1201,8 +1201,50 @@ export default function SignupScreen() {
       return;
     }
 
-    // For basic signup, just show profile step
-    setShowProfileStep(true);
+    setLoading(true);
+    try {
+      const apiBaseUrl = Constants.expoConfig?.extra?.apiBaseUrl || process.env.EXPO_PUBLIC_API_BASE_URL || 'http://192.168.100.6:8000';
+      
+      console.log('=== EMAIL/PASSWORD SIGNUP ===');
+      console.log('API URL:', `${apiBaseUrl}/auth/signup`);
+      console.log('User data:', { name: data.name, email: data.email, role: data.role });
+      
+      const response = await fetch(`${apiBaseUrl}/auth/signup`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: data.name,
+          email: data.email,
+          password: data.password,
+          role: data.role || 'patient',
+        }),
+      });
+
+      const responseData = await response.json();
+      console.log('Signup response:', responseData);
+
+      if (response.ok) {
+        // Store authentication data
+        await SecureStore.setItemAsync('auth_token', responseData.access_token);
+        await SecureStore.setItemAsync('user_role', responseData.role);
+        await SecureStore.setItemAsync('user_id', responseData.user_id.toString());
+        await SecureStore.setItemAsync('user_name', data.name);
+        await SecureStore.setItemAsync('user_email', data.email);
+        
+        console.log('Auth data stored, showing profile step');
+        
+        // Show profile completion step
+        setShowProfileStep(true);
+      } else {
+        console.error('Signup failed:', responseData);
+        Alert.alert('Signup Failed', responseData.detail || 'Unable to create account');
+      }
+    } catch (error: any) {
+      console.error('Signup error:', error);
+      Alert.alert('Error', `Network error: ${error?.message || 'Unknown error'}`);
+    } finally {
+      setLoading(false);
+    }
   };
 
   const onFinalSubmit = async (data: SignupFormData) => {
@@ -1364,9 +1406,10 @@ export default function SignupScreen() {
               });
               
               const data = await response.json();
+              console.log('WhatsApp OTP response:', data);
               
-              if (response.ok) {
-                console.log('OTP sent:', data.cost_status);
+              if (response.ok && data.success) {
+                console.log('OTP sent successfully:', data.message);
                 
                 // Show OTP input dialog
                 Alert.prompt(
