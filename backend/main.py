@@ -432,28 +432,41 @@ async def update_user_profile(user_id: str, profile_data: ProfileUpdateRequest):
 async def send_whatsapp_otp(request: WhatsAppOTPRequest):
     """Send OTP via Twilio WhatsApp"""
     try:
+        print(f"📱 WhatsApp OTP Request:")
+        print(f"   Phone: {request.phone_number}")
+        print(f"   Role: {request.role}")
+        
         # Check if user exists
         existing_user = await get_user_by_email(request.phone_number)
         is_new_user = existing_user is None
+        print(f"   Is new user: {is_new_user}")
         
         # Send OTP via Twilio
+        print(f"   Calling Twilio service...")
         result = twilio_otp_service.send_otp(phone_number=request.phone_number)
+        print(f"   Twilio result: {result}")
         
         if result.get("success"):
+            print(f"   ✅ OTP sent successfully!")
             return {
                 "success": True,
                 "message": "OTP sent successfully",
                 "is_new_user": is_new_user
             }
         else:
+            error_msg = result.get("error", "Failed to send OTP")
+            print(f"   ❌ Failed: {error_msg}")
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail=result.get("error", "Failed to send OTP")
+                detail=error_msg
             )
             
     except HTTPException:
         raise
     except Exception as e:
+        print(f"   ❌ Exception: {str(e)}")
+        import traceback
+        traceback.print_exc()
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"WhatsApp OTP error: {str(e)}"
@@ -463,13 +476,23 @@ async def send_whatsapp_otp(request: WhatsAppOTPRequest):
 async def verify_whatsapp_otp(request: WhatsAppOTPVerifyRequest):
     """Verify Twilio WhatsApp OTP and create/login user"""
     try:
+        print(f"🔐 WhatsApp OTP Verification:")
+        print(f"   Phone: {request.phone_number}")
+        print(f"   OTP: {request.otp}")
+        print(f"   Name: {request.name}")
+        print(f"   Role: {request.role}")
+        
         # Validate OTP
+        print(f"   Validating OTP...")
         validation = twilio_otp_service.validate_otp(request.phone_number, request.otp)
+        print(f"   Validation result: {validation}")
         
         if not validation.get("valid"):
+            error = validation.get("error", "Invalid OTP")
+            print(f"   ❌ Validation failed: {error}")
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
-                detail=validation.get("error", "Invalid OTP")
+                detail=error
             )
         
         # Check if user exists
