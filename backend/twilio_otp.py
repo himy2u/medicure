@@ -135,6 +135,15 @@ class TwilioWhatsAppOTP:
             error_msg = str(e)
             print(f"✗ Failed to send OTP to {phone_number}: {error_msg}")
             
+            # Check if it's a sandbox error
+            if "same channel" in error_msg.lower() or "not a valid" in error_msg.lower():
+                return {
+                    "success": False,
+                    "error": "WhatsApp number not verified. Send 'join industrial-taught' to +1 415 523 8886 on WhatsApp first."
+                }
+            
+            print(f"✗ Failed to send OTP to {phone_number}: {error_msg}")
+            
             return {
                 "success": False,
                 "error": error_msg
