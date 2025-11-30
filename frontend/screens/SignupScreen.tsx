@@ -1294,6 +1294,14 @@ export default function SignupScreen() {
   };
 
   const handleGoogleSignup = async () => {
+    // Google Sign-In requires native app rebuild
+    Alert.alert(
+      'Google Sign-In Unavailable',
+      'Google Sign-In requires rebuilding the app with native modules.\n\nPlease use:\n• Email/Password signup\n• WhatsApp OTP\n\nOr rebuild with: npx expo run:ios',
+      [{ text: 'OK' }]
+    );
+    return;
+    
     try {
       setLoading(true);
       console.log('=== GOOGLE SIGN-IN STARTED ===');

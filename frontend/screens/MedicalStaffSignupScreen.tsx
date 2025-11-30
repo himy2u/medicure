@@ -44,6 +44,13 @@ export default function MedicalStaffSignupScreen() {
   }, []);
 
   const handleGoogleSignup = async () => {
+    Alert.alert(
+      'Google Sign-In Unavailable',
+      'Google Sign-In requires rebuilding the app.\n\nUse Email/Password or WhatsApp instead.\n\nTo enable: npx expo run:ios',
+      [{ text: 'OK' }]
+    );
+    return;
+    
     try {
       setLoading(true);
       await GoogleSignin.hasPlayServices({ showPlayServicesUpdateDialog: true });
