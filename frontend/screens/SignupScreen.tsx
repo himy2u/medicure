@@ -1143,6 +1143,8 @@ const BasicProfileForm = ({ control, errors }: any) => (
 );
 
 export default function SignupScreen() {
+  console.log('=== SignupScreen RENDER ===');
+  
   const navigation = useNavigation<SignupScreenNavigationProp>();
   const { t } = useTranslation();
   const [loading, setLoading] = useState(false);
@@ -1153,6 +1155,8 @@ export default function SignupScreen() {
   const [phoneNumber, setPhoneNumber] = useState('');
   const [otp, setOtp] = useState('');
   const [otpSent, setOtpSent] = useState(false);
+  
+  console.log('State:', { loading, showWhatsAppFlow, phoneNumber, otpSent });
 
   const { control, handleSubmit, formState: { errors }, watch, setValue } = useForm<SignupFormData>({
     defaultValues: {
@@ -1397,20 +1401,26 @@ export default function SignupScreen() {
   };
 
   const sendWhatsAppOTP = async () => {
+    console.log('=== sendWhatsAppOTP START ===');
+    console.log('Phone:', phoneNumber);
+    console.log('Current role:', currentRole);
+    
     if (!phoneNumber || phoneNumber.trim() === '') {
+      console.log('ERROR: Empty phone number');
       Alert.alert('Error', 'Please enter a valid phone number');
       return;
     }
     
+    console.log('Setting loading to true...');
     setLoading(true);
+    
     try {
       const apiBaseUrl = Constants.expoConfig?.extra?.apiBaseUrl || process.env.EXPO_PUBLIC_API_BASE_URL || 'http://192.168.100.91:8000';
-      
-      // Get role from form or use default
       const role = currentRole || 'patient';
       
-      console.log('📱 Sending WhatsApp OTP to:', phoneNumber);
-      console.log('📱 Role:', role);
+      console.log('API URL:', apiBaseUrl);
+      console.log('Role to send:', role);
+      console.log('Making fetch request...');
       
       const response = await fetch(`${apiBaseUrl}/auth/whatsapp/send-otp`, {
         method: 'POST',
@@ -1421,27 +1431,42 @@ export default function SignupScreen() {
         })
       });
       
+      console.log('Response received, status:', response.status);
+      console.log('Parsing JSON...');
+      
       const data = await response.json();
-      console.log('WhatsApp OTP response:', data);
+      console.log('Data parsed:', JSON.stringify(data));
       
       if (response.ok && data && data.success) {
-        console.log('✅ OTP sent successfully');
-        // Update state in finally block to ensure it happens after loading is set
+        console.log('✅ Success! Showing alert...');
         Alert.alert(
           'Success', 
           `Verification code sent to ${phoneNumber}`,
-          [{ text: 'OK', onPress: () => setOtpSent(true) }]
+          [{ 
+            text: 'OK', 
+            onPress: () => {
+              console.log('Alert dismissed, setting otpSent to true...');
+              setOtpSent(true);
+              console.log('otpSent state updated');
+            }
+          }]
         );
+        console.log('Alert shown');
       } else {
         const errorMsg = (data && data.detail) ? data.detail : 'Failed to send OTP';
-        console.error('❌ Failed to send OTP:', errorMsg);
+        console.error('❌ API Error:', errorMsg);
         Alert.alert('Error', errorMsg);
       }
-    } catch (error) {
-      console.error('❌ WhatsApp OTP error:', error);
-      Alert.alert('Error', 'Network error. Please try again.');
+    } catch (error: any) {
+      console.error('❌ EXCEPTION in sendWhatsAppOTP:');
+      console.error('Error type:', typeof error);
+      console.error('Error message:', error?.message);
+      console.error('Error stack:', error?.stack);
+      Alert.alert('Error', `Network error: ${error?.message || 'Unknown'}`);
     } finally {
+      console.log('Setting loading to false...');
       setLoading(false);
+      console.log('=== sendWhatsAppOTP END ===');
     }
   };
 
