@@ -1149,6 +1149,10 @@ export default function SignupScreen() {
   const [selectedRole, setSelectedRole] = useState('patient');
   const [showProfileStep, setShowProfileStep] = useState(false);
   const [showSignOutMenu, setShowSignOutMenu] = useState(false);
+  const [showWhatsAppFlow, setShowWhatsAppFlow] = useState(false);
+  const [phoneNumber, setPhoneNumber] = useState('');
+  const [otp, setOtp] = useState('');
+  const [otpSent, setOtpSent] = useState(false);
 
   const { control, handleSubmit, formState: { errors }, watch, setValue } = useForm<SignupFormData>({
     defaultValues: {
@@ -1388,11 +1392,6 @@ export default function SignupScreen() {
     }
   };
 
-  const [showWhatsAppFlow, setShowWhatsAppFlow] = useState(false);
-  const [phoneNumber, setPhoneNumber] = useState('');
-  const [otp, setOtp] = useState('');
-  const [otpSent, setOtpSent] = useState(false);
-
   const handleWhatsAppSignup = () => {
     setShowWhatsAppFlow(true);
   };
@@ -1407,14 +1406,18 @@ export default function SignupScreen() {
     try {
       const apiBaseUrl = Constants.expoConfig?.extra?.apiBaseUrl || process.env.EXPO_PUBLIC_API_BASE_URL || 'http://192.168.100.91:8000';
       
+      // Get role from form or use default
+      const role = currentRole || 'patient';
+      
       console.log('📱 Sending WhatsApp OTP to:', phoneNumber);
+      console.log('📱 Role:', role);
       
       const response = await fetch(`${apiBaseUrl}/auth/whatsapp/send-otp`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
           phone_number: phoneNumber, 
-          role: currentRole 
+          role: role 
         })
       });
       
@@ -1447,7 +1450,12 @@ export default function SignupScreen() {
     try {
       const apiBaseUrl = Constants.expoConfig?.extra?.apiBaseUrl || process.env.EXPO_PUBLIC_API_BASE_URL || 'http://192.168.100.91:8000';
       
+      // Get role and name from form or use defaults
+      const role = currentRole || 'patient';
+      const userName = watch('name') || phoneNumber;
+      
       console.log('🔐 Verifying OTP:', otp);
+      console.log('🔐 Role:', role);
       
       const verifyResponse = await fetch(`${apiBaseUrl}/auth/whatsapp/verify-otp`, {
         method: 'POST',
@@ -1455,8 +1463,8 @@ export default function SignupScreen() {
         body: JSON.stringify({
           phone_number: phoneNumber,
           otp: otp,
-          role: currentRole,
-          name: watch('name') || phoneNumber
+          role: role,
+          name: userName
         })
       });
       
