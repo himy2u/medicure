@@ -1452,7 +1452,13 @@ export default function SignupScreen() {
       
       // Get role and name from form or use defaults
       const role = currentRole || 'patient';
-      const userName = watch('name') || phoneNumber;
+      let userName = phoneNumber;
+      try {
+        const formName = watch('name');
+        if (formName) userName = formName;
+      } catch (e) {
+        // Form field doesn't exist yet, use phone number
+      }
       
       console.log('🔐 Verifying OTP:', otp);
       console.log('🔐 Role:', role);
