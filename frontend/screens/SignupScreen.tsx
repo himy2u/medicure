@@ -1426,9 +1426,9 @@ export default function SignupScreen() {
       
       if (response.ok && data && data.success) {
         console.log('✅ OTP sent successfully');
+        setOtpSent(true);
+        // Show alert after state update
         Alert.alert('Success', `Verification code sent to ${phoneNumber}`);
-        // Set state after alert to avoid race condition
-        setTimeout(() => setOtpSent(true), 100);
       } else {
         const errorMsg = (data && data.detail) ? data.detail : 'Failed to send OTP';
         console.error('❌ Failed to send OTP:', errorMsg);
