@@ -12,6 +12,7 @@ import { colors, spacing, borderRadius } from '../theme/colors';
 
 import { RootStackParamList } from '../navigation/AppNavigator';
 import { getRoleBasedHomeScreen } from '../utils/navigationHelper';
+import { errorLogger } from '../utils/errorLogger';
 
 // GoogleSignin is disabled for Expo Go compatibility
 // To enable Google Sign-In, build a development client with: npx expo run:ios
@@ -1401,26 +1402,26 @@ export default function SignupScreen() {
   };
 
   const sendWhatsAppOTP = async () => {
-    console.log('=== sendWhatsAppOTP START ===');
-    console.log('Phone:', phoneNumber);
-    console.log('Current role:', currentRole);
+    errorLogger.log('=== sendWhatsAppOTP START ===');
+    errorLogger.log('Phone', phoneNumber);
+    errorLogger.log('Current role', currentRole);
     
     if (!phoneNumber || phoneNumber.trim() === '') {
-      console.log('ERROR: Empty phone number');
+      errorLogger.error('Empty phone number');
       Alert.alert('Error', 'Please enter a valid phone number');
       return;
     }
     
-    console.log('Setting loading to true...');
+    errorLogger.log('Setting loading to true');
     setLoading(true);
     
     try {
       const apiBaseUrl = Constants.expoConfig?.extra?.apiBaseUrl || process.env.EXPO_PUBLIC_API_BASE_URL || 'http://192.168.100.91:8000';
       const role = currentRole || 'patient';
       
-      console.log('API URL:', apiBaseUrl);
-      console.log('Role to send:', role);
-      console.log('Making fetch request...');
+      errorLogger.log('API URL', apiBaseUrl);
+      errorLogger.log('Role to send', role);
+      errorLogger.log('Making fetch request');
       
       const response = await fetch(`${apiBaseUrl}/auth/whatsapp/send-otp`, {
         method: 'POST',
@@ -1431,42 +1432,39 @@ export default function SignupScreen() {
         })
       });
       
-      console.log('Response received, status:', response.status);
-      console.log('Parsing JSON...');
+      errorLogger.log('Response received', { status: response.status });
+      errorLogger.log('Parsing JSON');
       
       const data = await response.json();
-      console.log('Data parsed:', JSON.stringify(data));
+      errorLogger.log('Data parsed', data);
       
       if (response.ok && data && data.success) {
-        console.log('✅ Success! Showing alert...');
-        Alert.alert(
-          'Success', 
-          `Verification code sent to ${phoneNumber}`,
-          [{ 
-            text: 'OK', 
-            onPress: () => {
-              console.log('Alert dismissed, setting otpSent to true...');
-              setOtpSent(true);
-              console.log('otpSent state updated');
-            }
-          }]
-        );
-        console.log('Alert shown');
+        errorLogger.log('Success! About to show alert');
+        
+        // Simple state update without Alert to test
+        setOtpSent(true);
+        errorLogger.log('otpSent set to true');
+        
+        // Show alert after state update
+        try {
+          Alert.alert('Success', `Verification code sent to ${phoneNumber}`);
+          errorLogger.log('Alert shown successfully');
+        } catch (alertError) {
+          errorLogger.error('Alert.alert failed', alertError);
+        }
       } else {
         const errorMsg = (data && data.detail) ? data.detail : 'Failed to send OTP';
-        console.error('❌ API Error:', errorMsg);
+        errorLogger.error('API Error', errorMsg);
         Alert.alert('Error', errorMsg);
       }
     } catch (error: any) {
-      console.error('❌ EXCEPTION in sendWhatsAppOTP:');
-      console.error('Error type:', typeof error);
-      console.error('Error message:', error?.message);
-      console.error('Error stack:', error?.stack);
+      errorLogger.error('EXCEPTION in sendWhatsAppOTP', error);
       Alert.alert('Error', `Network error: ${error?.message || 'Unknown'}`);
     } finally {
-      console.log('Setting loading to false...');
+      errorLogger.log('Setting loading to false');
       setLoading(false);
-      console.log('=== sendWhatsAppOTP END ===');
+      errorLogger.log('=== sendWhatsAppOTP END ===');
+      errorLogger.log('All logs', errorLogger.getLogs());
     }
   };
 
