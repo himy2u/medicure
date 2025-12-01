@@ -1424,13 +1424,14 @@ export default function SignupScreen() {
       const data = await response.json();
       console.log('WhatsApp OTP response:', data);
       
-      if (response.ok && data.success) {
+      if (response.ok && data && data.success) {
         console.log('✅ OTP sent successfully');
         setOtpSent(true);
         Alert.alert('Success', `Verification code sent to ${phoneNumber}`);
       } else {
-        console.error('❌ Failed to send OTP:', data.detail);
-        Alert.alert('Error', data.detail || 'Failed to send OTP');
+        const errorMsg = (data && data.detail) ? data.detail : 'Failed to send OTP';
+        console.error('❌ Failed to send OTP:', errorMsg);
+        Alert.alert('Error', errorMsg);
       }
     } catch (error) {
       console.error('❌ WhatsApp OTP error:', error);
@@ -1477,27 +1478,28 @@ export default function SignupScreen() {
       const verifyData = await verifyResponse.json();
       console.log('Verification response:', verifyData);
       
-      if (verifyResponse.ok) {
+      if (verifyResponse.ok && verifyData) {
         console.log('✅ WhatsApp auth successful');
         
-        // Store auth data
-        await SecureStore.setItemAsync('auth_token', verifyData.access_token);
-        await SecureStore.setItemAsync('user_role', verifyData.role);
-        await SecureStore.setItemAsync('user_id', verifyData.user_id);
-        await SecureStore.setItemAsync('user_name', watch('name') || phoneNumber);
+        // Store auth data safely
+        if (verifyData.access_token) await SecureStore.setItemAsync('auth_token', verifyData.access_token);
+        if (verifyData.role) await SecureStore.setItemAsync('user_role', verifyData.role);
+        if (verifyData.user_id) await SecureStore.setItemAsync('user_id', verifyData.user_id);
+        await SecureStore.setItemAsync('user_name', userName);
         await SecureStore.setItemAsync('user_email', phoneNumber);
         
         // Navigate based on profile completion
         if (verifyData.profile_complete) {
-          const homeScreen = getRoleBasedHomeScreen(verifyData.role);
+          const homeScreen = getRoleBasedHomeScreen(verifyData.role || 'patient');
           navigation.navigate(homeScreen);
         } else {
           setShowWhatsAppFlow(false);
           setShowProfileStep(true);
         }
       } else {
-        console.error('❌ Verification failed:', verifyData.detail);
-        Alert.alert('Verification Failed', verifyData.detail || 'Invalid OTP');
+        const errorMsg = (verifyData && verifyData.detail) ? verifyData.detail : 'Invalid OTP';
+        console.error('❌ Verification failed:', errorMsg);
+        Alert.alert('Verification Failed', errorMsg);
       }
     } catch (error) {
       console.error('❌ Verification error:', error);
