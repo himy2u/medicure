@@ -6,7 +6,8 @@ import { StackNavigationProp } from '@react-navigation/stack';
 import { TextInput, Button } from 'react-native-paper';
 import { colors, spacing, borderRadius } from '../theme/colors';
 import { RootStackParamList } from '../navigation/AppNavigator';
-import { GoogleSignin } from '@react-native-google-signin/google-signin';
+// GoogleSignin disabled for Expo Go compatibility
+const GoogleSignin: any = null;
 import * as SecureStore from 'expo-secure-store';
 import Constants from 'expo-constants';
 import { getRoleBasedHomeScreen } from '../utils/navigationHelper';
@@ -19,17 +20,24 @@ export default function MedicalStaffLoginScreen() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
 
-  // Configure Google Sign-In
+  // Configure Google Sign-In (disabled in Expo Go)
   React.useEffect(() => {
-    GoogleSignin.configure({
-      webClientId: process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID,
-      iosClientId: process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID,
-      offlineAccess: false,
-      forceCodeForRefreshToken: false,
-    });
+    if (GoogleSignin) {
+      GoogleSignin.configure({
+        webClientId: process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID,
+        iosClientId: process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID,
+        offlineAccess: false,
+        forceCodeForRefreshToken: false,
+      });
+    }
   }, []);
 
   const handleGoogleLogin = async () => {
+    if (!GoogleSignin) {
+      Alert.alert('Not Available', 'Google Sign-In requires a development build. Use WhatsApp instead.');
+      return;
+    }
+    
     try {
       setLoading(true);
       await GoogleSignin.hasPlayServices({ showPlayServicesUpdateDialog: true });

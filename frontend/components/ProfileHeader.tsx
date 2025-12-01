@@ -3,7 +3,8 @@ import { StyleSheet, Text, View, TouchableOpacity, Alert } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import * as SecureStore from 'expo-secure-store';
-import { GoogleSignin } from '@react-native-google-signin/google-signin';
+// GoogleSignin disabled for Expo Go compatibility
+const GoogleSignin: any = null;
 import { colors, spacing, borderRadius } from '../theme/colors';
 import { RootStackParamList } from '../navigation/AppNavigator';
 
@@ -39,8 +40,10 @@ export default function ProfileHeader({ hideHomeButton = false }: ProfileHeaderP
     try {
       setShowSignOutMenu(false);
       
-      // Sign out from Google
-      await GoogleSignin.signOut();
+      // Sign out from Google (if available)
+      if (GoogleSignin) {
+        await GoogleSignin.signOut();
+      }
       
       // Clear all stored data
       await SecureStore.deleteItemAsync('auth_token');

@@ -7,12 +7,15 @@ import { StackNavigationProp } from '@react-navigation/stack';
 import { useForm, Controller } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 import * as SecureStore from 'expo-secure-store';
-import { GoogleSignin } from '@react-native-google-signin/google-signin';
 import Constants from 'expo-constants';
 import { colors, spacing, borderRadius } from '../theme/colors';
 
 import { RootStackParamList } from '../navigation/AppNavigator';
 import { getRoleBasedHomeScreen } from '../utils/navigationHelper';
+
+// GoogleSignin is disabled for Expo Go compatibility
+// To enable Google Sign-In, build a development client with: npx expo run:ios
+const GoogleSignin: any = null;
 
 // Move styles to top to fix "styles used before declaration" errors
 const styles = StyleSheet.create({
@@ -1174,17 +1177,19 @@ export default function SignupScreen() {
     }
   };
 
-  // Configure Google Sign-In
+  // Configure Google Sign-In (only if available - not in Expo Go)
   React.useEffect(() => {
-    GoogleSignin.configure({
-      webClientId: process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID, // Required for iOS
-      iosClientId: process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID, // Optional, auto-detected from GoogleService-Info.plist
-      offlineAccess: false, // We don't need offline access
-      forceCodeForRefreshToken: false, // We only need id_token
-    });
-    console.log('=== GoogleSignin configured ===');
-    console.log('Web Client ID:', process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID);
-    console.log('iOS Client ID:', process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID);
+    if (GoogleSignin) {
+      GoogleSignin.configure({
+        webClientId: process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID,
+        iosClientId: process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID,
+        offlineAccess: false,
+        forceCodeForRefreshToken: false,
+      });
+      console.log('=== GoogleSignin configured ===');
+    } else {
+      console.log('=== GoogleSignin not available (Expo Go) - WhatsApp only ===');
+    }
   }, []);
 
   const roles = [
@@ -1294,6 +1299,15 @@ export default function SignupScreen() {
   };
 
   const handleGoogleSignup = async () => {
+    // Check if GoogleSignin is available (not in Expo Go)
+    if (!GoogleSignin) {
+      Alert.alert(
+        'Google Sign-In Not Available',
+        'Google Sign-In requires a development build. Please use WhatsApp sign-in instead, or build a development client with "npx expo run:ios"'
+      );
+      return;
+    }
+
     try {
       setLoading(true);
       console.log('=== GOOGLE SIGN-IN STARTED ===');
@@ -1374,125 +1388,119 @@ export default function SignupScreen() {
     }
   };
 
-  const handleWhatsAppSignup = () => {
-    Alert.prompt(
-      'WhatsApp Sign Up',
-      'Enter your WhatsApp number (with country code, e.g., +1234567890)',
-      [
-        {
-          text: 'Cancel',
-          style: 'cancel',
-        },
-        {
-          text: 'Send OTP',
-          onPress: async (phoneNumber?: string) => {
-            if (!phoneNumber || phoneNumber.trim() === '') {
-              Alert.alert('Error', 'Please enter a valid phone number');
-              return;
-            }
-            
-            setLoading(true);
-            try {
-              const apiBaseUrl = Constants.expoConfig?.extra?.apiBaseUrl || process.env.EXPO_PUBLIC_API_BASE_URL || 'http://192.168.100.91:8000';
-              
-              // Send OTP
-              const response = await fetch(`${apiBaseUrl}/auth/whatsapp/send-otp`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ 
-                  phone_number: phoneNumber, 
-                  role: currentRole 
-                })
-              });
-              
-              const data = await response.json();
-              console.log('WhatsApp OTP response:', data);
-              
-              if (response.ok && data.success) {
-                console.log('OTP sent successfully:', data.message);
-                
-                // Show OTP input dialog
-                Alert.prompt(
-                  'Enter OTP',
-                  `We sent a verification code to ${phoneNumber}`,
-                  [
-                    {
-                      text: 'Cancel',
-                      style: 'cancel',
-                    },
-                    {
-                      text: 'Verify',
-                      onPress: async (otp?: string) => {
-                        if (!otp || otp.trim() === '') {
-                          Alert.alert('Error', 'Please enter the OTP');
-                          return;
-                        }
-                        
-                        // Verify OTP
-                        const verifyResponse = await fetch(`${apiBaseUrl}/auth/whatsapp/verify-otp`, {
-                          method: 'POST',
-                          headers: { 'Content-Type': 'application/json' },
-                          body: JSON.stringify({
-                            phone_number: phoneNumber,
-                            otp: otp,
-                            role: currentRole,
-                            name: watch('name') || phoneNumber
-                          })
-                        });
-                        
-                        const verifyData = await verifyResponse.json();
-                        
-                        if (verifyResponse.ok) {
-                          // Store auth data
-                          await SecureStore.setItemAsync('auth_token', verifyData.access_token);
-                          await SecureStore.setItemAsync('user_role', verifyData.role);
-                          await SecureStore.setItemAsync('user_id', verifyData.user_id);
-                          await SecureStore.setItemAsync('user_name', watch('name') || phoneNumber);
-                          await SecureStore.setItemAsync('user_email', phoneNumber);
-                          
-                          console.log('WhatsApp auth successful:', verifyData.cost_status);
+  const [showWhatsAppFlow, setShowWhatsAppFlow] = useState(false);
+  const [phoneNumber, setPhoneNumber] = useState('');
+  const [otp, setOtp] = useState('');
+  const [otpSent, setOtpSent] = useState(false);
 
-                          // Navigate based on profile completion
-                          if (verifyData.profile_complete) {
-                            const homeScreen = getRoleBasedHomeScreen(verifyData.role);
-                            navigation.navigate(homeScreen);
-                          } else {
-                            setShowProfileStep(true);
-                          }
-                        } else {
-                          Alert.alert('Verification Failed', verifyData.detail || 'Invalid OTP');
-                        }
-                      },
-                    },
-                  ],
-                  'plain-text',
-                  '',
-                  'number-pad'
-                );
-              } else {
-                Alert.alert('Error', data.detail || 'Failed to send OTP');
-              }
-            } catch (error) {
-              console.error('WhatsApp OTP error:', error);
-              Alert.alert('Error', 'Network error. Please try again.');
-            } finally {
-              setLoading(false);
-            }
-          },
-        },
-      ],
-      'plain-text',
-      '',
-      'phone-pad'
-    );
+  const handleWhatsAppSignup = () => {
+    setShowWhatsAppFlow(true);
+  };
+
+  const sendWhatsAppOTP = async () => {
+    if (!phoneNumber || phoneNumber.trim() === '') {
+      Alert.alert('Error', 'Please enter a valid phone number');
+      return;
+    }
+    
+    setLoading(true);
+    try {
+      const apiBaseUrl = Constants.expoConfig?.extra?.apiBaseUrl || process.env.EXPO_PUBLIC_API_BASE_URL || 'http://192.168.100.91:8000';
+      
+      console.log('📱 Sending WhatsApp OTP to:', phoneNumber);
+      
+      const response = await fetch(`${apiBaseUrl}/auth/whatsapp/send-otp`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          phone_number: phoneNumber, 
+          role: currentRole 
+        })
+      });
+      
+      const data = await response.json();
+      console.log('WhatsApp OTP response:', data);
+      
+      if (response.ok && data.success) {
+        console.log('✅ OTP sent successfully');
+        setOtpSent(true);
+        Alert.alert('Success', `Verification code sent to ${phoneNumber}`);
+      } else {
+        console.error('❌ Failed to send OTP:', data.detail);
+        Alert.alert('Error', data.detail || 'Failed to send OTP');
+      }
+    } catch (error) {
+      console.error('❌ WhatsApp OTP error:', error);
+      Alert.alert('Error', 'Network error. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const verifyWhatsAppOTP = async () => {
+    if (!otp || otp.trim() === '') {
+      Alert.alert('Error', 'Please enter the OTP');
+      return;
+    }
+    
+    setLoading(true);
+    try {
+      const apiBaseUrl = Constants.expoConfig?.extra?.apiBaseUrl || process.env.EXPO_PUBLIC_API_BASE_URL || 'http://192.168.100.91:8000';
+      
+      console.log('🔐 Verifying OTP:', otp);
+      
+      const verifyResponse = await fetch(`${apiBaseUrl}/auth/whatsapp/verify-otp`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          phone_number: phoneNumber,
+          otp: otp,
+          role: currentRole,
+          name: watch('name') || phoneNumber
+        })
+      });
+      
+      const verifyData = await verifyResponse.json();
+      console.log('Verification response:', verifyData);
+      
+      if (verifyResponse.ok) {
+        console.log('✅ WhatsApp auth successful');
+        
+        // Store auth data
+        await SecureStore.setItemAsync('auth_token', verifyData.access_token);
+        await SecureStore.setItemAsync('user_role', verifyData.role);
+        await SecureStore.setItemAsync('user_id', verifyData.user_id);
+        await SecureStore.setItemAsync('user_name', watch('name') || phoneNumber);
+        await SecureStore.setItemAsync('user_email', phoneNumber);
+        
+        // Navigate based on profile completion
+        if (verifyData.profile_complete) {
+          const homeScreen = getRoleBasedHomeScreen(verifyData.role);
+          navigation.navigate(homeScreen);
+        } else {
+          setShowWhatsAppFlow(false);
+          setShowProfileStep(true);
+        }
+      } else {
+        console.error('❌ Verification failed:', verifyData.detail);
+        Alert.alert('Verification Failed', verifyData.detail || 'Invalid OTP');
+      }
+    } catch (error) {
+      console.error('❌ Verification error:', error);
+      Alert.alert('Error', 'Network error. Please try again.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleSignOut = async () => {
     try {
       setShowSignOutMenu(false);
       
-      // Sign out from Google
-      await GoogleSignin.signOut();
+      // Sign out from Google (if available)
+      if (GoogleSignin) {
+        await GoogleSignin.signOut();
+      }
       
       // Clear all stored data
       await SecureStore.deleteItemAsync('auth_token');
@@ -1508,6 +1516,84 @@ export default function SignupScreen() {
       Alert.alert('Error', 'Failed to sign out');
     }
   };
+
+  // If showing WhatsApp flow
+  if (showWhatsAppFlow) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <View style={styles.header}>
+          <TouchableOpacity onPress={() => setShowWhatsAppFlow(false)} style={styles.headerBackButton}>
+            <Text style={styles.headerBackText}>← Back</Text>
+          </TouchableOpacity>
+          <Text style={styles.headerTitle}>WhatsApp Signup</Text>
+        </View>
+
+        <View style={styles.content}>
+          <Text style={styles.title}>📱 WhatsApp Verification</Text>
+          <Text style={styles.subtitle}>
+            {otpSent ? 'Enter the code we sent to your WhatsApp' : 'Enter your WhatsApp number'}
+          </Text>
+
+          {!otpSent ? (
+            <>
+              <TextInput
+                label="WhatsApp Number"
+                placeholder="+593987654321"
+                value={phoneNumber}
+                onChangeText={setPhoneNumber}
+                mode="outlined"
+                style={styles.input}
+                keyboardType="phone-pad"
+                autoFocus
+              />
+              <Button
+                mode="contained"
+                onPress={sendWhatsAppOTP}
+                loading={loading}
+                disabled={loading}
+                style={styles.signupButton}
+              >
+                Send Verification Code
+              </Button>
+            </>
+          ) : (
+            <>
+              <TextInput
+                label="Verification Code"
+                placeholder="123456"
+                value={otp}
+                onChangeText={setOtp}
+                mode="outlined"
+                style={styles.input}
+                keyboardType="number-pad"
+                maxLength={6}
+                autoFocus
+              />
+              <Button
+                mode="contained"
+                onPress={verifyWhatsAppOTP}
+                loading={loading}
+                disabled={loading}
+                style={styles.signupButton}
+              >
+                Verify Code
+              </Button>
+              <Button
+                mode="text"
+                onPress={() => {
+                  setOtpSent(false);
+                  setOtp('');
+                }}
+                disabled={loading}
+              >
+                Change Number
+              </Button>
+            </>
+          )}
+        </View>
+      </SafeAreaView>
+    );
+  }
 
   // If showing profile step, render role-specific form
   if (showProfileStep) {
@@ -1636,12 +1722,19 @@ export default function SignupScreen() {
       {/* Auth Method */}
       <View style={styles.authButtons}>
         <Text style={styles.authTitle}>{t('authMethod')}</Text>
-        <TouchableOpacity style={styles.googleButton} onPress={handleGoogleSignup}>
-          <Text style={styles.googleButtonText}>🔵 Google</Text>
-        </TouchableOpacity>
+        {GoogleSignin && (
+          <TouchableOpacity style={styles.googleButton} onPress={handleGoogleSignup}>
+            <Text style={styles.googleButtonText}>🔵 Google</Text>
+          </TouchableOpacity>
+        )}
         <TouchableOpacity style={styles.whatsappButton} onPress={handleWhatsAppSignup}>
           <Text style={styles.whatsappButtonText}>💚 WhatsApp</Text>
         </TouchableOpacity>
+        {!GoogleSignin && (
+          <Text style={styles.helperText}>
+            Note: Google Sign-In requires a development build. Use WhatsApp for now.
+          </Text>
+        )}
       </View>
 
       {/* Basic Form Fields */}

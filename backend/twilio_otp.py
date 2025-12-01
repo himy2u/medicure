@@ -17,6 +17,7 @@ load_dotenv()
 TWILIO_ACCOUNT_SID = os.getenv("TWILIO_ACCOUNT_SID")
 TWILIO_AUTH_TOKEN = os.getenv("TWILIO_AUTH_TOKEN")
 TWILIO_WHATSAPP_NUMBER = os.getenv("TWILIO_WHATSAPP_NUMBER", "whatsapp:+14155238886")
+TWILIO_CONTENT_SID = os.getenv("TWILIO_CONTENT_SID", "HXb5b62575e6e4ff6129ad7c8efe1f983e")
 
 # In-memory OTP storage (use Redis in production)
 otp_store: Dict[str, Dict] = {}
@@ -115,10 +116,12 @@ class TwilioWhatsAppOTP:
             to_number = phone_number
         
         try:
-            # Send WhatsApp message
+            # Send WhatsApp message using approved content template
+            # Variables: {{1}} = OTP code, {{2}} = expiry time
             message = self.client.messages.create(
                 from_=TWILIO_WHATSAPP_NUMBER,
-                body=f"Your Medicure verification code is: {otp}\n\nValid for 5 minutes. Do not share this code.",
+                content_sid=TWILIO_CONTENT_SID,
+                content_variables=f'{{"1":"{otp}","2":"5 minutes"}}',
                 to=to_number
             )
             
