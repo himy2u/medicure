@@ -1439,19 +1439,10 @@ export default function SignupScreen() {
       errorLogger.log('Data parsed', data);
       
       if (response.ok && data && data.success) {
-        errorLogger.log('Success! About to show alert');
-        
-        // Simple state update without Alert to test
+        errorLogger.log('Success! Updating state');
         setOtpSent(true);
-        errorLogger.log('otpSent set to true');
-        
-        // Show alert after state update
-        try {
-          Alert.alert('Success', `Verification code sent to ${phoneNumber}`);
-          errorLogger.log('Alert shown successfully');
-        } catch (alertError) {
-          errorLogger.error('Alert.alert failed', alertError);
-        }
+        errorLogger.log('otpSent set to true - screen will change to OTP input');
+        // No Alert - just let the UI change speak for itself
       } else {
         const errorMsg = (data && data.detail) ? data.detail : 'Failed to send OTP';
         errorLogger.error('API Error', errorMsg);
