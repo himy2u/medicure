@@ -196,13 +196,13 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 4,
     elevation: 3,
-    flex: 1,
-    maxWidth: '70%',
+    flexShrink: 1,
   },
   userInfo: {
     marginRight: spacing.sm,
     alignItems: 'flex-end',
-    flex: 1,
+    flexShrink: 1,
+    maxWidth: 150,
   },
   userName: {
     fontSize: 14,
