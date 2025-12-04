@@ -1,6 +1,5 @@
 import React from 'react';
-import { StyleSheet, Text, View, TouchableOpacity, ScrollView } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { StyleSheet, Text, View, TouchableOpacity } from 'react-native';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { useTranslation } from 'react-i18next';
@@ -8,6 +7,8 @@ import * as SecureStore from 'expo-secure-store';
 import { colors, spacing, borderRadius } from '../theme/colors';
 import LanguageToggle from '../components/LanguageToggle';
 import ProfileHeader from '../components/ProfileHeader';
+import BaseScreen from '../components/BaseScreen';
+import { useTestLogger } from '../utils/testLogger';
 
 import { RootStackParamList } from '../navigation/AppNavigator';
 
@@ -17,10 +18,12 @@ export default function LandingScreen() {
   const navigation = useNavigation<LandingScreenNavigationProp>();
   const { t } = useTranslation();
   const [isLoggedIn, setIsLoggedIn] = React.useState(false);
+  const logger = useTestLogger('LandingScreen');
 
   // Check auth status when screen comes into focus
   useFocusEffect(
     React.useCallback(() => {
+      logger.logInfo('Screen focused');
       checkAuthStatus();
     }, [])
   );
@@ -32,7 +35,7 @@ export default function LandingScreen() {
   };
 
   const handleEmergency = () => {
-    // Navigate to emergency symptom page
+    logger.logButtonClick('Emergency', { isLoggedIn });
     navigation.navigate('Emergency');
   };
 
@@ -56,13 +59,11 @@ export default function LandingScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
-      <ScrollView 
-        style={styles.scrollView}
-        contentContainerStyle={styles.content}
-        showsVerticalScrollIndicator={false}
-        bounces={true}
-      >
+    <BaseScreen 
+      pattern="scrollable"
+      edges="topOnly"
+      backgroundColor={colors.backgroundPrimary}
+    >
         {/* Top Bar with Language Toggle and User Profile */}
         <View style={styles.topBar}>
           <LanguageToggle />
@@ -134,25 +135,11 @@ export default function LandingScreen() {
             </View>
           </View>
         )}
-      </ScrollView>
-    </SafeAreaView>
+    </BaseScreen>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: colors.backgroundPrimary,
-  },
-  scrollView: {
-    flex: 1,
-  },
-  content: {
-    flexGrow: 1,
-    paddingHorizontal: spacing.lg,
-    paddingTop: spacing.lg,
-    paddingBottom: spacing.xl,
-  },
   topBar: {
     flexDirection: 'row',
     justifyContent: 'space-between',
