@@ -4,208 +4,160 @@ Run this to create test accounts for development and testing
 """
 
 import asyncio
-from sqlalchemy.orm import Session
-from database import SessionLocal, engine
-from models import User, Doctor, DoctorLocation
+import asyncpg
 from passlib.context import CryptContext
 from datetime import datetime
+import os
+from dotenv import load_dotenv
 
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+load_dotenv()
+
+pwd_context = CryptContext(schemes=["argon2"], deprecated="auto")
 
 def hash_password(password: str) -> str:
     return pwd_context.hash(password)
 
 async def seed_test_users():
-    db = SessionLocal()
+    # Connect to database
+    DATABASE_URL = os.getenv('DATABASE_URL', 'postgresql://postgres:postgres@localhost:5432/medicure_dev')
+    if '@db:' in DATABASE_URL:
+        DATABASE_URL = DATABASE_URL.replace('@db:', '@localhost:')
     
     try:
+        conn = await asyncpg.connect(DATABASE_URL)
         print("🌱 Seeding test users...")
         
         # Test password for all users
         test_password = hash_password("Test123!")
         
         # 1. Patient
-        patient = User(
-            email="patient@test.com",
-            phone_number="+593987654321",
-            hashed_password=test_password,
-            full_name="Test Patient",
-            role="patient",
-            national_id="1234567890",
-            is_active=True,
-            created_at=datetime.utcnow()
-        )
-        db.add(patient)
-        print("✅ Created test patient")
+        try:
+            await conn.execute("""
+                INSERT INTO users (email, hashed_password, name, role)
+                VALUES ($1, $2, $3, $4)
+                ON CONFLICT (email) DO NOTHING
+            """, "patient@test.com", test_password, "Test Patient", "patient")
+            print("✅ Created test patient")
+        except Exception as e:
+            print(f"⚠️  Patient already exists or error: {e}")
         
         # 2. Caregiver
-        caregiver = User(
-            email="caregiver@test.com",
-            phone_number="+593987654322",
-            hashed_password=test_password,
-            full_name="Test Caregiver",
-            role="caregiver",
-            national_id="1234567891",
-            is_active=True,
-            created_at=datetime.utcnow()
-        )
-        db.add(caregiver)
-        print("✅ Created test caregiver")
+        try:
+            await conn.execute("""
+                INSERT INTO users (email, phone_number, hashed_password, full_name, role, national_id, is_active, created_at)
+                VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+                ON CONFLICT (email) DO NOTHING
+            """, "caregiver@test.com", "+593987654322", test_password, "Test Caregiver", "caregiver", "1234567891", True, datetime.utcnow())
+            print("✅ Created test caregiver")
+        except Exception as e:
+            print(f"⚠️  Caregiver already exists or error: {e}")
         
         # 3. Doctor (Cardiologist)
-        doctor1 = User(
-            email="doctor@test.com",
-            phone_number="+593987654323",
-            hashed_password=test_password,
-            full_name="Dr. Test Cardiologist",
-            role="doctor",
-            national_id="1234567892",
-            is_active=True,
-            created_at=datetime.utcnow()
-        )
-        db.add(doctor1)
-        db.flush()  # Get doctor1.id
-        
-        # Add doctor profile
-        doctor1_profile = Doctor(
-            user_id=doctor1.id,
-            specialty="Cardiology",
-            sub_specialty="Interventional Cardiology",
-            license_number="MD-12345",
-            years_of_experience=10,
-            consultation_fee=50.00,
-            is_available=True,
-            accepts_emergency=True
-        )
-        db.add(doctor1_profile)
-        
-        # Add doctor location
-        doctor1_location = DoctorLocation(
-            doctor_id=doctor1.id,
-            location_type="private_clinic",
-            clinic_name="Test Cardiology Clinic",
-            address="Av. 6 de Diciembre, Quito",
-            city="Quito",
-            latitude=-0.1807,
-            longitude=-78.4678,
-            is_primary=True,
-            is_24_hours=False
-        )
-        db.add(doctor1_location)
-        print("✅ Created test doctor (Cardiologist)")
+        try:
+            doctor1_id = await conn.fetchval("""
+                INSERT INTO users (email, phone_number, hashed_password, full_name, role, national_id, is_active, created_at)
+                VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+                ON CONFLICT (email) DO UPDATE SET full_name = EXCLUDED.full_name
+                RETURNING id
+            """, "doctor@test.com", "+593987654323", test_password, "Dr. Test Cardiologist", "doctor", "1234567892", True, datetime.utcnow())
+            
+            # Add doctor profile
+            await conn.execute("""
+                INSERT INTO doctors (user_id, specialty, sub_specialty, license_number, years_of_experience, consultation_fee, is_available, accepts_emergency)
+                VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+                ON CONFLICT (user_id) DO UPDATE SET specialty = EXCLUDED.specialty
+            """, doctor1_id, "Cardiology", "Interventional Cardiology", "MD-12345", 10, 50.00, True, True)
+            
+            # Add doctor location
+            await conn.execute("""
+                INSERT INTO doctor_locations (doctor_id, location_type, clinic_name, address, city, latitude, longitude, is_primary, is_24_hours)
+                VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+                ON CONFLICT DO NOTHING
+            """, doctor1_id, "private_clinic", "Test Cardiology Clinic", "Av. 6 de Diciembre, Quito", "Quito", -0.1807, -78.4678, True, False)
+            
+            print("✅ Created test doctor (Cardiologist)")
+        except Exception as e:
+            print(f"⚠️  Doctor 1 already exists or error: {e}")
         
         # 4. Doctor (Pediatrician)
-        doctor2 = User(
-            email="doctor2@test.com",
-            phone_number="+593987654329",
-            hashed_password=test_password,
-            full_name="Dr. Test Pediatrician",
-            role="doctor",
-            national_id="1234567899",
-            is_active=True,
-            created_at=datetime.utcnow()
-        )
-        db.add(doctor2)
-        db.flush()
-        
-        doctor2_profile = Doctor(
-            user_id=doctor2.id,
-            specialty="Pediatrics",
-            sub_specialty="General Pediatrics",
-            license_number="MD-12346",
-            years_of_experience=8,
-            consultation_fee=40.00,
-            is_available=True,
-            accepts_emergency=True
-        )
-        db.add(doctor2_profile)
-        
-        doctor2_location = DoctorLocation(
-            doctor_id=doctor2.id,
-            location_type="private_clinic",
-            clinic_name="Test Pediatric Clinic",
-            address="Av. Eloy Alfaro, Quito",
-            city="Quito",
-            latitude=-0.1701,
-            longitude=-78.4755,
-            is_primary=True,
-            is_24_hours=False
-        )
-        db.add(doctor2_location)
-        print("✅ Created test doctor (Pediatrician)")
+        try:
+            doctor2_id = await conn.fetchval("""
+                INSERT INTO users (email, phone_number, hashed_password, full_name, role, national_id, is_active, created_at)
+                VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+                ON CONFLICT (email) DO UPDATE SET full_name = EXCLUDED.full_name
+                RETURNING id
+            """, "doctor2@test.com", "+593987654329", test_password, "Dr. Test Pediatrician", "doctor", "1234567899", True, datetime.utcnow())
+            
+            await conn.execute("""
+                INSERT INTO doctors (user_id, specialty, sub_specialty, license_number, years_of_experience, consultation_fee, is_available, accepts_emergency)
+                VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+                ON CONFLICT (user_id) DO UPDATE SET specialty = EXCLUDED.specialty
+            """, doctor2_id, "Pediatrics", "General Pediatrics", "MD-12346", 8, 40.00, True, True)
+            
+            await conn.execute("""
+                INSERT INTO doctor_locations (doctor_id, location_type, clinic_name, address, city, latitude, longitude, is_primary, is_24_hours)
+                VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+                ON CONFLICT DO NOTHING
+            """, doctor2_id, "private_clinic", "Test Pediatric Clinic", "Av. Eloy Alfaro, Quito", "Quito", -0.1701, -78.4755, True, False)
+            
+            print("✅ Created test doctor (Pediatrician)")
+        except Exception as e:
+            print(f"⚠️  Doctor 2 already exists or error: {e}")
         
         # 5. Medical Staff
-        medical_staff = User(
-            email="nurse@test.com",
-            phone_number="+593987654324",
-            hashed_password=test_password,
-            full_name="Test Nurse",
-            role="medical_staff",
-            national_id="1234567893",
-            is_active=True,
-            created_at=datetime.utcnow()
-        )
-        db.add(medical_staff)
-        print("✅ Created test medical staff")
+        try:
+            await conn.execute("""
+                INSERT INTO users (email, phone_number, hashed_password, full_name, role, national_id, is_active, created_at)
+                VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+                ON CONFLICT (email) DO NOTHING
+            """, "nurse@test.com", "+593987654324", test_password, "Test Nurse", "medical_staff", "1234567893", True, datetime.utcnow())
+            print("✅ Created test medical staff")
+        except Exception as e:
+            print(f"⚠️  Medical staff already exists or error: {e}")
         
         # 6. Ambulance Staff
-        ambulance = User(
-            email="ambulance@test.com",
-            phone_number="+593987654325",
-            hashed_password=test_password,
-            full_name="Test Paramedic",
-            role="ambulance_staff",
-            national_id="1234567894",
-            is_active=True,
-            created_at=datetime.utcnow()
-        )
-        db.add(ambulance)
-        print("✅ Created test ambulance staff")
+        try:
+            await conn.execute("""
+                INSERT INTO users (email, phone_number, hashed_password, full_name, role, national_id, is_active, created_at)
+                VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+                ON CONFLICT (email) DO NOTHING
+            """, "ambulance@test.com", "+593987654325", test_password, "Test Paramedic", "ambulance_staff", "1234567894", True, datetime.utcnow())
+            print("✅ Created test ambulance staff")
+        except Exception as e:
+            print(f"⚠️  Ambulance staff already exists or error: {e}")
         
         # 7. Lab Staff
-        lab = User(
-            email="lab@test.com",
-            phone_number="+593987654326",
-            hashed_password=test_password,
-            full_name="Test Lab Technician",
-            role="lab_staff",
-            national_id="1234567895",
-            is_active=True,
-            created_at=datetime.utcnow()
-        )
-        db.add(lab)
-        print("✅ Created test lab staff")
+        try:
+            await conn.execute("""
+                INSERT INTO users (email, phone_number, hashed_password, full_name, role, national_id, is_active, created_at)
+                VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+                ON CONFLICT (email) DO NOTHING
+            """, "lab@test.com", "+593987654326", test_password, "Test Lab Technician", "lab_staff", "1234567895", True, datetime.utcnow())
+            print("✅ Created test lab staff")
+        except Exception as e:
+            print(f"⚠️  Lab staff already exists or error: {e}")
         
         # 8. Pharmacy Staff
-        pharmacy = User(
-            email="pharmacy@test.com",
-            phone_number="+593987654327",
-            hashed_password=test_password,
-            full_name="Test Pharmacist",
-            role="pharmacy_staff",
-            national_id="1234567896",
-            is_active=True,
-            created_at=datetime.utcnow()
-        )
-        db.add(pharmacy)
-        print("✅ Created test pharmacy staff")
+        try:
+            await conn.execute("""
+                INSERT INTO users (email, phone_number, hashed_password, full_name, role, national_id, is_active, created_at)
+                VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+                ON CONFLICT (email) DO NOTHING
+            """, "pharmacy@test.com", "+593987654327", test_password, "Test Pharmacist", "pharmacy_staff", "1234567896", True, datetime.utcnow())
+            print("✅ Created test pharmacy staff")
+        except Exception as e:
+            print(f"⚠️  Pharmacy staff already exists or error: {e}")
         
         # 9. Super Admin
-        admin = User(
-            email="admin@test.com",
-            phone_number="+593987654328",
-            hashed_password=test_password,
-            full_name="Test Admin",
-            role="super_admin",
-            national_id="1234567897",
-            is_active=True,
-            created_at=datetime.utcnow()
-        )
-        db.add(admin)
-        print("✅ Created test super admin")
-        
-        # Commit all
-        db.commit()
+        try:
+            await conn.execute("""
+                INSERT INTO users (email, phone_number, hashed_password, full_name, role, national_id, is_active, created_at)
+                VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+                ON CONFLICT (email) DO NOTHING
+            """, "admin@test.com", "+593987654328", test_password, "Test Admin", "super_admin", "1234567897", True, datetime.utcnow())
+            print("✅ Created test super admin")
+        except Exception as e:
+            print(f"⚠️  Admin already exists or error: {e}")
         
         print("\n✅ All test users created successfully!")
         print("\n📋 Test Credentials:")
@@ -223,9 +175,10 @@ async def seed_test_users():
         
     except Exception as e:
         print(f"❌ Error seeding users: {e}")
-        db.rollback()
+        import traceback
+        traceback.print_exc()
     finally:
-        db.close()
+        await conn.close()
 
 if __name__ == "__main__":
     asyncio.run(seed_test_users())
