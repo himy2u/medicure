@@ -132,6 +132,9 @@ build/
 dist/
 out/
 
+# dev errors
+dev_error/
+
 #keys
 *.json 
 

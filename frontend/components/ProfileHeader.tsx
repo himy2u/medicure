@@ -7,6 +7,7 @@ import * as SecureStore from 'expo-secure-store';
 const GoogleSignin: any = null;
 import { colors, spacing, borderRadius } from '../theme/colors';
 import { RootStackParamList } from '../navigation/AppNavigator';
+import { getRoleBasedHomeScreen } from '../utils/navigationHelper';
 
 type NavigationProp = StackNavigationProp<RootStackParamList>;
 
@@ -26,11 +27,24 @@ export default function ProfileHeader({ hideHomeButton = false }: ProfileHeaderP
 
   const loadUserData = async () => {
     try {
+      const authToken = await SecureStore.getItemAsync('auth_token');
       const name = await SecureStore.getItemAsync('user_name');
       const role = await SecureStore.getItemAsync('user_role');
       
-      if (name) setUserName(name);
-      if (role) setUserRole(role);
+      console.log('🔍 ProfileHeader DEBUG: Auth token exists?', !!authToken);
+      console.log('🔍 ProfileHeader DEBUG: Name:', name);
+      console.log('🔍 ProfileHeader DEBUG: Role:', role);
+      
+      // Only show user data if actually authenticated
+      if (authToken) {
+        // Has auth token - show user data
+        setUserName(name || 'User');
+        setUserRole(role || '');
+      } else {
+        // No auth token - clear display
+        setUserName('');
+        setUserRole('');
+      }
     } catch (error) {
       console.error('Error loading user data:', error);
     }
@@ -39,6 +53,12 @@ export default function ProfileHeader({ hideHomeButton = false }: ProfileHeaderP
   const handleSignOut = async () => {
     try {
       setShowSignOutMenu(false);
+      
+      // If guest, navigate to signup
+      if (!userName) {
+        navigation.navigate('Signup');
+        return;
+      }
       
       // Sign out from Google (if available)
       if (GoogleSignin) {
@@ -60,22 +80,14 @@ export default function ProfileHeader({ hideHomeButton = false }: ProfileHeaderP
     }
   };
 
-  if (!userName) {
-    return null; // Don't show anything if not logged in
-  }
+  // Show "Guest" if not logged in
+  const displayName = userName || 'Guest';
+  const displayRole = userRole || 'Not signed in';
 
   const handleGoHome = () => {
     // Navigate to role-based home screen
-    const homeScreenMap: { [key: string]: keyof RootStackParamList } = {
-      'patient': 'Landing',
-      'caregiver': 'Landing',
-      'doctor': 'DoctorHome',
-      'medical_staff': 'MedicalStaffHome',
-      'ambulance_staff': 'AmbulanceStaffHome',
-    };
-    
-    const homeScreen = homeScreenMap[userRole] || 'Landing';
-    navigation.navigate(homeScreen);
+    const homeScreen = getRoleBasedHomeScreen(userRole || 'patient');
+    navigation.navigate(homeScreen as any);
   };
 
   return (
@@ -95,11 +107,11 @@ export default function ProfileHeader({ hideHomeButton = false }: ProfileHeaderP
           onPress={() => setShowSignOutMenu(!showSignOutMenu)}
         >
           <View style={styles.userInfo}>
-            <Text style={styles.userName}>{userName}</Text>
-            <Text style={styles.userRole}>{userRole}</Text>
+            <Text style={styles.userName}>{displayName}</Text>
+            <Text style={styles.userRole}>{displayRole}</Text>
           </View>
-          <View style={styles.userAvatar}>
-            <Text style={styles.userAvatarText}>{userName.charAt(0).toUpperCase()}</Text>
+          <View style={[styles.userAvatar, !userName && styles.guestAvatar]}>
+            <Text style={styles.userAvatarText}>{displayName.charAt(0).toUpperCase()}</Text>
           </View>
         </TouchableOpacity>
       </View>
@@ -108,7 +120,7 @@ export default function ProfileHeader({ hideHomeButton = false }: ProfileHeaderP
           style={styles.signOutMenu}
           onPress={handleSignOut}
         >
-          <Text style={styles.signOutText}>Sign Out</Text>
+          <Text style={styles.signOutText}>{userName ? 'Sign Out' : 'Sign In'}</Text>
         </TouchableOpacity>
       )}
     </View>
@@ -174,6 +186,9 @@ const styles = StyleSheet.create({
     backgroundColor: colors.accent,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  guestAvatar: {
+    backgroundColor: colors.textSecondary,
   },
   userAvatarText: {
     fontSize: 16,

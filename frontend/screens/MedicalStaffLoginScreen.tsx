@@ -92,7 +92,7 @@ export default function MedicalStaffLoginScreen() {
         { text: 'Cancel', style: 'cancel' },
         {
           text: 'Send OTP',
-          onPress: async (phoneNumber) => {
+          onPress: async (phoneNumber: string | undefined) => {
             if (!phoneNumber) return;
 
             try {
@@ -115,7 +115,7 @@ export default function MedicalStaffLoginScreen() {
                     { text: 'Cancel', style: 'cancel' },
                     {
                       text: 'Verify',
-                      onPress: async (otp) => {
+                      onPress: async (otp: string | undefined) => {
                         if (!otp) return;
 
                         const verifyResponse = await fetch(`${apiBaseUrl}/auth/verify-otp`, {

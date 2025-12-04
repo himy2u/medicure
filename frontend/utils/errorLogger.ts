@@ -19,12 +19,22 @@ class ErrorLogger {
 
   error(message: string, error?: any) {
     const timestamp = new Date().toISOString();
-    const errorDetails = error ? {
-      message: error.message,
-      stack: error.stack,
-      type: typeof error,
-      ...error
-    } : {};
+    
+    // Handle different error types properly
+    let errorDetails: any;
+    if (typeof error === 'string') {
+      errorDetails = error; // Don't spread strings!
+    } else if (error instanceof Error) {
+      errorDetails = {
+        message: error.message,
+        stack: error.stack,
+        name: error.name
+      };
+    } else if (error && typeof error === 'object') {
+      errorDetails = error; // Already an object
+    } else {
+      errorDetails = String(error);
+    }
     
     const logEntry = `[${timestamp}] ERROR: ${message} | ${JSON.stringify(errorDetails)}`;
     this.logs.push(logEntry);

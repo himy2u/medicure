@@ -7,11 +7,15 @@ import * as SecureStore from 'expo-secure-store';
 import { colors, spacing, borderRadius } from '../theme/colors';
 import ProfileHeader from '../components/ProfileHeader';
 import { RootStackParamList } from '../navigation/AppNavigator';
+import { useAuthCheck } from '../hooks/useAuthCheck';
 
 type AmbulanceStaffHomeScreenNavigationProp = StackNavigationProp<RootStackParamList, 'AmbulanceStaffHome'>;
 
 export default function AmbulanceStaffHomeScreen() {
   const navigation = useNavigation<AmbulanceStaffHomeScreenNavigationProp>();
+  
+  // Check authentication on mount
+  useAuthCheck();
   const [staffName, setStaffName] = React.useState('');
 
   React.useEffect(() => {

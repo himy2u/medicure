@@ -17,6 +17,9 @@ export default function LandingScreen() {
   const navigation = useNavigation<LandingScreenNavigationProp>();
   const { t } = useTranslation();
 
+  // Don't auto-redirect - let users access landing page even when logged in
+  // They can navigate to their dashboard via ProfileHeader home button
+
   const handleEmergency = () => {
     // Navigate to emergency symptom page
     navigation.navigate('Emergency');
@@ -28,7 +31,7 @@ export default function LandingScreen() {
       console.log('Not authenticated, redirecting to Signup');
       navigation.navigate('Signup');
     } else {
-      navigation.navigate(screen);
+      navigation.navigate(screen as any);
     }
   };
 
@@ -47,7 +50,7 @@ export default function LandingScreen() {
         {/* Top Bar with Language Toggle and User Profile */}
         <View style={styles.topBar}>
           <LanguageToggle />
-          <ProfileHeader hideHomeButton={true} />
+          <ProfileHeader hideHomeButton={false} />
         </View>
 
         {/* App Title */}
@@ -99,17 +102,17 @@ export default function LandingScreen() {
         <View style={styles.medicalStaffSection}>
           <Text style={styles.medicalStaffLabel}>Healthcare Professional?</Text>
           <View style={styles.medicalStaffButtons}>
-            <TouchableOpacity 
+            <TouchableOpacity
               style={styles.medicalStaffRegisterButton}
               onPress={() => navigation.navigate('MedicalStaffSignup')}
             >
-              <Text style={styles.medicalStaffRegisterText}>Register</Text>
+              <Text style={styles.medicalStaffRegisterText}>Join Network</Text>
             </TouchableOpacity>
-            <TouchableOpacity 
+            <TouchableOpacity
               style={styles.medicalStaffLoginButton}
               onPress={() => navigation.navigate('MedicalStaffLogin')}
             >
-              <Text style={styles.medicalStaffLoginText}>Login</Text>
+              <Text style={styles.medicalStaffLoginText}>Provider Login</Text>
             </TouchableOpacity>
           </View>
         </View>

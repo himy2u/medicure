@@ -1,8 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { StyleSheet, Text, View, ScrollView, TouchableOpacity, Alert, Linking, Dimensions } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
+import MapView, { Marker, PROVIDER_GOOGLE, Region } from 'react-native-maps';
 import { colors, spacing, borderRadius } from '../theme/colors';
 import { RootStackParamList } from '../navigation/AppNavigator';
 import Constants from 'expo-constants';
@@ -48,8 +49,42 @@ export default function DoctorResultsScreen() {
   }
   
   const [requesting, setRequesting] = useState<number | null>(null);
-  const [viewMode, setViewMode] = useState<'list' | 'map'>('list');
-  const [mapError, setMapError] = useState(false);
+  const [viewMode, setViewMode] = useState<'list' | 'map'>('map'); // ✅ Show map by default
+  const [selectedDoctor, setSelectedDoctor] = useState<Doctor | null>(null);
+  const mapRef = useRef<MapView>(null);
+
+  // Calculate initial map region based on doctor locations
+  const getInitialRegion = (): Region => {
+    if (!doctors || doctors.length === 0) {
+      return {
+        latitude: userLocation?.latitude || 0,
+        longitude: userLocation?.longitude || 0,
+        latitudeDelta: 0.1,
+        longitudeDelta: 0.1,
+      };
+    }
+
+    // Calculate bounds for all doctors
+    const lats = doctors.map((d: Doctor) => d.latitude);
+    const lngs = doctors.map((d: Doctor) => d.longitude);
+
+    const minLat = Math.min(...lats, userLocation?.latitude || lats[0]);
+    const maxLat = Math.max(...lats, userLocation?.latitude || lats[0]);
+    const minLng = Math.min(...lngs, userLocation?.longitude || lngs[0]);
+    const maxLng = Math.max(...lngs, userLocation?.longitude || lngs[0]);
+
+    const midLat = (minLat + maxLat) / 2;
+    const midLng = (minLng + maxLng) / 2;
+    const deltaLat = (maxLat - minLat) * 1.5; // Add 50% padding
+    const deltaLng = (maxLng - minLng) * 1.5;
+
+    return {
+      latitude: midLat,
+      longitude: midLng,
+      latitudeDelta: Math.max(deltaLat, 0.05), // Minimum zoom level
+      longitudeDelta: Math.max(deltaLng, 0.05),
+    };
+  };
   
   // Detect if this is emergency context (from EmergencyScreen) or regular booking (from FindDoctorScreen)
   // Emergency mode: has symptom (from EmergencyScreen)
@@ -166,10 +201,7 @@ export default function DoctorResultsScreen() {
           </TouchableOpacity>
           <TouchableOpacity
             style={[styles.toggleButton, viewMode === 'map' && styles.toggleButtonActive]}
-            onPress={() => {
-              setViewMode('map');
-              setMapError(false);
-            }}
+            onPress={() => setViewMode('map')}
           >
             <Text style={[styles.toggleText, viewMode === 'map' && styles.toggleTextActive]}>
               🗺️ Map
@@ -179,37 +211,114 @@ export default function DoctorResultsScreen() {
       </View>
 
       {viewMode === 'map' ? (
-        <View style={styles.mapPlaceholder}>
-          <Text style={styles.mapPlaceholderText}>🗺️</Text>
-          <Text style={styles.mapPlaceholderTitle}>Map View</Text>
-          <Text style={styles.mapPlaceholderSubtext}>
-            Map requires native modules to be rebuilt.{'\n'}
-            Run: npx expo run:ios
-          </Text>
-          <View style={styles.doctorLocationsList}>
-            <Text style={styles.locationsTitle}>Doctor Locations:</Text>
-            {doctors.slice(0, 5).map((doctor: Doctor, index: number) => (
-              <View key={doctor.doctor_id} style={styles.locationItem}>
-                <Text style={styles.locationPin}>📍</Text>
-                <View style={styles.locationInfo}>
-                  <Text style={styles.locationName}>{doctor.full_name}</Text>
-                  <Text style={styles.locationAddress}>{doctor.clinic_name}</Text>
-                  <Text style={styles.locationDistance}>{doctor.distance_km} km away</Text>
+        <View style={styles.mapContainer}>
+          <MapView
+            ref={mapRef}
+            // Use native maps (Apple on iOS, Google on Android) - no setup required
+            style={styles.map}
+            initialRegion={getInitialRegion()}
+            showsUserLocation={true}
+            showsMyLocationButton={true}
+          >
+            {/* User location marker */}
+            {userLocation && (
+              <Marker
+                coordinate={{
+                  latitude: userLocation.latitude,
+                  longitude: userLocation.longitude,
+                }}
+                title="Your Location"
+                pinColor="blue"
+              />
+            )}
+
+            {/* Doctor markers */}
+            {doctors.map((doctor: Doctor) => (
+              <Marker
+                key={doctor.doctor_id}
+                coordinate={{
+                  latitude: doctor.latitude,
+                  longitude: doctor.longitude,
+                }}
+                title={doctor.full_name}
+                description={`${doctor.specialty} • ${doctor.distance_km} km away`}
+                pinColor={isEmergency ? 'red' : 'green'}
+                onPress={() => setSelectedDoctor(doctor)}
+              />
+            ))}
+          </MapView>
+
+          {/* Doctor info card when marker is selected */}
+          {selectedDoctor && (
+            <View style={styles.mapDoctorCard}>
+              <TouchableOpacity
+                style={styles.closeCardButton}
+                onPress={() => setSelectedDoctor(null)}
+              >
+                <Text style={styles.closeCardText}>✕</Text>
+              </TouchableOpacity>
+
+              <View style={styles.mapDoctorInfo}>
+                <View style={styles.mapDoctorAvatar}>
+                  <Text style={styles.mapDoctorAvatarText}>
+                    {selectedDoctor.full_name.charAt(0)}
+                  </Text>
+                </View>
+                <View style={styles.mapDoctorDetails}>
+                  <Text style={styles.mapDoctorName}>{selectedDoctor.full_name}</Text>
+                  <Text style={styles.mapDoctorSpecialty}>
+                    {selectedDoctor.specialty}
+                    {selectedDoctor.sub_specialty && ` • ${selectedDoctor.sub_specialty}`}
+                  </Text>
+                  <Text style={styles.mapDoctorClinic}>{selectedDoctor.clinic_name}</Text>
+                  <Text style={styles.mapDoctorDistance}>
+                    📍 {selectedDoctor.distance_km} km away
+                    {selectedDoctor.is_24_hours && ' • ⏰ 24/7'}
+                  </Text>
                 </View>
               </View>
-            ))}
-            {doctors.length > 5 && (
-              <Text style={styles.moreLocations}>
-                + {doctors.length - 5} more locations
-              </Text>
-            )}
-          </View>
-          <TouchableOpacity 
-            style={styles.backToListButton}
-            onPress={() => setViewMode('list')}
-          >
-            <Text style={styles.backToListText}>← Back to List View</Text>
-          </TouchableOpacity>
+
+              <View style={styles.mapDoctorActions}>
+                {isEmergency ? (
+                  <>
+                    <TouchableOpacity
+                      style={styles.mapAlertButton}
+                      onPress={() => {
+                        setSelectedDoctor(null);
+                        handleEmergencyRequest(selectedDoctor);
+                      }}
+                    >
+                      <Text style={styles.mapAlertButtonText}>🚨 Alert Doctor</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      style={styles.mapCallButton}
+                      onPress={() => handleCall(selectedDoctor.phone)}
+                    >
+                      <Text style={styles.mapCallButtonText}>📞 Call</Text>
+                    </TouchableOpacity>
+                  </>
+                ) : (
+                  <>
+                    <TouchableOpacity
+                      style={styles.mapBookButton}
+                      onPress={() => {
+                        setSelectedDoctor(null);
+                        handleBookAppointment(selectedDoctor);
+                      }}
+                    >
+                      <Text style={styles.mapBookButtonText}>📅 Book</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      style={styles.mapDirectionsButton}
+                      onPress={() => handleDirections(selectedDoctor.latitude, selectedDoctor.longitude)}
+                    >
+                      <Text style={styles.mapDirectionsButtonText}>🗺️ Directions</Text>
+                    </TouchableOpacity>
+                  </>
+                )}
+              </View>
+            </View>
+          )}
         </View>
       ) : (
         <ScrollView 
@@ -360,95 +469,142 @@ const styles = StyleSheet.create({
   toggleTextActive: {
     color: colors.emergency,
   },
+  mapContainer: {
+    flex: 1,
+    position: 'relative',
+  },
   map: {
-    flex: 1,
-    width: width,
-    height: height - 200,
-  },
-  mapPlaceholder: {
-    flex: 1,
-    alignItems: 'center',
-    backgroundColor: colors.backgroundPrimary,
-    padding: spacing.xl,
-    paddingTop: spacing.xxl,
-  },
-  mapPlaceholderText: {
-    fontSize: 64,
-    marginBottom: spacing.sm,
-  },
-  mapPlaceholderTitle: {
-    fontSize: 24,
-    fontWeight: '700',
-    color: colors.textPrimary,
-    marginBottom: spacing.sm,
-  },
-  mapPlaceholderSubtext: {
-    fontSize: 14,
-    color: colors.textSecondary,
-    textAlign: 'center',
-    marginBottom: spacing.xl,
-    lineHeight: 20,
-  },
-  doctorLocationsList: {
     width: '100%',
+    height: '100%',
+  },
+  mapDoctorCard: {
+    position: 'absolute',
+    bottom: 20,
+    left: spacing.md,
+    right: spacing.md,
     backgroundColor: colors.backgroundSecondary,
     borderRadius: borderRadius.lg,
     padding: spacing.md,
-    marginBottom: spacing.lg,
+    shadowColor: colors.shadowDark,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 8,
   },
-  locationsTitle: {
+  closeCardButton: {
+    position: 'absolute',
+    top: spacing.sm,
+    right: spacing.sm,
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+    backgroundColor: colors.border,
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 10,
+  },
+  closeCardText: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: colors.textPrimary,
+  },
+  mapDoctorInfo: {
+    flexDirection: 'row',
+    marginBottom: spacing.md,
+  },
+  mapDoctorAvatar: {
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+    backgroundColor: colors.accent,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: spacing.md,
+  },
+  mapDoctorAvatarText: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#FFFFFF',
+  },
+  mapDoctorDetails: {
+    flex: 1,
+    paddingRight: spacing.lg,
+  },
+  mapDoctorName: {
     fontSize: 16,
     fontWeight: '700',
     color: colors.textPrimary,
-    marginBottom: spacing.md,
+    marginBottom: spacing.xs,
   },
-  locationItem: {
-    flexDirection: 'row',
-    marginBottom: spacing.md,
-    paddingBottom: spacing.md,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
-  },
-  locationPin: {
-    fontSize: 20,
-    marginRight: spacing.sm,
-  },
-  locationInfo: {
-    flex: 1,
-  },
-  locationName: {
-    fontSize: 14,
+  mapDoctorSpecialty: {
+    fontSize: 13,
     fontWeight: '600',
+    color: colors.accent,
+    marginBottom: spacing.xs,
+  },
+  mapDoctorClinic: {
+    fontSize: 12,
     color: colors.textPrimary,
     marginBottom: 2,
   },
-  locationAddress: {
-    fontSize: 13,
-    color: colors.textSecondary,
-    marginBottom: 2,
-  },
-  locationDistance: {
+  mapDoctorDistance: {
     fontSize: 12,
+    fontWeight: '600',
     color: colors.success,
-    fontWeight: '600',
   },
-  moreLocations: {
-    fontSize: 13,
-    color: colors.textSecondary,
-    textAlign: 'center',
-    marginTop: spacing.sm,
-    fontStyle: 'italic',
+  mapDoctorActions: {
+    flexDirection: 'row',
+    gap: spacing.sm,
   },
-  backToListButton: {
-    backgroundColor: colors.accent,
-    paddingVertical: spacing.md,
-    paddingHorizontal: spacing.xl,
-    borderRadius: borderRadius.lg,
+  mapAlertButton: {
+    flex: 1,
+    backgroundColor: colors.emergency,
+    paddingVertical: spacing.sm,
+    borderRadius: borderRadius.md,
+    alignItems: 'center',
   },
-  backToListText: {
+  mapAlertButtonText: {
     color: '#FFFFFF',
-    fontSize: 16,
-    fontWeight: '600',
+    fontSize: 14,
+    fontWeight: '700',
+  },
+  mapCallButton: {
+    flex: 1,
+    backgroundColor: colors.accent,
+    paddingVertical: spacing.sm,
+    borderRadius: borderRadius.md,
+    alignItems: 'center',
+  },
+  mapCallButtonText: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: '700',
+  },
+  mapBookButton: {
+    flex: 1,
+    backgroundColor: colors.accent,
+    paddingVertical: spacing.sm,
+    borderRadius: borderRadius.md,
+    alignItems: 'center',
+  },
+  mapBookButtonText: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: '700',
+  },
+  mapDirectionsButton: {
+    flex: 1,
+    backgroundColor: colors.backgroundPrimary,
+    paddingVertical: spacing.sm,
+    borderRadius: borderRadius.md,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  mapDirectionsButtonText: {
+    color: colors.textPrimary,
+    fontSize: 14,
+    fontWeight: '700',
   },
   backButton: {
     marginBottom: spacing.sm,

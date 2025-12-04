@@ -7,11 +7,15 @@ import * as SecureStore from 'expo-secure-store';
 import { colors, spacing, borderRadius } from '../theme/colors';
 import ProfileHeader from '../components/ProfileHeader';
 import { RootStackParamList } from '../navigation/AppNavigator';
+import { useAuthCheck } from '../hooks/useAuthCheck';
 
 type ClinicAdminHomeScreenNavigationProp = StackNavigationProp<RootStackParamList, 'ClinicAdminHome'>;
 
 export default function ClinicAdminHomeScreen() {
   const navigation = useNavigation<ClinicAdminHomeScreenNavigationProp>();
+  
+  // Check authentication on mount
+  useAuthCheck();
   const [adminName, setAdminName] = React.useState('');
 
   React.useEffect(() => {

@@ -383,6 +383,48 @@ async def forgot_password(request: ForgotPasswordRequest):
     # For now, just return success message
     return {"message": "Password reset instructions sent to email"}
 
+@app.get("/users/{user_id}/profile")
+async def get_user_profile(user_id: str):
+    """Get user profile information"""
+    try:
+        pool = await get_pool()
+        async with pool.acquire() as conn:
+            # Get user basic info
+            user = await conn.fetchrow('SELECT id, email, role, full_name FROM users WHERE id = $1', user_id)
+
+            if not user:
+                raise HTTPException(
+                    status_code=status.HTTP_404_NOT_FOUND,
+                    detail="User not found"
+                )
+
+            # Get profile data
+            profile_result = await conn.fetchrow(
+                'SELECT profile_data, profile_complete FROM user_profiles WHERE user_id = $1',
+                user_id
+            )
+
+            profile_complete = profile_result['profile_complete'] if profile_result else False
+            profile_data = json.loads(profile_result['profile_data']) if profile_result and profile_result['profile_data'] else {}
+
+            return {
+                "user_id": user['id'],
+                "email": user['email'],
+                "role": user['role'],
+                "full_name": user['full_name'],
+                "profile_complete": profile_complete,
+                "profile_data": profile_data
+            }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"✗ Get profile error: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to get profile: {str(e)}"
+        )
+
 @app.put("/users/{user_id}/profile")
 async def update_user_profile(user_id: str, profile_data: ProfileUpdateRequest):
     """Update user profile with additional information"""
@@ -500,7 +542,7 @@ async def verify_whatsapp_otp(request: WhatsAppOTPVerifyRequest):
         is_new_user = False
 
         if not user:
-            # Create new user
+            # Create new user with requested role
             is_new_user = True
             import secrets
             random_password = secrets.token_urlsafe(32)
@@ -522,6 +564,15 @@ async def verify_whatsapp_otp(request: WhatsAppOTPVerifyRequest):
                 success=True
             )
         else:
+            # Existing user - check if role matches
+            if request.role and request.role != user.role:
+                # User trying to login with different role
+                print(f"   ⚠️ Role mismatch: User is {user.role}, trying to login as {request.role}")
+                raise HTTPException(
+                    status_code=status.HTTP_403_FORBIDDEN,
+                    detail=f"This phone number is registered as {user.role}. Please use the correct login page."
+                )
+            
             await log_audit_event(
                 event_type="login",
                 auth_method="whatsapp_otp",

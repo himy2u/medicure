@@ -13,6 +13,7 @@ import ForgotPasswordScreen from '../screens/ForgotPasswordScreen';
 import EmergencyScreen from '../screens/EmergencyScreen';
 import FindDoctorScreen from '../screens/FindDoctorScreen';
 import DoctorResultsScreen from '../screens/DoctorResultsScreen';
+import PatientDashboardScreen from '../screens/PatientDashboardScreen';
 import DoctorHomeScreen from '../screens/DoctorHomeScreen';
 import MedicalStaffHomeScreen from '../screens/MedicalStaffHomeScreen';
 import AmbulanceStaffHomeScreen from '../screens/AmbulanceStaffHomeScreen';
@@ -33,7 +34,13 @@ export type RootStackParamList = {
     doctors: any[];
     symptom: string;
     userLocation: { latitude: number; longitude: number };
+    searchCriteria?: {
+      symptom?: string;
+      date?: string;
+      timeWindow?: string;
+    };
   };
+  PatientDashboard: undefined;
   DoctorHome: undefined;
   MedicalStaffHome: undefined;
   AmbulanceStaffHome: undefined;
@@ -122,6 +129,11 @@ export default function AppNavigator() {
           <Stack.Screen
             name="DoctorResults"
             component={DoctorResultsScreen}
+            options={{ headerShown: false }}
+          />
+          <Stack.Screen
+            name="PatientDashboard"
+            component={PatientDashboardScreen}
             options={{ headerShown: false }}
           />
           <Stack.Screen

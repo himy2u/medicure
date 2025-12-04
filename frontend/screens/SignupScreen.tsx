@@ -13,10 +13,15 @@ import { colors, spacing, borderRadius } from '../theme/colors';
 import { RootStackParamList } from '../navigation/AppNavigator';
 import { getRoleBasedHomeScreen } from '../utils/navigationHelper';
 import { errorLogger } from '../utils/errorLogger';
+import ProfileHeader from '../components/ProfileHeader';
 
-// GoogleSignin is disabled for Expo Go compatibility
-// To enable Google Sign-In, build a development client with: npx expo run:ios
-const GoogleSignin: any = null;
+// GoogleSignin: Conditionally import for Expo Go compatibility
+let GoogleSignin: any = null;
+try {
+  GoogleSignin = require('@react-native-google-signin/google-signin').GoogleSignin;
+} catch (e) {
+  console.log('GoogleSignin not available (Expo Go) - using WhatsApp only');
+}
 
 // Move styles to top to fix "styles used before declaration" errors
 const styles = StyleSheet.create({
@@ -27,11 +32,16 @@ const styles = StyleSheet.create({
   header: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'space-between',
     paddingHorizontal: spacing.lg,
     paddingVertical: spacing.md,
     backgroundColor: colors.backgroundPrimary,
     borderBottomWidth: 1,
     borderBottomColor: colors.border,
+  },
+  headerLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
   },
   headerBackButton: {
     marginRight: spacing.md,
@@ -92,9 +102,16 @@ const styles = StyleSheet.create({
   googleButton: {
     backgroundColor: '#4285F4',
     paddingVertical: spacing.md,
-    borderRadius: borderRadius.md,
+    borderRadius: borderRadius.lg,
     alignItems: 'center',
+    justifyContent: 'center',
     marginBottom: spacing.sm,
+    minHeight: 48,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 2,
   },
   googleButtonText: {
     color: '#FFFFFF',
@@ -115,7 +132,7 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: colors.border,
   },
-  headerLeft: {
+  profileHeaderLeft: {
     flex: 1,
   },
   roleContainer: {
@@ -346,16 +363,22 @@ const styles = StyleSheet.create({
   whatsappButton: {
     backgroundColor: '#25D366',
     borderRadius: borderRadius.lg,
-    paddingVertical: spacing.sm,
+    paddingVertical: spacing.md,
     paddingHorizontal: spacing.lg,
     alignItems: 'center',
+    justifyContent: 'center',
     marginBottom: spacing.sm,
-    minHeight: 44,
+    minHeight: 48,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 2,
   },
   whatsappButtonText: {
-    fontSize: 14,
-    fontWeight: '600',
     color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '600',
   },
   dividerLine: {
     flex: 1,
@@ -1165,10 +1188,13 @@ export default function SignupScreen() {
     }
   });
 
-  // Check if user is already authenticated
+  // Check if user is already authenticated (only run once on mount, not during profile step)
   React.useEffect(() => {
-    checkAuthStatus();
-  }, []);
+    // Only check auth status if not in profile completion step
+    if (!showProfileStep) {
+      checkAuthStatus();
+    }
+  }, []); // Run only once on mount
 
   const checkAuthStatus = async () => {
     try {
@@ -1177,9 +1203,34 @@ export default function SignupScreen() {
       const userRole = await SecureStore.getItemAsync('user_role');
 
       if (authToken && userId) {
-        console.log('User already authenticated, redirecting to role-based home');
-        const homeScreen = getRoleBasedHomeScreen(userRole || 'patient');
-        navigation.navigate(homeScreen);
+        console.log('User already authenticated, checking profile completion');
+        // Check if profile is complete before redirecting
+        const apiBaseUrl = Constants.expoConfig?.extra?.apiBaseUrl || process.env.EXPO_PUBLIC_API_BASE_URL || 'http://192.168.100.91:8000';
+
+        try {
+          const response = await fetch(`${apiBaseUrl}/users/${userId}/profile`, {
+            headers: {
+              'Authorization': `Bearer ${authToken}`,
+            },
+          });
+
+          if (response.ok) {
+            const profileData = await response.json();
+            if (profileData.profile_complete) {
+              console.log('Profile complete, redirecting to role-based home');
+              const homeScreen = getRoleBasedHomeScreen(userRole || 'patient');
+              navigation.navigate(homeScreen);
+            } else {
+              console.log('Profile incomplete, showing profile form');
+              setShowProfileStep(true);
+            }
+          }
+        } catch (error) {
+          console.error('Error checking profile completion:', error);
+          // On error, redirect to home anyway
+          const homeScreen = getRoleBasedHomeScreen(userRole || 'patient');
+          navigation.navigate(homeScreen);
+        }
       }
     } catch (error) {
       console.error('Error checking auth status:', error);
@@ -1308,15 +1359,6 @@ export default function SignupScreen() {
   };
 
   const handleGoogleSignup = async () => {
-    // Check if GoogleSignin is available (not in Expo Go)
-    if (!GoogleSignin) {
-      Alert.alert(
-        'Google Sign-In Not Available',
-        'Google Sign-In requires a development build. Please use WhatsApp sign-in instead, or build a development client with "npx expo run:ios"'
-      );
-      return;
-    }
-
     try {
       setLoading(true);
       console.log('=== GOOGLE SIGN-IN STARTED ===');
@@ -1326,8 +1368,16 @@ export default function SignupScreen() {
       
       // Sign in and get user info with id_token
       const signInResult = await GoogleSignin.signIn();
-      console.log('=== GOOGLE SIGN-IN SUCCESS ===');
-      console.log('User:', signInResult.data?.user.email);
+      
+      // Check if user actually signed in (didn't cancel)
+      if (!signInResult || !signInResult.data?.user) {
+        console.log('⚠️ User cancelled Google sign-in');
+        setLoading(false);
+        return;
+      }
+      
+      console.log('=== GOOGLE SIGN-IN POPUP COMPLETED ===');
+      console.log('User selected:', signInResult.data.user.email);
       
       // Get id_token
       const tokens = await GoogleSignin.getTokens();
@@ -1364,6 +1414,8 @@ export default function SignupScreen() {
       console.log('Backend response:', response.ok ? 'Success' : 'Failed');
 
       if (response.ok) {
+        console.log('✅ GOOGLE AUTHENTICATION SUCCESS - Backend accepted');
+        
         // Store authentication data
         await SecureStore.setItemAsync('auth_token', data.access_token);
         await SecureStore.setItemAsync('user_role', data.role);
@@ -1635,7 +1687,7 @@ export default function SignupScreen() {
       <ScrollView style={styles.container} showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
         <View style={styles.content}>
           <View style={styles.profileHeader}>
-            <View style={styles.headerLeft}>
+            <View style={styles.profileHeaderLeft}>
               <Text style={styles.title}>{t('completeProfile')}</Text>
               <View style={styles.roleContainer}>
                 <Text style={styles.roleLabel}>Role:</Text>
@@ -1705,12 +1757,15 @@ export default function SignupScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
-      {/* Header with Back Button */}
+      {/* Header with Back Button and Profile */}
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.headerBackButton}>
-          <Text style={styles.headerBackText}>← Back</Text>
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>Signup</Text>
+        <View style={styles.headerLeft}>
+          <TouchableOpacity onPress={() => navigation.goBack()} style={styles.headerBackButton}>
+            <Text style={styles.headerBackText}>← Back</Text>
+          </TouchableOpacity>
+          <Text style={styles.headerTitle}>Signup</Text>
+        </View>
+        <ProfileHeader hideHomeButton={true} />
       </View>
 
       <View style={styles.content}>
@@ -1756,19 +1811,12 @@ export default function SignupScreen() {
       {/* Auth Method */}
       <View style={styles.authButtons}>
         <Text style={styles.authTitle}>{t('authMethod')}</Text>
-        {GoogleSignin && (
-          <TouchableOpacity style={styles.googleButton} onPress={handleGoogleSignup}>
-            <Text style={styles.googleButtonText}>🔵 Google</Text>
-          </TouchableOpacity>
-        )}
-        <TouchableOpacity style={styles.whatsappButton} onPress={handleWhatsAppSignup}>
-          <Text style={styles.whatsappButtonText}>💚 WhatsApp</Text>
+        <TouchableOpacity style={styles.googleButton} onPress={handleGoogleSignup}>
+          <Text style={styles.googleButtonText}>🔵 Continue with Google</Text>
         </TouchableOpacity>
-        {!GoogleSignin && (
-          <Text style={styles.helperText}>
-            Note: Google Sign-In requires a development build. Use WhatsApp for now.
-          </Text>
-        )}
+        <TouchableOpacity style={styles.whatsappButton} onPress={handleWhatsAppSignup}>
+          <Text style={styles.whatsappButtonText}>💚 Continue with WhatsApp</Text>
+        </TouchableOpacity>
       </View>
 
       {/* Basic Form Fields */}

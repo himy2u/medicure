@@ -1,15 +1,17 @@
 import { RootStackParamList } from '../navigation/AppNavigator';
 
+type HomeScreenName = 'PatientDashboard' | 'DoctorHome' | 'MedicalStaffHome' | 'AmbulanceStaffHome' | 'LabStaffHome' | 'PharmacyStaffHome' | 'ClinicAdminHome' | 'Landing';
+
 /**
  * Get the appropriate home screen based on user role
  * @param role - The user's role (patient, caregiver, doctor, medical_staff, etc.)
  * @returns The screen name to navigate to
  */
-export function getRoleBasedHomeScreen(role: string): keyof RootStackParamList {
+export function getRoleBasedHomeScreen(role: string): HomeScreenName {
   switch (role) {
     case 'patient':
     case 'caregiver':
-      return 'Landing'; // Landing screen is the patient/caregiver dashboard
+      return 'PatientDashboard'; // Patient/caregiver dashboard with role-specific features
     case 'doctor':
       return 'DoctorHome';
     case 'medical_staff':
