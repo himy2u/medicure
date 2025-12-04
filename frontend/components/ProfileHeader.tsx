@@ -20,6 +20,19 @@ export default function ProfileHeader({ hideHomeButton = false }: ProfileHeaderP
   const [userName, setUserName] = useState<string>('');
   const [userRole, setUserRole] = useState<string>('');
   const [showSignOutMenu, setShowSignOutMenu] = useState(false);
+  
+  // Determine if we should show home button
+  const currentRoute = navigation.getState()?.routes[navigation.getState()?.index || 0]?.name;
+  const isOnHomePage = currentRoute === 'Landing' || 
+                       currentRoute === 'DoctorHome' || 
+                       currentRoute === 'PatientDashboard' ||
+                       currentRoute === 'MedicalStaffHome' ||
+                       currentRoute === 'AmbulanceStaffHome' ||
+                       currentRoute === 'LabStaffHome' ||
+                       currentRoute === 'PharmacyStaffHome' ||
+                       currentRoute === 'ClinicAdminHome';
+  
+  const shouldShowHomeButton = !hideHomeButton && !isOnHomePage;
 
   useEffect(() => {
     loadUserData();
@@ -121,7 +134,7 @@ export default function ProfileHeader({ hideHomeButton = false }: ProfileHeaderP
   return (
     <View style={styles.container}>
       <View style={styles.headerRow}>
-        {!hideHomeButton && (
+        {shouldShowHomeButton && (
           <TouchableOpacity 
             style={styles.homeButton}
             onPress={handleGoHome}

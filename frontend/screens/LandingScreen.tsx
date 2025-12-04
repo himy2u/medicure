@@ -9,6 +9,7 @@ import LanguageToggle from '../components/LanguageToggle';
 import ProfileHeader from '../components/ProfileHeader';
 import BaseScreen from '../components/BaseScreen';
 import { useTestLogger } from '../utils/testLogger';
+import { getRoleBasedHomeScreen } from '../utils/navigationHelper';
 
 import { RootStackParamList } from '../navigation/AppNavigator';
 
@@ -18,6 +19,7 @@ export default function LandingScreen() {
   const navigation = useNavigation<LandingScreenNavigationProp>();
   const { t } = useTranslation();
   const [isLoggedIn, setIsLoggedIn] = React.useState(false);
+  const [userRole, setUserRole] = React.useState<string>('');
   const logger = useTestLogger('LandingScreen');
 
   // Check auth status when screen comes into focus
@@ -30,8 +32,18 @@ export default function LandingScreen() {
 
   const checkAuthStatus = async () => {
     const authToken = await SecureStore.getItemAsync('auth_token');
+    const role = await SecureStore.getItemAsync('user_role');
     console.log('🔍 LandingScreen: Auth token exists?', !!authToken);
+    console.log('🔍 LandingScreen: User role:', role);
     setIsLoggedIn(!!authToken);
+    setUserRole(role || '');
+    
+    // If logged in and not patient/caregiver, redirect to their dashboard
+    if (authToken && role && role !== 'patient' && role !== 'caregiver') {
+      logger.logInfo(`Redirecting ${role} to their dashboard`);
+      const homeScreen = getRoleBasedHomeScreen(role);
+      navigation.replace(homeScreen as any);
+    }
   };
 
   const handleEmergency = () => {
