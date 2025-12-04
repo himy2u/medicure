@@ -16,9 +16,16 @@ type LandingScreenNavigationProp = StackNavigationProp<RootStackParamList, 'Land
 export default function LandingScreen() {
   const navigation = useNavigation<LandingScreenNavigationProp>();
   const { t } = useTranslation();
+  const [isLoggedIn, setIsLoggedIn] = React.useState(false);
 
-  // Don't auto-redirect - let users access landing page even when logged in
-  // They can navigate to their dashboard via ProfileHeader home button
+  React.useEffect(() => {
+    checkAuthStatus();
+  }, []);
+
+  const checkAuthStatus = async () => {
+    const authToken = await SecureStore.getItemAsync('auth_token');
+    setIsLoggedIn(!!authToken);
+  };
 
   const handleEmergency = () => {
     // Navigate to emergency symptom page
@@ -98,24 +105,26 @@ export default function LandingScreen() {
           <Text style={styles.labTestButtonText}>🧪 Lab Tests</Text>
         </TouchableOpacity>
 
-        {/* Healthcare Professional Section */}
-        <View style={styles.medicalStaffSection}>
-          <Text style={styles.medicalStaffLabel}>Healthcare Professional?</Text>
-          <View style={styles.medicalStaffButtons}>
-            <TouchableOpacity
-              style={styles.medicalStaffRegisterButton}
-              onPress={() => navigation.navigate('MedicalStaffSignup')}
-            >
-              <Text style={styles.medicalStaffRegisterText}>Join Network</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={styles.medicalStaffLoginButton}
-              onPress={() => navigation.navigate('MedicalStaffLogin')}
-            >
-              <Text style={styles.medicalStaffLoginText}>Provider Login</Text>
-            </TouchableOpacity>
+        {/* Healthcare Professional Section - Only show if not logged in */}
+        {!isLoggedIn && (
+          <View style={styles.medicalStaffSection}>
+            <Text style={styles.medicalStaffLabel}>Healthcare Professional?</Text>
+            <View style={styles.medicalStaffButtons}>
+              <TouchableOpacity
+                style={styles.medicalStaffRegisterButton}
+                onPress={() => navigation.navigate('MedicalStaffSignup')}
+              >
+                <Text style={styles.medicalStaffRegisterText}>Join Network</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.medicalStaffLoginButton}
+                onPress={() => navigation.navigate('MedicalStaffLogin')}
+              >
+                <Text style={styles.medicalStaffLoginText}>Provider Login</Text>
+              </TouchableOpacity>
+            </View>
           </View>
-        </View>
+        )}
       </View>
     </SafeAreaView>
   );
@@ -130,7 +139,7 @@ const styles = StyleSheet.create({
     flex: 1,
     paddingHorizontal: spacing.lg,
     paddingTop: spacing.lg,
-    paddingBottom: 100, // Reserve space for fixed bottom button
+    paddingBottom: spacing.xl,
     justifyContent: 'flex-start',
   },
   topBar: {
@@ -236,30 +245,32 @@ const styles = StyleSheet.create({
     borderWidth: 2,
     borderColor: '#5A7A8A',
     flex: 1,
-    minWidth: 150,
-    minHeight: 85,
+    minWidth: 140,
+    paddingVertical: spacing.md,
+    paddingHorizontal: spacing.sm,
   },
   prescriptionButtonText: {
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: '600',
     color: '#FFFFFF',
-    marginBottom: spacing.xs,
     flexShrink: 1,
+    textAlign: 'center',
   },
   healthButton: {
     backgroundColor: '#8FBC8F', // Soft sage green
     borderWidth: 2,
     borderColor: '#7AB87A',
     flex: 1,
-    minWidth: 150,
-    minHeight: 85,
+    minWidth: 140,
+    paddingVertical: spacing.md,
+    paddingHorizontal: spacing.sm,
   },
   healthButtonText: {
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: '600',
     color: '#FFFFFF',
-    marginBottom: spacing.xs,
     flexShrink: 1,
+    textAlign: 'center',
   },
   labTestButton: {
     backgroundColor: '#9B59B6', // Purple
@@ -322,21 +333,13 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
   },
   medicalStaffSection: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
     backgroundColor: colors.backgroundPrimary,
     paddingVertical: spacing.md,
     paddingHorizontal: spacing.lg,
     borderTopWidth: 2,
     borderTopColor: colors.border,
     alignItems: 'center',
-    shadowColor: colors.shadowDark,
-    shadowOffset: { width: 0, height: -2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 10,
+    marginTop: spacing.lg,
   },
   medicalStaffLabel: {
     fontSize: 14,

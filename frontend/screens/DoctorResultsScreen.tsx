@@ -233,9 +233,9 @@ export default function DoctorResultsScreen() {
             )}
 
             {/* Doctor markers */}
-            {doctors.map((doctor: Doctor) => (
+            {doctors.map((doctor: Doctor, index: number) => (
               <Marker
-                key={doctor.doctor_id}
+                key={`marker-${doctor.doctor_id}-${index}`}
                 coordinate={{
                   latitude: doctor.latitude,
                   longitude: doctor.longitude,
@@ -341,7 +341,7 @@ export default function DoctorResultsScreen() {
           </View>
         ) : (
           doctors.map((doctor: Doctor, index: number) => (
-            <View key={doctor.doctor_id} style={styles.doctorCard}>
+            <View key={`${doctor.doctor_id}-${index}`} style={styles.doctorCard}>
               <View style={styles.doctorHeader}>
                 <View style={styles.doctorAvatar}>
                   <Text style={styles.doctorAvatarText}>

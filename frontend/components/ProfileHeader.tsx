@@ -73,7 +73,7 @@ export default function ProfileHeader({ hideHomeButton = false }: ProfileHeaderP
       await SecureStore.deleteItemAsync('user_email');
       
       console.log('User signed out successfully');
-      navigation.navigate('Signup');
+      navigation.navigate('Landing');
     } catch (error) {
       console.error('Error signing out:', error);
       Alert.alert('Error', 'Failed to sign out');
@@ -164,20 +164,25 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 4,
     elevation: 3,
+    flex: 1,
+    maxWidth: '70%',
   },
   userInfo: {
     marginRight: spacing.sm,
     alignItems: 'flex-end',
+    flex: 1,
   },
   userName: {
     fontSize: 14,
     fontWeight: '600',
     color: colors.textPrimary,
+    flexShrink: 1,
   },
   userRole: {
     fontSize: 11,
     color: colors.textSecondary,
     textTransform: 'capitalize',
+    flexShrink: 1,
   },
   userAvatar: {
     width: 36,
