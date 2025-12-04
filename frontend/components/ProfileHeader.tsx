@@ -23,7 +23,14 @@ export default function ProfileHeader({ hideHomeButton = false }: ProfileHeaderP
 
   useEffect(() => {
     loadUserData();
-  }, []);
+    
+    // Add focus listener to refresh user data when screen comes into focus
+    const unsubscribe = navigation.addListener('focus', () => {
+      loadUserData();
+    });
+    
+    return unsubscribe;
+  }, [navigation]);
 
   const loadUserData = async () => {
     try {
@@ -60,23 +67,44 @@ export default function ProfileHeader({ hideHomeButton = false }: ProfileHeaderP
         return;
       }
       
+      console.log('🔓 Starting sign out process...');
+      
       // Sign out from Google (if available)
       if (GoogleSignin) {
-        await GoogleSignin.signOut();
+        try {
+          await GoogleSignin.signOut();
+          console.log('✅ Google sign out successful');
+        } catch (e) {
+          console.log('⚠️ Google sign out skipped:', e);
+        }
       }
       
       // Clear all stored data
-      await SecureStore.deleteItemAsync('auth_token');
-      await SecureStore.deleteItemAsync('user_role');
-      await SecureStore.deleteItemAsync('user_id');
-      await SecureStore.deleteItemAsync('user_name');
-      await SecureStore.deleteItemAsync('user_email');
+      try {
+        await SecureStore.deleteItemAsync('auth_token');
+        await SecureStore.deleteItemAsync('user_role');
+        await SecureStore.deleteItemAsync('user_id');
+        await SecureStore.deleteItemAsync('user_name');
+        await SecureStore.deleteItemAsync('user_email');
+        console.log('✅ All auth data cleared from SecureStore');
+      } catch (e) {
+        console.error('❌ Error clearing SecureStore:', e);
+      }
       
-      console.log('User signed out successfully');
-      navigation.navigate('Landing');
+      // Clear local state immediately
+      setUserName('');
+      setUserRole('');
+      
+      console.log('✅ User signed out successfully');
+      
+      // Reset navigation stack to Landing screen
+      navigation.reset({
+        index: 0,
+        routes: [{ name: 'Landing' }],
+      });
     } catch (error) {
-      console.error('Error signing out:', error);
-      Alert.alert('Error', 'Failed to sign out');
+      console.error('❌ Error signing out:', error);
+      Alert.alert('Error', 'Failed to sign out. Please try again.');
     }
   };
 
@@ -107,8 +135,12 @@ export default function ProfileHeader({ hideHomeButton = false }: ProfileHeaderP
           onPress={() => setShowSignOutMenu(!showSignOutMenu)}
         >
           <View style={styles.userInfo}>
-            <Text style={styles.userName}>{displayName}</Text>
-            <Text style={styles.userRole}>{displayRole}</Text>
+            <Text style={styles.userName} numberOfLines={1} ellipsizeMode="tail">
+              {displayName}
+            </Text>
+            <Text style={styles.userRole} numberOfLines={1} ellipsizeMode="tail">
+              {displayRole}
+            </Text>
           </View>
           <View style={[styles.userAvatar, !userName && styles.guestAvatar]}>
             <Text style={styles.userAvatarText}>{displayName.charAt(0).toUpperCase()}</Text>
@@ -177,12 +209,14 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: colors.textPrimary,
     flexShrink: 1,
+    flexWrap: 'wrap',
   },
   userRole: {
     fontSize: 11,
     color: colors.textSecondary,
     textTransform: 'capitalize',
     flexShrink: 1,
+    flexWrap: 'wrap',
   },
   userAvatar: {
     width: 36,

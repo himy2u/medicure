@@ -1,7 +1,7 @@
 import React from 'react';
-import { StyleSheet, Text, View, TouchableOpacity } from 'react-native';
+import { StyleSheet, Text, View, TouchableOpacity, ScrollView } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { useTranslation } from 'react-i18next';
 import * as SecureStore from 'expo-secure-store';
@@ -18,12 +18,16 @@ export default function LandingScreen() {
   const { t } = useTranslation();
   const [isLoggedIn, setIsLoggedIn] = React.useState(false);
 
-  React.useEffect(() => {
-    checkAuthStatus();
-  }, []);
+  // Check auth status when screen comes into focus
+  useFocusEffect(
+    React.useCallback(() => {
+      checkAuthStatus();
+    }, [])
+  );
 
   const checkAuthStatus = async () => {
     const authToken = await SecureStore.getItemAsync('auth_token');
+    console.log('🔍 LandingScreen: Auth token exists?', !!authToken);
     setIsLoggedIn(!!authToken);
   };
 
@@ -52,8 +56,13 @@ export default function LandingScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.container}>
-      <View style={styles.content}>
+    <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
+      <ScrollView 
+        style={styles.scrollView}
+        contentContainerStyle={styles.content}
+        showsVerticalScrollIndicator={false}
+        bounces={true}
+      >
         {/* Top Bar with Language Toggle and User Profile */}
         <View style={styles.topBar}>
           <LanguageToggle />
@@ -125,7 +134,7 @@ export default function LandingScreen() {
             </View>
           </View>
         )}
-      </View>
+      </ScrollView>
     </SafeAreaView>
   );
 }
@@ -135,12 +144,14 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: colors.backgroundPrimary,
   },
-  content: {
+  scrollView: {
     flex: 1,
+  },
+  content: {
+    flexGrow: 1,
     paddingHorizontal: spacing.lg,
     paddingTop: spacing.lg,
     paddingBottom: spacing.xl,
-    justifyContent: 'flex-start',
   },
   topBar: {
     flexDirection: 'row',
