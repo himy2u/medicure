@@ -48,7 +48,10 @@ export default function LabStaffHomeScreen() {
         <View style={styles.dashboardSection}>
           <Text style={styles.sectionTitle}>Lab Dashboard</Text>
 
-          <TouchableOpacity style={styles.actionCard}>
+          <TouchableOpacity
+            style={styles.actionCard}
+            onPress={() => navigation.navigate('LabOrderDetails', { orderId: 'LAB001' })}
+          >
             <Text style={styles.actionEmoji}>🧪</Text>
             <Text style={styles.actionTitle}>Pending Test Requests</Text>
             <Text style={styles.actionSubtitle}>Accept new lab test requests</Text>
@@ -60,7 +63,10 @@ export default function LabStaffHomeScreen() {
             <Text style={styles.actionSubtitle}>Tests currently being processed</Text>
           </TouchableOpacity>
 
-          <TouchableOpacity style={styles.actionCard}>
+          <TouchableOpacity
+            style={styles.actionCard}
+            onPress={() => navigation.navigate('ResultsEntry', { orderId: 'LAB001' })}
+          >
             <Text style={styles.actionEmoji}>📊</Text>
             <Text style={styles.actionTitle}>Upload Results</Text>
             <Text style={styles.actionSubtitle}>Complete tests and upload reports</Text>

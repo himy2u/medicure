@@ -1,8 +1,9 @@
 import React from 'react';
-import { StyleSheet, Text, View, TouchableOpacity } from 'react-native';
+import { StyleSheet, Text, View, TouchableOpacity, Dimensions } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
+import { useTranslation } from 'react-i18next';
 import * as SecureStore from 'expo-secure-store';
 import { colors, spacing, borderRadius } from '../theme/colors';
 import ProfileHeader from '../components/ProfileHeader';
@@ -11,17 +12,23 @@ import { useAuthCheck } from '../hooks/useAuthCheck';
 
 type DoctorHomeScreenNavigationProp = StackNavigationProp<RootStackParamList, 'DoctorHome'>;
 
+const { height: SCREEN_HEIGHT } = Dimensions.get('window');
+
 export default function DoctorHomeScreen() {
   const navigation = useNavigation<DoctorHomeScreenNavigationProp>();
+  const { t } = useTranslation();
   const [doctorName, setDoctorName] = React.useState('');
-  
+
   // Check authentication on mount
   useAuthCheck();
 
   React.useEffect(() => {
     const loadUserInfo = async () => {
       const name = await SecureStore.getItemAsync('user_name');
-      if (name) setDoctorName(name);
+      // Only show name if it's not a phone number (doesn't start with +)
+      if (name && !name.startsWith('+') && name.length < 30) {
+        setDoctorName(name);
+      }
     };
     loadUserInfo();
   }, []);
@@ -35,47 +42,70 @@ export default function DoctorHomeScreen() {
     navigation.navigate('Landing');
   };
 
+  const displayName = doctorName ? `Dr. ${doctorName}` : '';
+
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.content}>
         {/* Top Bar */}
         <View style={styles.topBar}>
-          <Text style={styles.welcomeText}>Welcome, Dr. {doctorName}</Text>
+          <View style={styles.welcomeContainer}>
+            <Text style={styles.welcomeText}>{t('welcome')}</Text>
+            {displayName ? <Text style={styles.doctorName}>{displayName}</Text> : null}
+          </View>
           <ProfileHeader />
         </View>
 
-        {/* Main Dashboard */}
-        <View style={styles.dashboardSection}>
-          <Text style={styles.sectionTitle}>Doctor Dashboard</Text>
+        {/* Dashboard Title */}
+        <Text style={styles.sectionTitle}>{t('doctorDashboard')}</Text>
 
-          <TouchableOpacity style={styles.actionCard}>
+        {/* Action Cards - Availability First */}
+        <View style={styles.cardsContainer}>
+          <TouchableOpacity
+            style={[styles.actionCard, styles.primaryCard]}
+            onPress={() => navigation.navigate('DoctorAvailability')}
+          >
+            <Text style={styles.actionEmoji}>⚙️</Text>
+            <View style={styles.cardTextContainer}>
+              <Text style={styles.actionTitle}>{t('availabilitySettings')}</Text>
+              <Text style={styles.actionSubtitle}>{t('updateWorkingHours')}</Text>
+            </View>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.actionCard}
+            onPress={() => navigation.navigate('MyAppointments')}
+          >
             <Text style={styles.actionEmoji}>📅</Text>
-            <Text style={styles.actionTitle}>My Schedule</Text>
-            <Text style={styles.actionSubtitle}>View and manage appointments</Text>
+            <View style={styles.cardTextContainer}>
+              <Text style={styles.actionTitle}>{t('mySchedule')}</Text>
+              <Text style={styles.actionSubtitle}>{t('viewManageAppointments')}</Text>
+            </View>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.actionCard}
+            onPress={() => navigation.navigate('MyPatients')}
+          >
+            <Text style={styles.actionEmoji}>👥</Text>
+            <View style={styles.cardTextContainer}>
+              <Text style={styles.actionTitle}>{t('myPatients')}</Text>
+              <Text style={styles.actionSubtitle}>{t('viewPatientHistory')}</Text>
+            </View>
           </TouchableOpacity>
 
           <TouchableOpacity style={styles.actionCard}>
             <Text style={styles.actionEmoji}>🚨</Text>
-            <Text style={styles.actionTitle}>Emergency Alerts</Text>
-            <Text style={styles.actionSubtitle}>Respond to emergency requests</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity style={styles.actionCard}>
-            <Text style={styles.actionEmoji}>👥</Text>
-            <Text style={styles.actionTitle}>My Patients</Text>
-            <Text style={styles.actionSubtitle}>View patient history and records</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity style={styles.actionCard}>
-            <Text style={styles.actionEmoji}>⚙️</Text>
-            <Text style={styles.actionTitle}>Availability Settings</Text>
-            <Text style={styles.actionSubtitle}>Update your working hours</Text>
+            <View style={styles.cardTextContainer}>
+              <Text style={styles.actionTitle}>{t('emergencyAlerts')}</Text>
+              <Text style={styles.actionSubtitle}>{t('respondEmergency')}</Text>
+            </View>
           </TouchableOpacity>
         </View>
 
-        {/* Logout Button */}
+        {/* Logout Button - Fixed at bottom */}
         <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
-          <Text style={styles.logoutButtonText}>Logout</Text>
+          <Text style={styles.logoutButtonText}>{t('logout')}</Text>
         </TouchableOpacity>
       </View>
     </SafeAreaView>
@@ -90,48 +120,67 @@ const styles = StyleSheet.create({
   content: {
     flex: 1,
     paddingHorizontal: spacing.lg,
-    paddingTop: spacing.lg,
+    paddingTop: spacing.md,
+    paddingBottom: spacing.md,
   },
   topBar: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: spacing.xl,
+    marginBottom: spacing.md,
+  },
+  welcomeContainer: {
+    flex: 1,
   },
   welcomeText: {
+    fontSize: 14,
+    color: colors.textSecondary,
+  },
+  doctorName: {
     fontSize: 20,
     fontWeight: '700',
     color: colors.textPrimary,
   },
-  dashboardSection: {
-    flex: 1,
-  },
   sectionTitle: {
-    fontSize: 24,
+    fontSize: 18,
     fontWeight: '700',
     color: colors.textPrimary,
-    marginBottom: spacing.lg,
+    marginBottom: spacing.md,
+  },
+  cardsContainer: {
+    flex: 1,
+    justifyContent: 'flex-start',
+    gap: spacing.sm,
   },
   actionCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
     backgroundColor: colors.backgroundSecondary,
     borderRadius: borderRadius.lg,
-    padding: spacing.lg,
-    marginBottom: spacing.md,
-    borderWidth: 2,
+    padding: spacing.md,
+    borderWidth: 1,
     borderColor: colors.border,
   },
+  primaryCard: {
+    backgroundColor: colors.accentSoft,
+    borderColor: colors.accent,
+    borderWidth: 2,
+  },
   actionEmoji: {
-    fontSize: 32,
-    marginBottom: spacing.sm,
+    fontSize: 28,
+    marginRight: spacing.md,
+  },
+  cardTextContainer: {
+    flex: 1,
   },
   actionTitle: {
-    fontSize: 18,
+    fontSize: 16,
     fontWeight: '600',
     color: colors.textPrimary,
-    marginBottom: spacing.xs,
+    marginBottom: 2,
   },
   actionSubtitle: {
-    fontSize: 14,
+    fontSize: 13,
     color: colors.textSecondary,
   },
   logoutButton: {
@@ -139,8 +188,7 @@ const styles = StyleSheet.create({
     borderRadius: borderRadius.lg,
     paddingVertical: spacing.md,
     alignItems: 'center',
-    marginTop: spacing.lg,
-    marginBottom: spacing.lg,
+    marginTop: spacing.md,
   },
   logoutButtonText: {
     fontSize: 16,

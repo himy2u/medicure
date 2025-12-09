@@ -54,7 +54,10 @@ export default function AmbulanceStaffHomeScreen() {
             <Text style={styles.actionSubtitle}>Accept incoming emergency calls</Text>
           </TouchableOpacity>
 
-          <TouchableOpacity style={styles.actionCard}>
+          <TouchableOpacity
+            style={styles.actionCard}
+            onPress={() => navigation.navigate('DispatchDetails', { dispatchId: 'D001' })}
+          >
             <Text style={styles.actionEmoji}>🗺️</Text>
             <Text style={styles.actionTitle}>Active Dispatch</Text>
             <Text style={styles.actionSubtitle}>Current emergency assignment</Text>
@@ -66,10 +69,13 @@ export default function AmbulanceStaffHomeScreen() {
             <Text style={styles.actionSubtitle}>Update your availability and location</Text>
           </TouchableOpacity>
 
-          <TouchableOpacity style={styles.actionCard}>
+          <TouchableOpacity
+            style={styles.actionCard}
+            onPress={() => navigation.navigate('IncidentReport', { dispatchId: 'D001' })}
+          >
             <Text style={styles.actionEmoji}>📋</Text>
-            <Text style={styles.actionTitle}>Trip History</Text>
-            <Text style={styles.actionSubtitle}>View completed emergency transports</Text>
+            <Text style={styles.actionTitle}>Incident Reports</Text>
+            <Text style={styles.actionSubtitle}>Create transport incident reports</Text>
           </TouchableOpacity>
         </View>
 

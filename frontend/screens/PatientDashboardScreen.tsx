@@ -85,13 +85,19 @@ export default function PatientDashboardScreen() {
               <Text style={styles.actionSubtitle}>Search by specialty or location</Text>
             </TouchableOpacity>
 
-            <TouchableOpacity style={styles.actionCard}>
+            <TouchableOpacity
+              style={styles.actionCard}
+              onPress={() => navigation.navigate('MyAppointments')}
+            >
               <Text style={styles.actionEmoji}>📅</Text>
               <Text style={styles.actionTitle}>My Appointments</Text>
               <Text style={styles.actionSubtitle}>View upcoming and past appointments</Text>
             </TouchableOpacity>
 
-            <TouchableOpacity style={styles.actionCard}>
+            <TouchableOpacity
+              style={styles.actionCard}
+              onPress={() => navigation.navigate('MyPrescriptions')}
+            >
               <Text style={styles.actionEmoji}>💊</Text>
               <Text style={styles.actionTitle}>My Prescriptions</Text>
               <Text style={styles.actionSubtitle}>View and refill prescriptions</Text>
@@ -103,7 +109,10 @@ export default function PatientDashboardScreen() {
               <Text style={styles.actionSubtitle}>Access your medical history</Text>
             </TouchableOpacity>
 
-            <TouchableOpacity style={styles.actionCard}>
+            <TouchableOpacity
+              style={styles.actionCard}
+              onPress={() => navigation.navigate('LabResults')}
+            >
               <Text style={styles.actionEmoji}>🧪</Text>
               <Text style={styles.actionTitle}>Lab Results</Text>
               <Text style={styles.actionSubtitle}>View test results and reports</Text>

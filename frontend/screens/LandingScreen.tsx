@@ -120,29 +120,29 @@ export default function LandingScreen() {
           </TouchableOpacity>
         </View>
 
-        <TouchableOpacity 
+        <TouchableOpacity
           style={[styles.actionButton, styles.labTestButton]}
           onPress={() => handleRegularFeature('lab tests', 'Signup')}
         >
-          <Text style={styles.labTestButtonText}>🧪 Lab Tests</Text>
+          <Text style={styles.labTestButtonText}>🧪 {t('labTests')}</Text>
         </TouchableOpacity>
 
         {/* Healthcare Professional Section - Only show if not logged in */}
         {!isLoggedIn && (
           <View style={styles.medicalStaffSection}>
-            <Text style={styles.medicalStaffLabel}>Healthcare Professional?</Text>
+            <Text style={styles.medicalStaffLabel}>{t('notAPatient')}</Text>
             <View style={styles.medicalStaffButtons}>
               <TouchableOpacity
                 style={styles.medicalStaffRegisterButton}
                 onPress={() => navigation.navigate('MedicalStaffSignup')}
               >
-                <Text style={styles.medicalStaffRegisterText}>Join Network</Text>
+                <Text style={styles.medicalStaffRegisterText}>{t('joinNetwork')}</Text>
               </TouchableOpacity>
               <TouchableOpacity
                 style={styles.medicalStaffLoginButton}
                 onPress={() => navigation.navigate('MedicalStaffLogin')}
               >
-                <Text style={styles.medicalStaffLoginText}>Provider Login</Text>
+                <Text style={styles.medicalStaffLoginText}>{t('providerLogin')}</Text>
               </TouchableOpacity>
             </View>
           </View>

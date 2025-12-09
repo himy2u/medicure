@@ -48,22 +48,28 @@ export default function ClinicAdminHomeScreen() {
         <View style={styles.dashboardSection}>
           <Text style={styles.sectionTitle}>Clinic Admin Dashboard</Text>
 
-          <TouchableOpacity style={styles.actionCard}>
+          <TouchableOpacity
+            style={styles.actionCard}
+            onPress={() => navigation.navigate('UserManagement')}
+          >
             <Text style={styles.actionEmoji}>👥</Text>
-            <Text style={styles.actionTitle}>Manage Staff</Text>
-            <Text style={styles.actionSubtitle}>View and manage clinic personnel</Text>
+            <Text style={styles.actionTitle}>User Management</Text>
+            <Text style={styles.actionSubtitle}>View and manage all users</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.actionCard}
+            onPress={() => navigation.navigate('AdminDashboard')}
+          >
+            <Text style={styles.actionEmoji}>📊</Text>
+            <Text style={styles.actionTitle}>System Dashboard</Text>
+            <Text style={styles.actionSubtitle}>View system overview and metrics</Text>
           </TouchableOpacity>
 
           <TouchableOpacity style={styles.actionCard}>
             <Text style={styles.actionEmoji}>📅</Text>
             <Text style={styles.actionTitle}>Clinic Schedule</Text>
             <Text style={styles.actionSubtitle}>Manage appointments and schedules</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity style={styles.actionCard}>
-            <Text style={styles.actionEmoji}>📊</Text>
-            <Text style={styles.actionTitle}>Reports & Analytics</Text>
-            <Text style={styles.actionSubtitle}>View clinic performance metrics</Text>
           </TouchableOpacity>
 
           <TouchableOpacity style={styles.actionCard}>

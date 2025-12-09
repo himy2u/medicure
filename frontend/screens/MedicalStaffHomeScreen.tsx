@@ -48,16 +48,22 @@ export default function MedicalStaffHomeScreen() {
         <View style={styles.dashboardSection}>
           <Text style={styles.sectionTitle}>Medical Staff Dashboard</Text>
 
-          <TouchableOpacity style={styles.actionCard}>
+          <TouchableOpacity
+            style={styles.actionCard}
+            onPress={() => navigation.navigate('PatientQueue')}
+          >
             <Text style={styles.actionEmoji}>📋</Text>
-            <Text style={styles.actionTitle}>My Assignments</Text>
-            <Text style={styles.actionSubtitle}>View current patient assignments</Text>
+            <Text style={styles.actionTitle}>Patient Queue</Text>
+            <Text style={styles.actionSubtitle}>View waiting patients</Text>
           </TouchableOpacity>
 
-          <TouchableOpacity style={styles.actionCard}>
+          <TouchableOpacity
+            style={styles.actionCard}
+            onPress={() => navigation.navigate('CheckInPatient')}
+          >
             <Text style={styles.actionEmoji}>💉</Text>
-            <Text style={styles.actionTitle}>Patient Care Tasks</Text>
-            <Text style={styles.actionSubtitle}>Medications, vitals, procedures</Text>
+            <Text style={styles.actionTitle}>Check In Patient</Text>
+            <Text style={styles.actionSubtitle}>Check in patients and record vitals</Text>
           </TouchableOpacity>
 
           <TouchableOpacity style={styles.actionCard}>
@@ -66,10 +72,13 @@ export default function MedicalStaffHomeScreen() {
             <Text style={styles.actionSubtitle}>Access medical records</Text>
           </TouchableOpacity>
 
-          <TouchableOpacity style={styles.actionCard}>
+          <TouchableOpacity
+            style={styles.actionCard}
+            onPress={() => navigation.navigate('TodaySchedule')}
+          >
             <Text style={styles.actionEmoji}>⏰</Text>
-            <Text style={styles.actionTitle}>My Schedule</Text>
-            <Text style={styles.actionSubtitle}>View your shifts</Text>
+            <Text style={styles.actionTitle}>Today's Schedule</Text>
+            <Text style={styles.actionSubtitle}>View appointments schedule</Text>
           </TouchableOpacity>
         </View>
 

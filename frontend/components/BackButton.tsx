@@ -11,9 +11,10 @@ import { colors, spacing, borderRadius } from '../theme/colors';
 interface BackButtonProps {
   onPress?: () => void;
   label?: string;
+  color?: string;
 }
 
-export default function BackButton({ onPress, label = 'Back' }: BackButtonProps) {
+export default function BackButton({ onPress, label = 'Back', color }: BackButtonProps) {
   const navigation = useNavigation();
 
   const handlePress = () => {
@@ -30,7 +31,7 @@ export default function BackButton({ onPress, label = 'Back' }: BackButtonProps)
       onPress={handlePress}
       activeOpacity={0.7}
     >
-      <Text style={styles.backButtonText}>← {label}</Text>
+      <Text style={[styles.backButtonText, color ? { color } : undefined]}>← {label}</Text>
     </TouchableOpacity>
   );
 }

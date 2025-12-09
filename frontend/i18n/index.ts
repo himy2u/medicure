@@ -98,7 +98,35 @@ const resources = {
       loading: 'Loading...',
       error: 'Error',
       success: 'Success',
-      backButtonText: '← Back'
+      backButtonText: '← Back',
+
+      // Landing Page - Healthcare Professional Section
+      notAPatient: 'Not a patient?',
+      joinNetwork: 'Register',
+      providerLogin: 'Login',
+      labTests: 'Lab Tests',
+
+      // Doctor Dashboard
+      welcome: 'Welcome',
+      doctorDashboard: 'Doctor Dashboard',
+      mySchedule: 'My Schedule',
+      viewManageAppointments: 'View and manage appointments',
+      emergencyAlerts: 'Emergency Alerts',
+      respondEmergency: 'Respond to emergency requests',
+      myPatients: 'My Patients',
+      viewPatientHistory: 'View patient history and records',
+      availabilitySettings: 'Availability Settings',
+      updateWorkingHours: 'Update your working hours',
+      logout: 'Logout',
+
+      // Common Dashboard
+      appointments: 'Appointments',
+      healthRecords: 'Health Records',
+      accessMedicalHistory: 'Access your medical history',
+      accountSettings: 'Account Settings',
+      updateProfile: 'Update your profile and preferences',
+      notifications: 'Notifications',
+      manageNotifications: 'Manage notification preferences'
     }
   },
   es: {
@@ -196,7 +224,35 @@ const resources = {
       loading: 'Cargando...',
       error: 'Error',
       success: 'Éxito',
-      backButtonText: '← Volver'
+      backButtonText: '← Volver',
+
+      // Landing Page - Healthcare Professional Section
+      notAPatient: '¿No eres paciente?',
+      joinNetwork: 'Registrarse',
+      providerLogin: 'Ingresar',
+      labTests: 'Exámenes de Lab',
+
+      // Doctor Dashboard
+      welcome: 'Bienvenido',
+      doctorDashboard: 'Panel del Médico',
+      mySchedule: 'Mi Agenda',
+      viewManageAppointments: 'Ver y gestionar citas',
+      emergencyAlerts: 'Alertas de Emergencia',
+      respondEmergency: 'Responder a solicitudes de emergencia',
+      myPatients: 'Mis Pacientes',
+      viewPatientHistory: 'Ver historial y registros del paciente',
+      availabilitySettings: 'Configurar Disponibilidad',
+      updateWorkingHours: 'Actualizar tus horarios de trabajo',
+      logout: 'Cerrar Sesión',
+
+      // Common Dashboard
+      appointments: 'Citas',
+      healthRecords: 'Historial Médico',
+      accessMedicalHistory: 'Acceder a tu historial médico',
+      accountSettings: 'Configuración de Cuenta',
+      updateProfile: 'Actualizar tu perfil y preferencias',
+      notifications: 'Notificaciones',
+      manageNotifications: 'Gestionar preferencias de notificaciones'
     }
   }
 };

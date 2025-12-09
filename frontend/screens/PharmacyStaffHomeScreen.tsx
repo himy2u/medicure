@@ -48,7 +48,10 @@ export default function PharmacyStaffHomeScreen() {
         <View style={styles.dashboardSection}>
           <Text style={styles.sectionTitle}>Pharmacy Dashboard</Text>
 
-          <TouchableOpacity style={styles.actionCard}>
+          <TouchableOpacity
+            style={styles.actionCard}
+            onPress={() => navigation.navigate('PrescriptionDetails', { prescriptionId: 'RX001' })}
+          >
             <Text style={styles.actionEmoji}>💊</Text>
             <Text style={styles.actionTitle}>New Prescriptions</Text>
             <Text style={styles.actionSubtitle}>Accept incoming prescription requests</Text>
@@ -60,10 +63,13 @@ export default function PharmacyStaffHomeScreen() {
             <Text style={styles.actionSubtitle}>Prescriptions being prepared</Text>
           </TouchableOpacity>
 
-          <TouchableOpacity style={styles.actionCard}>
+          <TouchableOpacity
+            style={styles.actionCard}
+            onPress={() => navigation.navigate('Fulfillment', { prescriptionId: 'RX001' })}
+          >
             <Text style={styles.actionEmoji}>✅</Text>
             <Text style={styles.actionTitle}>Ready for Pickup</Text>
-            <Text style={styles.actionSubtitle}>Notify patients for pickup</Text>
+            <Text style={styles.actionSubtitle}>Dispense prescriptions to patients</Text>
           </TouchableOpacity>
 
           <TouchableOpacity style={styles.actionCard}>
