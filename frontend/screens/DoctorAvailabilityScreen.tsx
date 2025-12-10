@@ -4,44 +4,76 @@
  */
 
 import React, { useState, useEffect } from 'react';
-import { StyleSheet, Text, View, TouchableOpacity, ScrollView, Switch, Alert } from 'react-native';
+import { StyleSheet, Text, View, TouchableOpacity, Switch, Alert, ScrollView } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import * as SecureStore from 'expo-secure-store';
 import BaseScreen from '../components/BaseScreen';
-import BackButton from '../components/BackButton';
+import StandardHeader from '../components/StandardHeader';
+import RoleGuard from '../components/RoleGuard';
 import { colors, spacing, borderRadius } from '../theme/colors';
 import { RootStackParamList } from '../navigation/AppNavigator';
 import apiClient from '../utils/apiClient';
 
 type NavigationProp = StackNavigationProp<RootStackParamList, 'DoctorAvailability'>;
 
+interface TimeSlot {
+  hour: number;
+  available: boolean;
+}
+
 interface DaySchedule {
   day: string;
-  enabled: boolean;
-  startTime: string;
-  endTime: string;
+  dayName: string;
+  timeSlots: TimeSlot[];
+}
+
+interface Location {
+  id: string;
+  name: string;
+  address: string;
+  isPrimary: boolean;
 }
 
 export default function DoctorAvailabilityScreen() {
   const navigation = useNavigation<NavigationProp>();
   const [availableNow, setAvailableNow] = useState(true);
   const [acceptsEmergencies, setAcceptsEmergencies] = useState(true);
-  const [is24Hours, setIs24Hours] = useState(false);
+  const [selectedLocation, setSelectedLocation] = useState<Location | null>(null);
   const [saving, setSaving] = useState(false);
 
-  const [schedule, setSchedule] = useState<DaySchedule[]>([
-    { day: 'Monday', enabled: true, startTime: '09:00', endTime: '17:00' },
-    { day: 'Tuesday', enabled: true, startTime: '09:00', endTime: '17:00' },
-    { day: 'Wednesday', enabled: true, startTime: '09:00', endTime: '17:00' },
-    { day: 'Thursday', enabled: true, startTime: '09:00', endTime: '17:00' },
-    { day: 'Friday', enabled: true, startTime: '09:00', endTime: '17:00' },
-    { day: 'Saturday', enabled: false, startTime: '10:00', endTime: '14:00' },
-    { day: 'Sunday', enabled: false, startTime: '10:00', endTime: '14:00' },
+  // Generate time slots for 24 hours
+  const generateTimeSlots = (): TimeSlot[] => {
+    const slots: TimeSlot[] = [];
+    for (let hour = 0; hour < 24; hour++) {
+      slots.push({ hour, available: hour >= 9 && hour <= 17 }); // Default 9-5
+    }
+    return slots;
+  };
+
+  const [weekSchedule, setWeekSchedule] = useState<DaySchedule[]>([
+    { day: 'Mon', dayName: 'Monday', timeSlots: generateTimeSlots() },
+    { day: 'Tue', dayName: 'Tuesday', timeSlots: generateTimeSlots() },
+    { day: 'Wed', dayName: 'Wednesday', timeSlots: generateTimeSlots() },
+    { day: 'Thu', dayName: 'Thursday', timeSlots: generateTimeSlots() },
+    { day: 'Fri', dayName: 'Friday', timeSlots: generateTimeSlots() },
+    { day: 'Sat', dayName: 'Saturday', timeSlots: generateTimeSlots().map(slot => ({ ...slot, available: false })) },
+    { day: 'Sun', dayName: 'Sunday', timeSlots: generateTimeSlots().map(slot => ({ ...slot, available: false })) },
+  ]);
+
+  const [locations] = useState<Location[]>([
+    { id: '1', name: 'Heart Care Clinic', address: 'Av. 6 de Diciembre N32-45, Quito', isPrimary: true },
+    { id: '2', name: 'Medical Center Norte', address: 'Av. Eloy Alfaro N35-12, Quito', isPrimary: false },
+    { id: '3', name: 'Hospital Metropolitano', address: 'Av. Mariana de Jesús, Quito', isPrimary: false },
   ]);
 
   useEffect(() => {
     loadAvailability();
+    // Set primary location as default
+    const primaryLocation = locations.find(loc => loc.isPrimary);
+    if (primaryLocation) {
+      setSelectedLocation(primaryLocation);
+    }
   }, []);
 
   const loadAvailability = async () => {
@@ -50,17 +82,54 @@ export default function DoctorAvailabilityScreen() {
       const result = await apiClient.get(`/api/doctors/${userId}/availability`, true);
 
       if (result.success && result.data) {
-        // Would set schedule from API
+        setAvailableNow(result.data.available_now || true);
+        setAcceptsEmergencies(result.data.accepts_emergencies || true);
       }
     } catch (error) {
       console.error('Failed to load availability:', error);
     }
   };
 
-  const toggleDay = (index: number) => {
-    const newSchedule = [...schedule];
-    newSchedule[index].enabled = !newSchedule[index].enabled;
-    setSchedule(newSchedule);
+  const toggleTimeSlot = (dayIndex: number, slotIndex: number) => {
+    const newSchedule = [...weekSchedule];
+    newSchedule[dayIndex].timeSlots[slotIndex].available = !newSchedule[dayIndex].timeSlots[slotIndex].available;
+    setWeekSchedule(newSchedule);
+  };
+
+  const toggleFullDay = (dayIndex: number) => {
+    const newSchedule = [...weekSchedule];
+    const allAvailable = newSchedule[dayIndex].timeSlots.every(slot => slot.available);
+    newSchedule[dayIndex].timeSlots.forEach(slot => {
+      slot.available = !allAvailable;
+    });
+    setWeekSchedule(newSchedule);
+  };
+
+  const setQuickSchedule = (dayIndex: number, type: 'morning' | 'afternoon' | 'full' | 'off') => {
+    const newSchedule = [...weekSchedule];
+    newSchedule[dayIndex].timeSlots.forEach((slot) => {
+      switch (type) {
+        case 'morning':
+          slot.available = slot.hour >= 6 && slot.hour <= 12;
+          break;
+        case 'afternoon':
+          slot.available = slot.hour >= 12 && slot.hour <= 18;
+          break;
+        case 'full':
+          slot.available = slot.hour >= 9 && slot.hour <= 17;
+          break;
+        case 'off':
+          slot.available = false;
+          break;
+      }
+    });
+    setWeekSchedule(newSchedule);
+  };
+
+  const formatHour = (hour: number): string => {
+    if (hour === 12) return '12 PM';
+    if (hour > 12) return `${hour - 12} PM`;
+    return `${hour} AM`;
   };
 
   const handleSave = async () => {
@@ -70,8 +139,8 @@ export default function DoctorAvailabilityScreen() {
       await apiClient.put(`/api/doctors/${userId}/availability`, {
         available_now: availableNow,
         accepts_emergencies: acceptsEmergencies,
-        is_24_hours: is24Hours,
-        schedule: schedule
+        schedule: weekSchedule,
+        location_id: selectedLocation?.id
       }, true);
 
       Alert.alert('Success', 'Availability settings saved successfully!');
@@ -82,286 +151,411 @@ export default function DoctorAvailabilityScreen() {
     }
   };
 
+  const [locationExpanded, setLocationExpanded] = useState(false);
+  const [overrideExpanded, setOverrideExpanded] = useState(false);
+
   return (
-    <BaseScreen pattern="headerWithScroll" header={
-      <View style={styles.header}>
-        <BackButton />
-        <Text style={styles.headerTitle}>Availability Settings</Text>
-      </View>
-    }>
-      {/* Quick Toggle Section */}
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Quick Settings</Text>
+    <RoleGuard 
+      allowedRoles={['doctor']}
+      fallbackMessage="Only doctors can manage availability settings."
+    >
+    <BaseScreen 
+      pattern="headerContentFooter" 
+      scrollable={false}
+      header={<StandardHeader title="Availability" />}
+      footer={
+        <View style={styles.footer}>
+          <TouchableOpacity
+            style={styles.backButton}
+            onPress={() => navigation.goBack()}
+          >
+            <Text style={styles.backButtonText}>Back</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.saveButton, saving && styles.saveButtonDisabled]}
+            onPress={handleSave}
+            disabled={saving}
+          >
+            <Text style={styles.saveButtonText}>
+              {saving ? 'Saving...' : 'Save'}
+            </Text>
+          </TouchableOpacity>
+        </View>
+      }
+    >
+      <View style={styles.content}>
+        {/* Compact Top Section - Location & Override in a row */}
+        <View style={styles.compactTopSection}>
+          {/* Location Selection - Compact with dropdown indicator */}
+          <TouchableOpacity 
+            style={styles.compactCard}
+            onPress={() => setLocationExpanded(!locationExpanded)}
+          >
+            <View style={styles.compactCardHeader}>
+              <Text style={styles.compactLabel}>📍 Location</Text>
+              <Text style={styles.dropdownArrow}>{locationExpanded ? '▲' : '▼'}</Text>
+            </View>
+            <Text style={styles.compactValue} numberOfLines={1}>
+              {selectedLocation?.name || 'Select'} 
+            </Text>
+            <Text style={styles.moreOptionsHint}>{locations.length} locations available</Text>
+          </TouchableOpacity>
 
-        <View style={styles.toggleRow}>
-          <View style={styles.toggleInfo}>
-            <Text style={styles.toggleLabel}>Available Now</Text>
-            <Text style={styles.toggleDescription}>Show as available for appointments</Text>
-          </View>
-          <Switch
-            value={availableNow}
-            onValueChange={setAvailableNow}
-            trackColor={{ false: colors.border, true: colors.accent }}
-            thumbColor="#FFFFFF"
-          />
+          {/* Override Settings - Compact with status indicators */}
+          <TouchableOpacity 
+            style={styles.compactCard}
+            onPress={() => setOverrideExpanded(!overrideExpanded)}
+          >
+            <View style={styles.compactCardHeader}>
+              <Text style={styles.compactLabel}>⚙️ Status</Text>
+              <Text style={styles.dropdownArrow}>{overrideExpanded ? '▲' : '▼'}</Text>
+            </View>
+            <View style={styles.statusIndicators}>
+              <View style={[styles.statusBadge, availableNow && styles.statusBadgeActive]}>
+                <Text style={[styles.statusBadgeText, availableNow && styles.statusBadgeTextActive]}>
+                  {availableNow ? '✓' : '○'} Free
+                </Text>
+              </View>
+              <View style={[styles.statusBadge, acceptsEmergencies && styles.statusBadgeER]}>
+                <Text style={[styles.statusBadgeText, acceptsEmergencies && styles.statusBadgeTextActive]}>
+                  {acceptsEmergencies ? '✓' : '○'} ER
+                </Text>
+              </View>
+            </View>
+          </TouchableOpacity>
         </View>
 
-        <View style={styles.toggleRow}>
-          <View style={styles.toggleInfo}>
-            <Text style={styles.toggleLabel}>Accept Emergencies</Text>
-            <Text style={styles.toggleDescription}>Receive emergency patient alerts</Text>
-          </View>
-          <Switch
-            value={acceptsEmergencies}
-            onValueChange={setAcceptsEmergencies}
-            trackColor={{ false: colors.border, true: colors.emergency }}
-            thumbColor="#FFFFFF"
-          />
-        </View>
-
-        <View style={styles.toggleRow}>
-          <View style={styles.toggleInfo}>
-            <Text style={styles.toggleLabel}>24-Hour Availability</Text>
-            <Text style={styles.toggleDescription}>Available around the clock</Text>
-          </View>
-          <Switch
-            value={is24Hours}
-            onValueChange={setIs24Hours}
-            trackColor={{ false: colors.border, true: colors.accent }}
-            thumbColor="#FFFFFF"
-          />
-        </View>
-      </View>
-
-      {/* Weekly Schedule */}
-      {!is24Hours && (
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Weekly Schedule</Text>
-
-          {schedule.map((day, index) => (
-            <View key={day.day} style={styles.dayRow}>
+        {/* Expanded Location Modal */}
+        {locationExpanded && (
+          <View style={styles.expandedSection}>
+            <Text style={styles.expandedTitle}>Select Location</Text>
+            {locations.map((location) => (
               <TouchableOpacity
-                style={styles.dayToggle}
-                onPress={() => toggleDay(index)}
+                key={location.id}
+                style={[
+                  styles.locationOption,
+                  selectedLocation?.id === location.id && styles.locationOptionSelected
+                ]}
+                onPress={() => {
+                  setSelectedLocation(location);
+                  setLocationExpanded(false);
+                }}
               >
-                <View style={[styles.checkbox, day.enabled && styles.checkboxChecked]}>
-                  {day.enabled && <Text style={styles.checkmark}>✓</Text>}
-                </View>
-                <Text style={[styles.dayName, !day.enabled && styles.dayNameDisabled]}>
-                  {day.day}
+                <Text style={[
+                  styles.locationOptionText,
+                  selectedLocation?.id === location.id && styles.locationOptionTextSelected
+                ]}>
+                  {location.name}{location.isPrimary && ' ★'}
                 </Text>
               </TouchableOpacity>
+            ))}
+          </View>
+        )}
 
-              {day.enabled && (
-                <View style={styles.timeRange}>
-                  <TouchableOpacity style={styles.timeButton}>
-                    <Text style={styles.timeText}>{day.startTime}</Text>
+        {/* Expanded Override Settings */}
+        {overrideExpanded && (
+          <View style={styles.expandedSection}>
+            <View style={styles.toggleRowCompact}>
+              <Text style={styles.toggleLabelCompact}>Available Now</Text>
+              <Switch
+                value={availableNow}
+                onValueChange={setAvailableNow}
+                trackColor={{ false: colors.border, true: colors.accent }}
+                thumbColor="#FFFFFF"
+              />
+            </View>
+            <View style={styles.toggleRowCompact}>
+              <Text style={styles.toggleLabelCompact}>Accept Emergencies</Text>
+              <Switch
+                value={acceptsEmergencies}
+                onValueChange={setAcceptsEmergencies}
+                trackColor={{ false: colors.border, true: colors.emergency }}
+                thumbColor="#FFFFFF"
+              />
+            </View>
+          </View>
+        )}
+
+        {/* Weekly Schedule - with spacing and 24h horizontal scroll */}
+        <View style={styles.scheduleSection}>
+          <Text style={styles.scheduleTitle}>Weekly Schedule</Text>
+          <Text style={styles.scheduleHint}>Tap slot to toggle • Long press day for presets • Scroll → for all hours</Text>
+          
+          {weekSchedule.map((day, dayIndex) => (
+            <View key={day.day} style={styles.dayRow}>
+              <TouchableOpacity 
+                style={styles.dayLabel}
+                onPress={() => toggleFullDay(dayIndex)}
+                onLongPress={() => {
+                  Alert.alert(
+                    `${day.dayName}`,
+                    'Quick setup:',
+                    [
+                      { text: '🌅 Morning (6-12)', onPress: () => setQuickSchedule(dayIndex, 'morning') },
+                      { text: '🌞 Afternoon (12-18)', onPress: () => setQuickSchedule(dayIndex, 'afternoon') },
+                      { text: '📅 Full Day (9-17)', onPress: () => setQuickSchedule(dayIndex, 'full') },
+                      { text: '🚫 Off', onPress: () => setQuickSchedule(dayIndex, 'off') },
+                      { text: 'Cancel', style: 'cancel' }
+                    ]
+                  );
+                }}
+              >
+                <Text style={styles.dayText}>{day.day}</Text>
+              </TouchableOpacity>
+              
+              <ScrollView 
+                horizontal 
+                showsHorizontalScrollIndicator={true}
+                style={styles.slotsRow}
+                contentContainerStyle={styles.slotsContent}
+              >
+                {day.timeSlots.map((slot, slotIndex) => (
+                  <TouchableOpacity
+                    key={slotIndex}
+                    style={[
+                      styles.slot,
+                      slot.available ? styles.slotAvailable : styles.slotUnavailable
+                    ]}
+                    onPress={() => toggleTimeSlot(dayIndex, slotIndex)}
+                  >
+                    <Text style={[
+                      styles.slotText,
+                      slot.available ? styles.slotTextAvailable : styles.slotTextUnavailable
+                    ]}>
+                      {slot.hour > 12 ? slot.hour - 12 : (slot.hour === 0 ? 12 : slot.hour)}
+                    </Text>
+                    {!slot.available && <View style={styles.slotCrossLine} />}
                   </TouchableOpacity>
-                  <Text style={styles.timeSeparator}>to</Text>
-                  <TouchableOpacity style={styles.timeButton}>
-                    <Text style={styles.timeText}>{day.endTime}</Text>
-                  </TouchableOpacity>
-                </View>
-              )}
+                ))}
+              </ScrollView>
             </View>
           ))}
         </View>
-      )}
-
-      {/* Location Settings */}
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Practice Locations</Text>
-
-        <TouchableOpacity style={styles.locationCard}>
-          <View style={styles.locationInfo}>
-            <Text style={styles.locationName}>Heart Care Clinic</Text>
-            <Text style={styles.locationAddress}>Av. 6 de Diciembre N32-45, Quito</Text>
-          </View>
-          <View style={styles.primaryBadge}>
-            <Text style={styles.primaryBadgeText}>PRIMARY</Text>
-          </View>
-        </TouchableOpacity>
-
-        <TouchableOpacity style={styles.addLocationButton}>
-          <Text style={styles.addLocationText}>+ Add Location</Text>
-        </TouchableOpacity>
-      </View>
-
-      {/* Save Button */}
-      <View style={styles.saveSection}>
-        <TouchableOpacity
-          style={[styles.saveButton, saving && styles.saveButtonDisabled]}
-          onPress={handleSave}
-          disabled={saving}
-        >
-          <Text style={styles.saveButtonText}>
-            {saving ? 'Saving...' : 'Save Changes'}
-          </Text>
-        </TouchableOpacity>
       </View>
     </BaseScreen>
+    </RoleGuard>
   );
 }
 
 const styles = StyleSheet.create({
-  header: {
+  content: {
+    flex: 1,
+    paddingHorizontal: spacing.md,
+  },
+  // Compact Top Section
+  compactTopSection: {
     flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.md,
+    gap: spacing.sm,
+    marginBottom: spacing.sm,
+    marginTop: spacing.sm,
   },
-  headerTitle: {
-    fontSize: 20,
-    fontWeight: '700',
-    color: colors.textPrimary,
-    marginLeft: spacing.md,
+  compactCard: {
+    flex: 1,
+    backgroundColor: colors.backgroundSecondary,
+    padding: spacing.sm,
+    borderRadius: borderRadius.md,
+    borderWidth: 1,
+    borderColor: colors.border,
   },
-  section: {
-    marginHorizontal: spacing.lg,
-    marginBottom: spacing.xl,
-  },
-  sectionTitle: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: colors.textPrimary,
-    marginBottom: spacing.md,
-  },
-  toggleRow: {
+  compactCardHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    backgroundColor: colors.backgroundSecondary,
-    padding: spacing.lg,
-    borderRadius: borderRadius.lg,
-    marginBottom: spacing.md,
   },
-  toggleInfo: {
-    flex: 1,
-    marginRight: spacing.md,
-  },
-  toggleLabel: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: colors.textPrimary,
-    marginBottom: spacing.xs,
-  },
-  toggleDescription: {
-    fontSize: 14,
+  compactLabel: {
+    fontSize: 11,
     color: colors.textSecondary,
   },
-  dayRow: {
+  dropdownArrow: {
+    fontSize: 10,
+    color: colors.accent,
+  },
+  compactValue: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: colors.textPrimary,
+    marginTop: 2,
+  },
+  moreOptionsHint: {
+    fontSize: 9,
+    color: colors.accent,
+    marginTop: 2,
+  },
+  statusIndicators: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    gap: 4,
+    marginTop: 4,
+  },
+  statusBadge: {
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 4,
+    backgroundColor: colors.backgroundPrimary,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  statusBadgeActive: {
+    backgroundColor: colors.success,
+    borderColor: colors.success,
+  },
+  statusBadgeER: {
+    backgroundColor: colors.emergency,
+    borderColor: colors.emergency,
+  },
+  statusBadgeText: {
+    fontSize: 10,
+    fontWeight: '600',
+    color: colors.textSecondary,
+  },
+  statusBadgeTextActive: {
+    color: '#FFFFFF',
+  },
+  // Expanded Sections
+  expandedSection: {
     backgroundColor: colors.backgroundSecondary,
-    padding: spacing.md,
+    padding: spacing.sm,
     borderRadius: borderRadius.md,
     marginBottom: spacing.sm,
   },
-  dayToggle: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  checkbox: {
-    width: 24,
-    height: 24,
-    borderRadius: 6,
-    borderWidth: 2,
-    borderColor: colors.border,
-    marginRight: spacing.sm,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  checkboxChecked: {
-    backgroundColor: colors.accent,
-    borderColor: colors.accent,
-  },
-  checkmark: {
-    color: '#FFFFFF',
-    fontWeight: '700',
-    fontSize: 14,
-  },
-  dayName: {
-    fontSize: 16,
+  expandedTitle: {
+    fontSize: 13,
     fontWeight: '600',
     color: colors.textPrimary,
+    marginBottom: spacing.sm,
   },
-  dayNameDisabled: {
-    color: colors.textSecondary,
-  },
-  timeRange: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  timeButton: {
-    backgroundColor: colors.backgroundPrimary,
-    paddingVertical: spacing.xs,
-    paddingHorizontal: spacing.sm,
+  locationOption: {
+    padding: spacing.sm,
     borderRadius: borderRadius.sm,
+    marginBottom: 4,
+    backgroundColor: colors.backgroundPrimary,
   },
-  timeText: {
-    fontSize: 14,
-    fontWeight: '600',
+  locationOptionSelected: {
+    backgroundColor: colors.accentSoft,
+  },
+  locationOptionText: {
+    fontSize: 13,
+    color: colors.textPrimary,
+  },
+  locationOptionTextSelected: {
     color: colors.accent,
+    fontWeight: '600',
   },
-  timeSeparator: {
-    marginHorizontal: spacing.sm,
-    color: colors.textSecondary,
-  },
-  locationCard: {
+  toggleRowCompact: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    backgroundColor: colors.backgroundSecondary,
-    padding: spacing.lg,
-    borderRadius: borderRadius.lg,
+    paddingVertical: spacing.xs,
+  },
+  toggleLabelCompact: {
+    fontSize: 13,
+    color: colors.textPrimary,
+  },
+  // Schedule Section - with more spacing
+  scheduleSection: {
+    flex: 1,
+    marginTop: spacing.md,
+  },
+  scheduleTitle: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: colors.textPrimary,
+    marginBottom: 4,
+  },
+  scheduleHint: {
+    fontSize: 11,
+    color: colors.textSecondary,
     marginBottom: spacing.md,
   },
-  locationInfo: {
+  dayRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  dayLabel: {
+    width: 40,
+    height: 32,
+    backgroundColor: colors.backgroundSecondary,
+    borderRadius: borderRadius.sm,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: spacing.sm,
+  },
+  dayText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: colors.accent,
+  },
+  slotsRow: {
     flex: 1,
   },
-  locationName: {
-    fontSize: 16,
+  slotsContent: {
+    paddingRight: spacing.md,
+  },
+  slot: {
+    width: 30,
+    height: 30,
+    borderRadius: 4,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 4,
+    borderWidth: 1,
+  },
+  slotAvailable: {
+    backgroundColor: colors.success,
+    borderColor: colors.success,
+  },
+  slotUnavailable: {
+    backgroundColor: colors.backgroundSecondary,
+    borderColor: colors.border,
+    opacity: 0.6,
+  },
+  slotText: {
+    fontSize: 10,
+    fontWeight: '600',
+  },
+  slotTextAvailable: {
+    color: '#FFFFFF',
+  },
+  slotTextUnavailable: {
+    color: colors.textSecondary,
+    fontSize: 10,
+  },
+  slotCrossLine: {
+    position: 'absolute',
+    width: 20,
+    height: 2,
+    backgroundColor: colors.emergency,
+    transform: [{ rotate: '-45deg' }],
+  },
+  // Footer
+  footer: {
+    flexDirection: 'row',
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    backgroundColor: colors.backgroundSecondary,
+    borderTopWidth: 1,
+    borderTopColor: colors.border,
+    gap: spacing.sm,
+  },
+  backButton: {
+    flex: 1,
+    backgroundColor: colors.backgroundPrimary,
+    paddingVertical: spacing.sm,
+    borderRadius: borderRadius.md,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  backButtonText: {
+    fontSize: 14,
     fontWeight: '600',
     color: colors.textPrimary,
-    marginBottom: spacing.xs,
-  },
-  locationAddress: {
-    fontSize: 14,
-    color: colors.textSecondary,
-  },
-  primaryBadge: {
-    backgroundColor: colors.accent,
-    paddingHorizontal: spacing.sm,
-    paddingVertical: spacing.xs,
-    borderRadius: borderRadius.sm,
-  },
-  primaryBadgeText: {
-    color: '#FFFFFF',
-    fontSize: 10,
-    fontWeight: '700',
-  },
-  addLocationButton: {
-    borderWidth: 2,
-    borderColor: colors.accent,
-    borderStyle: 'dashed',
-    padding: spacing.lg,
-    borderRadius: borderRadius.lg,
-    alignItems: 'center',
-  },
-  addLocationText: {
-    color: colors.accent,
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  saveSection: {
-    marginHorizontal: spacing.lg,
-    marginBottom: spacing.xl,
   },
   saveButton: {
+    flex: 1,
     backgroundColor: colors.accent,
-    paddingVertical: spacing.lg,
-    borderRadius: borderRadius.lg,
+    paddingVertical: spacing.sm,
+    borderRadius: borderRadius.md,
     alignItems: 'center',
   },
   saveButtonDisabled: {
@@ -369,7 +563,7 @@ const styles = StyleSheet.create({
   },
   saveButtonText: {
     color: '#FFFFFF',
-    fontSize: 18,
-    fontWeight: '700',
+    fontSize: 14,
+    fontWeight: '600',
   },
 });

@@ -25,6 +25,7 @@ import { useRoute, RouteProp, useNavigation, useFocusEffect } from '@react-navig
 import { StackNavigationProp } from '@react-navigation/stack';
 import * as SecureStore from 'expo-secure-store';
 import BaseScreen from '../components/BaseScreen';
+import StandardHeader from '../components/StandardHeader';
 import { colors, spacing, borderRadius } from '../theme/colors';
 import { buttonSizing, inputSizing } from '../theme/layout';
 import { RootStackParamList } from '../navigation/AppNavigator';
@@ -236,30 +237,15 @@ export default function ChatScreen() {
     );
   };
 
-  const renderHeader = () => (
-    <View style={styles.header}>
-      <TouchableOpacity 
-        onPress={() => {
-          logger.logButtonClick('Back', { from: 'ChatScreen' });
-          navigation.goBack();
-        }}
-        style={styles.backButton}
-      >
-        <Text style={styles.backButtonText}>← Back</Text>
-      </TouchableOpacity>
-      <View style={styles.headerInfo}>
-        <Text style={styles.headerTitle}>{otherUserName || 'Chat'}</Text>
-        <Text style={styles.headerSubtitle}>
-          {messages.length} message{messages.length !== 1 ? 's' : ''}
-        </Text>
-      </View>
-    </View>
-  );
+
 
   if (loading) {
     return (
-      <BaseScreen pattern="scrollable" scrollable={false}>
-        {renderHeader()}
+      <BaseScreen 
+        pattern="headerWithScroll" 
+        scrollable={false}
+        header={<StandardHeader title={otherUserName || 'Chat'} />}
+      >
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color={colors.accent} />
           <Text style={styles.loadingText}>Loading messages...</Text>
@@ -271,7 +257,7 @@ export default function ChatScreen() {
   return (
     <BaseScreen 
       pattern="headerContentFooter"
-      header={renderHeader()}
+      header={<StandardHeader title={otherUserName || 'Chat'} />}
       footer={
         <KeyboardAvoidingView
           behavior={Platform.OS === 'ios' ? 'padding' : 'height'}

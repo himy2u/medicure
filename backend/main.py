@@ -861,3 +861,10 @@ async def get_user_emergency_requests(user_id: int):
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to fetch emergency requests: {str(e)}"
         )
+
+
+# Include all API endpoints
+from api_endpoints import router as api_router
+app.include_router(api_router)
+
+print("✓ All API endpoints registered")

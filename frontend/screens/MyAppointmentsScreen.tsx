@@ -9,7 +9,8 @@ import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import * as SecureStore from 'expo-secure-store';
 import BaseScreen from '../components/BaseScreen';
-import BackButton from '../components/BackButton';
+import StandardHeader from '../components/StandardHeader';
+import RoleGuard from '../components/RoleGuard';
 import { colors, spacing, borderRadius } from '../theme/colors';
 import { RootStackParamList } from '../navigation/AppNavigator';
 import apiClient from '../utils/apiClient';
@@ -183,12 +184,14 @@ export default function MyAppointmentsScreen() {
   );
 
   return (
-    <BaseScreen pattern="headerWithScroll" header={
-      <View style={styles.header}>
-        <BackButton />
-        <Text style={styles.headerTitle}>My Appointments</Text>
-      </View>
-    }>
+    <RoleGuard 
+      allowedRoles={['patient', 'caregiver', 'doctor']}
+      fallbackMessage="Only patients, caregivers, and doctors can view appointments."
+    >
+    <BaseScreen 
+      pattern="headerWithScroll" 
+      header={<StandardHeader title="My Appointments" />}
+    >
       {/* Tab Selector */}
       <View style={styles.tabContainer}>
         <TouchableOpacity
@@ -239,6 +242,7 @@ export default function MyAppointmentsScreen() {
         />
       )}
     </BaseScreen>
+    </RoleGuard>
   );
 }
 

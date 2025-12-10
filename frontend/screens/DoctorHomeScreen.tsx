@@ -7,6 +7,7 @@ import { useTranslation } from 'react-i18next';
 import * as SecureStore from 'expo-secure-store';
 import { colors, spacing, borderRadius } from '../theme/colors';
 import ProfileHeader from '../components/ProfileHeader';
+import RoleGuard from '../components/RoleGuard';
 import { RootStackParamList } from '../navigation/AppNavigator';
 import { useAuthCheck } from '../hooks/useAuthCheck';
 
@@ -45,6 +46,10 @@ export default function DoctorHomeScreen() {
   const displayName = doctorName ? `Dr. ${doctorName}` : '';
 
   return (
+    <RoleGuard 
+      allowedRoles={['doctor']}
+      fallbackMessage="This screen is only accessible to doctors."
+    >
     <SafeAreaView style={styles.container}>
       <View style={styles.content}>
         {/* Top Bar */}
@@ -74,12 +79,12 @@ export default function DoctorHomeScreen() {
 
           <TouchableOpacity
             style={styles.actionCard}
-            onPress={() => navigation.navigate('MyAppointments')}
+            onPress={() => navigation.navigate('DoctorSchedule' as any)}
           >
             <Text style={styles.actionEmoji}>📅</Text>
             <View style={styles.cardTextContainer}>
               <Text style={styles.actionTitle}>{t('mySchedule')}</Text>
-              <Text style={styles.actionSubtitle}>{t('viewManageAppointments')}</Text>
+              <Text style={styles.actionSubtitle}>View calendar & setup schedule</Text>
             </View>
           </TouchableOpacity>
 
@@ -94,7 +99,10 @@ export default function DoctorHomeScreen() {
             </View>
           </TouchableOpacity>
 
-          <TouchableOpacity style={styles.actionCard}>
+          <TouchableOpacity 
+            style={styles.actionCard}
+            onPress={() => navigation.navigate('EmergencyAlerts' as any)}
+          >
             <Text style={styles.actionEmoji}>🚨</Text>
             <View style={styles.cardTextContainer}>
               <Text style={styles.actionTitle}>{t('emergencyAlerts')}</Text>
@@ -109,6 +117,7 @@ export default function DoctorHomeScreen() {
         </TouchableOpacity>
       </View>
     </SafeAreaView>
+    </RoleGuard>
   );
 }
 

@@ -6,6 +6,7 @@ import { StackNavigationProp } from '@react-navigation/stack';
 import { TextInput, Button } from 'react-native-paper';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { colors, spacing, borderRadius } from '../theme/colors';
+import RoleGuard from '../components/RoleGuard';
 import { RootStackParamList } from '../navigation/AppNavigator';
 import Constants from 'expo-constants';
 import * as SecureStore from 'expo-secure-store';
@@ -110,6 +111,10 @@ export default function BookAppointmentScreen() {
   };
 
   return (
+    <RoleGuard 
+      allowedRoles={['patient', 'caregiver']}
+      fallbackMessage="Only patients and caregivers can book appointments."
+    >
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
@@ -242,6 +247,7 @@ export default function BookAppointmentScreen() {
         </View>
       </ScrollView>
     </SafeAreaView>
+    </RoleGuard>
   );
 }
 

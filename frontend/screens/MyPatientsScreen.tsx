@@ -9,7 +9,8 @@ import { useNavigation } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import * as SecureStore from 'expo-secure-store';
 import BaseScreen from '../components/BaseScreen';
-import BackButton from '../components/BackButton';
+import StandardHeader from '../components/StandardHeader';
+import RoleGuard from '../components/RoleGuard';
 import { colors, spacing, borderRadius } from '../theme/colors';
 import { RootStackParamList } from '../navigation/AppNavigator';
 import apiClient from '../utils/apiClient';
@@ -142,12 +143,15 @@ export default function MyPatientsScreen() {
   );
 
   return (
-    <BaseScreen pattern="headerWithScroll" header={
-      <View style={styles.header}>
-        <BackButton />
-        <Text style={styles.headerTitle}>My Patients</Text>
-      </View>
-    }>
+    <RoleGuard 
+      allowedRoles={['doctor']}
+      fallbackMessage="Only doctors can view patient lists."
+    >
+    <BaseScreen 
+      pattern="headerContentFooter" 
+      scrollable={false}
+      header={<StandardHeader title="My Patients" />}
+    >
       {/* Search Bar */}
       <View style={styles.searchContainer}>
         <TextInput
@@ -196,6 +200,7 @@ export default function MyPatientsScreen() {
         />
       )}
     </BaseScreen>
+    </RoleGuard>
   );
 }
 

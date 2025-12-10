@@ -28,8 +28,10 @@ import BookAppointmentScreen from '../screens/BookAppointmentScreen';
 // Doctor Screens
 import DoctorHomeScreen from '../screens/DoctorHomeScreen';
 import DoctorAvailabilityScreen from '../screens/DoctorAvailabilityScreen';
+import DoctorScheduleScreen from '../screens/DoctorScheduleScreen';
 import MyPatientsScreen from '../screens/MyPatientsScreen';
 import PatientHistoryScreen from '../screens/PatientHistoryScreen';
+import EmergencyAlertsScreen from '../screens/EmergencyAlertsScreen';
 
 // Medical Staff Screens
 import MedicalStaffHomeScreen from '../screens/MedicalStaffHomeScreen';
@@ -91,8 +93,10 @@ export type RootStackParamList = {
   // Doctor
   DoctorHome: undefined;
   DoctorAvailability: undefined;
+  DoctorSchedule: undefined;
   MyPatients: undefined;
   PatientHistory: { patientId: string; patientName: string };
+  EmergencyAlerts: undefined;
 
   // Medical Staff
   MedicalStaffHome: undefined;
@@ -280,17 +284,27 @@ export default function AppNavigator() {
           <Stack.Screen
             name="DoctorAvailability"
             component={DoctorAvailabilityScreen}
-            options={{ title: 'Availability Settings' }}
+            options={{ headerShown: false }}
+          />
+          <Stack.Screen
+            name="DoctorSchedule"
+            component={DoctorScheduleScreen}
+            options={{ headerShown: false }}
           />
           <Stack.Screen
             name="MyPatients"
             component={MyPatientsScreen}
-            options={{ title: 'My Patients' }}
+            options={{ headerShown: false }}
           />
           <Stack.Screen
             name="PatientHistory"
             component={PatientHistoryScreen}
             options={{ title: 'Patient History' }}
+          />
+          <Stack.Screen
+            name="EmergencyAlerts"
+            component={EmergencyAlertsScreen}
+            options={{ headerShown: false }}
           />
 
           {/* Medical Staff Workflow Screens */}

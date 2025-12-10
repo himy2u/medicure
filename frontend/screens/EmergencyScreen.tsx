@@ -1,9 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { StyleSheet, Text, View, Alert, ScrollView, TouchableOpacity, Linking, ActivityIndicator } from 'react-native';
-import { Button, Card, TextInput } from 'react-native-paper';
+import { StyleSheet, Text, View, Alert, TouchableOpacity, Linking, ActivityIndicator } from 'react-native';
+import { TextInput } from 'react-native-paper';
 import { useNavigation } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { useTranslation } from 'react-i18next';
+import BaseScreen from '../components/BaseScreen';
+import StandardHeader from '../components/StandardHeader';
 import { colors, spacing, borderRadius } from '../theme/colors';
 import { RootStackParamList } from '../navigation/AppNavigator';
 import * as Location from 'expo-location';
@@ -11,19 +13,7 @@ import Constants from 'expo-constants';
 
 type EmergencyScreenNavigationProp = StackNavigationProp<RootStackParamList, 'Emergency'>;
 
-interface EmergencyDoctor {
-  id: number;
-  full_name: string;
-  specialty: string;
-  sub_specialty: string;
-  phone: string;
-  clinic_name: string;
-  address: string;
-  city: string;
-  distance_km: number;
-  distance_mi: number;
-  is_24_hours: boolean;
-}
+
 
 export default function EmergencyScreen() {
   const navigation = useNavigation<EmergencyScreenNavigationProp>();
@@ -33,8 +23,6 @@ export default function EmergencyScreen() {
   const [location, setLocation] = useState<{ latitude: number; longitude: number } | null>(null);
   const [loadingLocation, setLoadingLocation] = useState(false);
   const [loadingDoctors, setLoadingDoctors] = useState(false);
-  const [emergencyDoctors, setEmergencyDoctors] = useState<EmergencyDoctor[]>([]);
-  const [showDoctorsList, setShowDoctorsList] = useState(false);
 
   const commonSymptoms = [
     t('chestPain'),
@@ -212,107 +200,40 @@ export default function EmergencyScreen() {
     }
   };
 
-  const handleAlertDoctor = (doctor: EmergencyDoctor) => {
-    Alert.alert(
-      'Alert Doctor',
-      `Send emergency alert to ${doctor.full_name}?`,
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Alert Now',
-          style: 'destructive',
-          onPress: () => {
-            // TODO: Implement Uber-style dispatch
-            Alert.alert('Alert Sent', `${doctor.full_name} has been alerted and will respond shortly.`);
-          }
-        }
-      ]
-    );
-  };
 
-  const handleCallDoctor = (phone: string) => {
-    Linking.openURL(`tel:${phone}`);
-  };
-
-  // If showing doctors list, render that view
-  if (showDoctorsList) {
-    return (
-      <View style={styles.container}>
-        <View style={styles.header}>
-          <TouchableOpacity onPress={() => setShowDoctorsList(false)} style={styles.backButton}>
-            <Text style={styles.backButtonText}>← Back</Text>
-          </TouchableOpacity>
-          <Text style={styles.title}>Emergency Doctors</Text>
-          <View style={styles.placeholder} />
-        </View>
-
-        <ScrollView style={styles.doctorsListContainer} showsVerticalScrollIndicator={false}>
-          <Text style={styles.sectionTitle}>
-            {emergencyDoctors.length} Doctors Available Near You
-          </Text>
-          <Text style={styles.subtitle}>Sorted by distance - Nearest first</Text>
-
-          {emergencyDoctors.map((doctor) => (
-            <Card key={doctor.id} style={styles.doctorCard}>
-              <Card.Content>
-                <View style={styles.doctorHeader}>
-                  <View style={styles.doctorInfo}>
-                    <Text style={styles.doctorName}>{doctor.full_name}</Text>
-                    <Text style={styles.doctorSpecialty}>
-                      {doctor.specialty} {doctor.sub_specialty && `· ${doctor.sub_specialty}`}
-                    </Text>
-                    <Text style={styles.doctorClinic}>📍 {doctor.clinic_name}</Text>
-                    <Text style={styles.doctorAddress}>{doctor.address}, {doctor.city}</Text>
-                    <Text style={styles.doctorDistance}>
-                      🚗 {doctor.distance_mi} mi ({doctor.distance_km} km) away
-                      {doctor.is_24_hours && ' · 24/7'}
-                    </Text>
-                  </View>
-                </View>
-
-                <View style={styles.doctorActions}>
-                  <TouchableOpacity
-                    style={styles.alertButton}
-                    onPress={() => handleAlertDoctor(doctor)}
-                  >
-                    <Text style={styles.alertButtonText}>🚨 Alert Now</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity
-                    style={styles.callButton}
-                    onPress={() => handleCallDoctor(doctor.phone)}
-                  >
-                    <Text style={styles.callButtonText}>📞 Call</Text>
-                  </TouchableOpacity>
-                </View>
-              </Card.Content>
-            </Card>
-          ))}
-
-          <View style={styles.bottomPadding} />
-        </ScrollView>
-      </View>
-    );
-  }
 
   return (
-    <View style={styles.container}>
-      <View style={styles.header}>
-        <Text style={styles.title}>{t('emergencyTitle')}</Text>
-        {loadingLocation && <ActivityIndicator size="small" color={colors.accent} />}
-      </View>
-
-      {/* Emergency Call Buttons */}
+    <BaseScreen 
+      pattern="headerContentFooter"
+      scrollable={false}
+      header={<StandardHeader title={t('emergencyTitle')} />}
+      footer={
+        <TouchableOpacity
+          style={styles.findDoctorsButton}
+          onPress={handleFindDoctors}
+          activeOpacity={0.7}
+          disabled={loadingDoctors || loadingLocation}
+        >
+          {loadingDoctors ? (
+            <ActivityIndicator size="small" color="#FFFFFF" />
+          ) : (
+            <Text style={styles.findDoctorsText}>🔍 Find Doctors Now</Text>
+          )}
+        </TouchableOpacity>
+      }
+    >
+      {/* Emergency Call Buttons - Compact */}
       <View style={styles.emergencyActions}>
         <TouchableOpacity style={styles.call911Button} onPress={handleCall911}>
-          <Text style={styles.call911Text}>🚨 {t('call911')}</Text>
+          <Text style={styles.emergencyButtonText}>🚨 911</Text>
         </TouchableOpacity>
         <TouchableOpacity style={styles.ambulanceButton} onPress={handleCallAmbulance}>
-          <Text style={styles.ambulanceText}>🚑 {t('ambulance')}</Text>
+          <Text style={styles.emergencyButtonText}>🚑 Ambulance</Text>
         </TouchableOpacity>
       </View>
 
       {/* Symptom Selection */}
-      <ScrollView style={styles.symptomSection} showsVerticalScrollIndicator={false}>
+      <View style={styles.symptomSection}>
         <Text style={styles.sectionTitle}>{t('mainSymptom')}</Text>
         
         {/* Common Symptoms - 2x3 Grid */}
@@ -339,118 +260,55 @@ export default function EmergencyScreen() {
           ))}
         </View>
 
-        {/* Custom Symptom Input */}
-        <Card style={styles.customSymptomCard}>
-          <Card.Content>
-            <Text style={styles.customSymptomTitle}>{t('describeSymptoms')}</Text>
-            <TextInput
-              label={t('symptomsPlaceholder')}
-              value={customSymptom}
-              onChangeText={(text) => {
-                setCustomSymptom(text);
-                setSelectedSymptom('');
-              }}
-              mode="outlined"
-              multiline
-              numberOfLines={3}
-              style={styles.customInput}
-            />
-          </Card.Content>
-        </Card>
-
-        {/* Add padding at bottom to ensure button doesn't cover content */}
-        <View style={styles.bottomPadding} />
-      </ScrollView>
-
-      {/* Fixed Bottom Buttons */}
-      <View style={styles.bottomActions}>
-        <TouchableOpacity 
-          style={styles.backButtonBottom}
-          onPress={() => {
-            console.log('Back button pressed');
-            navigation.goBack();
-          }}
-          activeOpacity={0.7}
-        >
-          <Text style={styles.backButtonText}>Back</Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={styles.findDoctorsButtonBottom}
-          onPress={() => {
-            console.log('Find Doctors button pressed');
-            handleFindDoctors();
-          }}
-          activeOpacity={0.7}
-          disabled={loadingDoctors || loadingLocation}
-        >
-          {loadingDoctors ? (
-            <ActivityIndicator size="small" color="#FFFFFF" />
-          ) : (
-            <Text style={styles.findDoctorsText}>🔍 Find Doctors Now</Text>
-          )}
-        </TouchableOpacity>
+        {/* Custom Symptom Input - Compact */}
+        <View style={styles.customSymptomCard}>
+          <Text style={styles.customSymptomTitle}>{t('describeSymptoms')}</Text>
+          <TextInput
+            label={t('symptomsPlaceholder')}
+            value={customSymptom}
+            onChangeText={(text) => {
+              setCustomSymptom(text);
+              setSelectedSymptom('');
+            }}
+            mode="outlined"
+            multiline
+            numberOfLines={2}
+            style={styles.customInput}
+          />
+        </View>
       </View>
-    </View>
+    </BaseScreen>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: colors.backgroundPrimary,
-  },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingTop: spacing.lg,
-    paddingHorizontal: spacing.lg,
-    paddingBottom: spacing.md,
-  },
-  backButton: {
-    paddingVertical: spacing.sm,
-    paddingHorizontal: spacing.sm,
-  },
-  placeholder: {
-    width: 60, // Same width as back button for centering
-  },
-  title: {
-    fontSize: 28,
-    fontWeight: '700',
-    color: colors.textPrimary,
-  },
-  subtitle: {
-    fontSize: 16,
-    color: colors.textSecondary,
-  },
   emergencyActions: {
     flexDirection: 'row',
     paddingHorizontal: spacing.lg,
-    marginBottom: spacing.lg,
+    marginBottom: spacing.md,
     gap: spacing.md,
   },
   call911Button: {
     flex: 1,
-    backgroundColor: '#FF6B6B',
-    paddingVertical: spacing.lg,
+    backgroundColor: colors.backgroundSecondary,
+    paddingVertical: spacing.md,
     borderRadius: borderRadius.lg,
     alignItems: 'center',
-  },
-  call911Text: {
-    color: '#FFFFFF',
-    fontSize: 18,
-    fontWeight: '700',
+    borderWidth: 1,
+    borderColor: colors.border,
   },
   ambulanceButton: {
     flex: 1,
-    backgroundColor: colors.accent,
-    paddingVertical: spacing.lg,
+    backgroundColor: colors.backgroundSecondary,
+    paddingVertical: spacing.md,
     borderRadius: borderRadius.lg,
     alignItems: 'center',
+    borderWidth: 1,
+    borderColor: colors.border,
   },
-  ambulanceText: {
-    color: '#FFFFFF',
-    fontSize: 18,
+  emergencyButtonText: {
+    color: colors.textPrimary,
+    fontSize: 14,
     fontWeight: '700',
   },
   symptomSection: {
@@ -458,7 +316,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.lg,
   },
   sectionTitle: {
-    fontSize: 18,
+    fontSize: 16,
     fontWeight: '600',
     color: colors.textPrimary,
     marginBottom: spacing.md,
@@ -467,25 +325,27 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     flexWrap: 'wrap',
     justifyContent: 'space-between',
-    marginBottom: spacing.lg,
+    marginBottom: spacing.md,
   },
   symptomCard: {
     width: '48%',
     backgroundColor: colors.backgroundSecondary,
-    paddingVertical: spacing.md,
-    paddingHorizontal: spacing.sm,
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.xs,
     borderRadius: borderRadius.md,
     alignItems: 'center',
     marginBottom: spacing.sm,
     borderWidth: 2,
     borderColor: 'transparent',
+    minHeight: 50,
+    justifyContent: 'center',
   },
   symptomCardSelected: {
     backgroundColor: colors.accent,
     borderColor: colors.accent,
   },
   symptomText: {
-    fontSize: 14,
+    fontSize: 12,
     fontWeight: '600',
     color: colors.textPrimary,
     textAlign: 'center',
@@ -494,7 +354,10 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
   },
   customSymptomCard: {
-    marginBottom: spacing.lg,
+    backgroundColor: colors.backgroundSecondary,
+    padding: spacing.md,
+    borderRadius: borderRadius.lg,
+    marginBottom: spacing.md,
   },
   customSymptomTitle: {
     fontSize: 14,
@@ -503,44 +366,12 @@ const styles = StyleSheet.create({
     marginBottom: spacing.sm,
   },
   customInput: {
-    backgroundColor: colors.backgroundSecondary,
-  },
-  bottomPadding: {
-    height: 100, // Ensure space for the fixed button
-  },
-  bottomActions: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
-    flexDirection: 'row',
-    paddingHorizontal: spacing.lg,
-    paddingBottom: spacing.lg,
-    paddingTop: spacing.md,
     backgroundColor: colors.backgroundPrimary,
-    borderTopWidth: 1,
-    borderTopColor: colors.border,
-    gap: spacing.md,
   },
-  backButtonBottom: {
-    flex: 1,
-    backgroundColor: colors.backgroundSecondary,
-    paddingVertical: spacing.md,
-    borderRadius: borderRadius.lg,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  backButtonText: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: colors.textPrimary,
-  },
-  findDoctorsButtonBottom: {
-    flex: 2,
+  findDoctorsButton: {
     backgroundColor: colors.accent,
-    paddingVertical: spacing.md,
+    paddingVertical: spacing.lg,
+    marginHorizontal: spacing.lg,
     borderRadius: borderRadius.lg,
     alignItems: 'center',
     justifyContent: 'center',
@@ -548,79 +379,6 @@ const styles = StyleSheet.create({
   findDoctorsText: {
     color: '#FFFFFF',
     fontSize: 16,
-    fontWeight: '600',
-  },
-  doctorsListContainer: {
-    flex: 1,
-    paddingHorizontal: spacing.lg,
-  },
-  doctorCard: {
-    marginBottom: spacing.md,
-    borderRadius: borderRadius.lg,
-    elevation: 3,
-    backgroundColor: colors.backgroundSecondary,
-  },
-  doctorHeader: {
-    flexDirection: 'row',
-    marginBottom: spacing.md,
-  },
-  doctorInfo: {
-    flex: 1,
-  },
-  doctorName: {
-    fontSize: 16,
     fontWeight: '700',
-    color: colors.textPrimary,
-    marginBottom: spacing.xs,
-  },
-  doctorSpecialty: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: colors.accent,
-    marginBottom: spacing.xs,
-  },
-  doctorClinic: {
-    fontSize: 14,
-    color: colors.textPrimary,
-    marginBottom: 2,
-  },
-  doctorAddress: {
-    fontSize: 13,
-    color: colors.textSecondary,
-    marginBottom: spacing.xs,
-  },
-  doctorDistance: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: colors.success,
-    marginTop: spacing.xs,
-  },
-  doctorActions: {
-    flexDirection: 'row',
-    gap: spacing.sm,
-  },
-  alertButton: {
-    flex: 2,
-    backgroundColor: colors.emergency,
-    paddingVertical: spacing.md,
-    borderRadius: borderRadius.md,
-    alignItems: 'center',
-  },
-  alertButtonText: {
-    color: '#FFFFFF',
-    fontSize: 14,
-    fontWeight: '700',
-  },
-  callButton: {
-    flex: 1,
-    backgroundColor: colors.accent,
-    paddingVertical: spacing.md,
-    borderRadius: borderRadius.md,
-    alignItems: 'center',
-  },
-  callButtonText: {
-    color: '#FFFFFF',
-    fontSize: 14,
-    fontWeight: '600',
   },
 });
