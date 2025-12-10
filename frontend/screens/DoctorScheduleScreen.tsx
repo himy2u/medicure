@@ -4,11 +4,11 @@
  */
 
 import React, { useState, useEffect } from 'react';
-import { StyleSheet, Text, View, TouchableOpacity, ScrollView, Alert } from 'react-native';
+import { StyleSheet, Text, View, TouchableOpacity, FlatList, Alert, RefreshControl } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import * as SecureStore from 'expo-secure-store';
-import BaseScreen from '../components/BaseScreen';
 import StandardHeader from '../components/StandardHeader';
 import RoleGuard from '../components/RoleGuard';
 import { colors, spacing, borderRadius } from '../theme/colors';
@@ -165,6 +165,63 @@ export default function DoctorScheduleScreen() {
     );
   };
 
+  const handleCancelAppointment = (apt: Appointment) => {
+    if (apt.type === 'emergency') {
+      Alert.alert('Cannot Cancel', 'Emergency appointments cannot be cancelled.');
+      return;
+    }
+    
+    Alert.alert(
+      'Cancel Appointment',
+      `Cancel appointment with ${apt.patient_name} at ${apt.time}?`,
+      [
+        { text: 'No', style: 'cancel' },
+        { 
+          text: 'Yes, Cancel', 
+          style: 'destructive',
+          onPress: () => {
+            setAppointments(prev => prev.filter(a => a.id !== apt.id));
+            Alert.alert('Cancelled', 'Appointment has been cancelled.');
+          }
+        }
+      ]
+    );
+  };
+
+  const renderAppointment = ({ item: apt }: { item: Appointment }) => (
+    <View style={styles.appointmentCard}>
+      <View style={styles.appointmentTime}>
+        <Text style={styles.timeText}>{apt.time}</Text>
+      </View>
+      <View style={styles.appointmentInfo}>
+        <Text style={styles.patientName}>{apt.patient_name}</Text>
+        <Text style={[
+          styles.appointmentType,
+          apt.type === 'emergency' && styles.emergencyType
+        ]}>
+          {apt.type === 'emergency' ? '🚨 ER' : '📅'}
+        </Text>
+      </View>
+      <View style={styles.appointmentActions}>
+        <View style={[
+          styles.statusBadge,
+          apt.status === 'confirmed' && styles.confirmedBadge,
+          apt.status === 'pending' && styles.pendingBadge
+        ]}>
+          <Text style={styles.statusText}>{apt.status}</Text>
+        </View>
+        {apt.type !== 'emergency' && (
+          <TouchableOpacity 
+            style={styles.cancelButton}
+            onPress={() => handleCancelAppointment(apt)}
+          >
+            <Text style={styles.cancelButtonText}>✕</Text>
+          </TouchableOpacity>
+        )}
+      </View>
+    </View>
+  );
+
   const renderDayView = () => (
     <View style={styles.dayView}>
       <Text style={styles.dayTitle}>
@@ -175,40 +232,25 @@ export default function DoctorScheduleScreen() {
         })}
       </Text>
       
-      {appointments.length === 0 ? (
-        <View style={styles.emptyState}>
-          <Text style={styles.emptyText}>No appointments today</Text>
-          <TouchableOpacity style={styles.setupButton} onPress={handleSetupSchedule}>
-            <Text style={styles.setupButtonText}>Setup Schedule</Text>
-          </TouchableOpacity>
-        </View>
-      ) : (
-        <ScrollView style={styles.appointmentsList} showsVerticalScrollIndicator={true}>
-          {appointments.map((apt) => (
-            <View key={apt.id} style={styles.appointmentCard}>
-              <View style={styles.appointmentTime}>
-                <Text style={styles.timeText}>{apt.time}</Text>
-              </View>
-              <View style={styles.appointmentInfo}>
-                <Text style={styles.patientName}>{apt.patient_name}</Text>
-                <Text style={[
-                  styles.appointmentType,
-                  apt.type === 'emergency' && styles.emergencyType
-                ]}>
-                  {apt.type === 'emergency' ? '🚨 ER' : '📅'}
-                </Text>
-              </View>
-              <View style={[
-                styles.statusBadge,
-                apt.status === 'confirmed' && styles.confirmedBadge,
-                apt.status === 'pending' && styles.pendingBadge
-              ]}>
-                <Text style={styles.statusText}>{apt.status}</Text>
-              </View>
-            </View>
-          ))}
-        </ScrollView>
-      )}
+      <FlatList
+        data={appointments}
+        keyExtractor={(item) => item.id}
+        renderItem={renderAppointment}
+        style={styles.appointmentsList}
+        contentContainerStyle={styles.appointmentsContent}
+        showsVerticalScrollIndicator={true}
+        refreshControl={
+          <RefreshControl refreshing={loading} onRefresh={loadAppointments} />
+        }
+        ListEmptyComponent={
+          <View style={styles.emptyState}>
+            <Text style={styles.emptyText}>No appointments today</Text>
+            <TouchableOpacity style={styles.setupButton} onPress={handleSetupSchedule}>
+              <Text style={styles.setupButtonText}>Setup Schedule</Text>
+            </TouchableOpacity>
+          </View>
+        }
+      />
     </View>
   );
 
@@ -256,27 +298,9 @@ export default function DoctorScheduleScreen() {
       allowedRoles={['doctor']}
       fallbackMessage="Only doctors can view schedules."
     >
-    <BaseScreen 
-      pattern="headerContentFooter" 
-      scrollable={false}
-      header={<StandardHeader title="Schedule" />}
-      footer={
-        <View style={styles.footer}>
-          <TouchableOpacity
-            style={styles.backButton}
-            onPress={() => navigation.goBack()}
-          >
-            <Text style={styles.backButtonText}>Back</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={styles.setupButtonFooter}
-            onPress={handleSetupSchedule}
-          >
-            <Text style={styles.setupButtonFooterText}>Setup</Text>
-          </TouchableOpacity>
-        </View>
-      }
-    >
+    <SafeAreaView style={styles.container} edges={['top']}>
+      <StandardHeader title="Schedule" />
+      
       {/* Combined Navigation - Arrows + Toggle in one row */}
       <View style={styles.navigationBar}>
         <TouchableOpacity style={styles.navArrow} onPress={() => navigateDate('prev')}>
@@ -309,12 +333,32 @@ export default function DoctorScheduleScreen() {
       </TouchableOpacity>
       
       {viewMode === 'day' ? renderDayView() : renderWeekView()}
-    </BaseScreen>
+      
+      {/* Footer */}
+      <View style={styles.footer}>
+        <TouchableOpacity
+          style={styles.backButton}
+          onPress={() => navigation.goBack()}
+        >
+          <Text style={styles.backButtonText}>Back</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={styles.setupButtonFooter}
+          onPress={handleSetupSchedule}
+        >
+          <Text style={styles.setupButtonFooterText}>Setup</Text>
+        </TouchableOpacity>
+      </View>
+    </SafeAreaView>
     </RoleGuard>
   );
 }
 
 const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: colors.backgroundPrimary,
+  },
   dayView: {
     flex: 1,
     padding: spacing.lg,
@@ -328,6 +372,27 @@ const styles = StyleSheet.create({
   },
   appointmentsList: {
     flex: 1,
+  },
+  appointmentsContent: {
+    paddingBottom: spacing.lg,
+  },
+  appointmentActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs,
+  },
+  cancelButton: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: colors.emergency,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  cancelButtonText: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: '700',
   },
   emptyState: {
     flex: 1,

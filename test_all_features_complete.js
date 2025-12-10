@@ -89,7 +89,7 @@ async function testBookAppointment() {
   log('📅', 'Testing appointment booking...');
   
   const appointmentDate = new Date();
-  appointmentDate.setDate(appointmentDate.getDate() + 1); // Tomorrow
+  appointmentDate.setDate(appointmentDate.getDate() + 3); // 3 days from now (to allow 24h cancellation)
   
   const result = await makeRequest('POST', '/api/appointments/book', {
     doctor_id: 1,

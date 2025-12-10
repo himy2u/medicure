@@ -255,24 +255,76 @@ async def cancel_appointment(
     appointment_id: str,
     current_user: Dict = Depends(get_current_user)
 ):
-    """Cancel an appointment"""
+    """Cancel an appointment - only non-emergency appointments can be cancelled at least 24 hours before"""
     try:
         pool = await get_pool()
         async with pool.acquire() as conn:
-            query = """
-                UPDATE appointments
-                SET status = 'cancelled', updated_at = CURRENT_TIMESTAMP
+            # First, get the appointment to check type and date
+            check_query = """
+                SELECT id, appointment_type, appointment_date, patient_id, doctor_id, status
+                FROM appointments
                 WHERE id = $1
-                RETURNING id, status
             """
+            appointment = await conn.fetchrow(check_query, appointment_id)
             
-            row = await conn.fetchrow(query, appointment_id)
-            
-            if not row:
+            if not appointment:
                 raise HTTPException(
                     status_code=status.HTTP_404_NOT_FOUND,
                     detail="Appointment not found"
                 )
+            
+            # Check if already cancelled
+            if appointment['status'] == 'cancelled':
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="Appointment is already cancelled"
+                )
+            
+            # Check if emergency appointment
+            if appointment['appointment_type'] == 'emergency':
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="Emergency appointments cannot be cancelled"
+                )
+            
+            # Check if user is authorized (patient, doctor, or caregiver)
+            user_id = str(current_user.get('id'))
+            patient_id = str(appointment['patient_id'])
+            doctor_id = str(appointment['doctor_id'])
+            user_role = current_user.get('role', '')
+            
+            is_authorized = (
+                user_id == patient_id or 
+                user_id == doctor_id or 
+                user_role in ['doctor', 'caregiver', 'admin']
+            )
+            
+            if not is_authorized:
+                raise HTTPException(
+                    status_code=status.HTTP_403_FORBIDDEN,
+                    detail="You are not authorized to cancel this appointment"
+                )
+            
+            # Check 24-hour rule
+            appointment_date = appointment['appointment_date']
+            now = datetime.utcnow()
+            hours_until_appointment = (appointment_date - now).total_seconds() / 3600
+            
+            if hours_until_appointment < 24:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail=f"Appointments can only be cancelled at least 24 hours in advance. This appointment is in {int(hours_until_appointment)} hours."
+                )
+            
+            # Cancel the appointment
+            update_query = """
+                UPDATE appointments
+                SET status = 'cancelled', updated_at = CURRENT_TIMESTAMP
+                WHERE id = $1
+                RETURNING id, status, appointment_type, appointment_date
+            """
+            
+            row = await conn.fetchrow(update_query, appointment_id)
             
             return {
                 "success": True,

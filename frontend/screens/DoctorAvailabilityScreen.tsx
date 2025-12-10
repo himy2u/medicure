@@ -3,12 +3,12 @@
  * Used by: Doctor
  */
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { StyleSheet, Text, View, TouchableOpacity, Switch, Alert, ScrollView } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import * as SecureStore from 'expo-secure-store';
-import BaseScreen from '../components/BaseScreen';
 import StandardHeader from '../components/StandardHeader';
 import RoleGuard from '../components/RoleGuard';
 import { colors, spacing, borderRadius } from '../theme/colors';
@@ -168,30 +168,9 @@ export default function DoctorAvailabilityScreen() {
       allowedRoles={['doctor']}
       fallbackMessage="Only doctors can manage availability settings."
     >
-    <BaseScreen 
-      pattern="headerContentFooter" 
-      scrollable={false}
-      header={<StandardHeader title="Availability" />}
-      footer={
-        <View style={styles.footer}>
-          <TouchableOpacity
-            style={styles.backButton}
-            onPress={() => navigation.goBack()}
-          >
-            <Text style={styles.backButtonText}>Back</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[styles.saveButton, saving && styles.saveButtonDisabled]}
-            onPress={handleSave}
-            disabled={saving}
-          >
-            <Text style={styles.saveButtonText}>
-              {saving ? 'Saving...' : 'Save'}
-            </Text>
-          </TouchableOpacity>
-        </View>
-      }
-    >
+    <SafeAreaView style={styles.container} edges={['top']}>
+      <StandardHeader title="Availability" />
+      
       <View style={styles.content}>
         {/* Compact Top Section - Location & Override in a row */}
         <View style={styles.compactTopSection}>
@@ -285,15 +264,36 @@ export default function DoctorAvailabilityScreen() {
           </View>
         )}
 
-        {/* Weekly Schedule - with time period indicator */}
+        {/* Weekly Schedule - with time header */}
         <View style={styles.scheduleSection}>
-          <Text style={styles.scheduleTitle}>Weekly Schedule</Text>
-          <Text style={styles.scheduleHint}>Tap slot to toggle • Long press day for presets</Text>
-          
-          {/* Time Period Indicator */}
-          <View style={styles.timePeriodIndicator}>
+          <View style={styles.scheduleTitleRow}>
+            <Text style={styles.scheduleTitle}>Weekly Schedule</Text>
             <Text style={styles.timePeriodText}>{currentTimePeriod}</Text>
-            <Text style={styles.scrollHint}>← Swipe to see all 24 hours →</Text>
+          </View>
+          
+          {/* Time Header Row - shows hours */}
+          <View style={styles.timeHeaderRow}>
+            <View style={styles.dayLabelPlaceholder} />
+            <ScrollView 
+              horizontal 
+              showsHorizontalScrollIndicator={true}
+              style={styles.timeHeaderScroll}
+              onScroll={(e) => {
+                const offsetX = e.nativeEvent.contentOffset.x;
+                const slotWidth = 38;
+                const visibleHour = Math.floor(offsetX / slotWidth);
+                setCurrentTimePeriod(getTimePeriod(Math.min(visibleHour, 23)));
+              }}
+              scrollEventThrottle={50}
+            >
+              {Array.from({ length: 24 }, (_, i) => (
+                <View key={i} style={styles.timeHeaderSlot}>
+                  <Text style={styles.timeHeaderText}>
+                    {i === 0 ? '12a' : i < 12 ? `${i}a` : i === 12 ? '12p' : `${i-12}p`}
+                  </Text>
+                </View>
+              ))}
+            </ScrollView>
           </View>
           
           {weekSchedule.map((day, dayIndex) => (
@@ -323,14 +323,6 @@ export default function DoctorAvailabilityScreen() {
                 showsHorizontalScrollIndicator={true}
                 style={styles.slotsRow}
                 contentContainerStyle={styles.slotsContent}
-                nestedScrollEnabled={true}
-                onScroll={(e) => {
-                  const offsetX = e.nativeEvent.contentOffset.x;
-                  const slotWidth = 38; // slot width + margin
-                  const visibleHour = Math.floor(offsetX / slotWidth);
-                  setCurrentTimePeriod(getTimePeriod(Math.min(visibleHour, 23)));
-                }}
-                scrollEventThrottle={100}
               >
                 {day.timeSlots.map((slot, slotIndex) => (
                   <TouchableOpacity
@@ -355,12 +347,35 @@ export default function DoctorAvailabilityScreen() {
           ))}
         </View>
       </View>
-    </BaseScreen>
+      
+      {/* Footer */}
+      <View style={styles.footer}>
+        <TouchableOpacity
+          style={styles.backButton}
+          onPress={() => navigation.goBack()}
+        >
+          <Text style={styles.backButtonText}>Back</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.saveButton, saving && styles.saveButtonDisabled]}
+          onPress={handleSave}
+          disabled={saving}
+        >
+          <Text style={styles.saveButtonText}>
+            {saving ? 'Saving...' : 'Save'}
+          </Text>
+        </TouchableOpacity>
+      </View>
+    </SafeAreaView>
     </RoleGuard>
   );
 }
 
 const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: colors.backgroundPrimary,
+  },
   content: {
     flex: 1,
     paddingHorizontal: spacing.md,
@@ -386,21 +401,21 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   compactLabel: {
-    fontSize: 11,
+    fontSize: 13,
     color: colors.textSecondary,
   },
   dropdownArrow: {
-    fontSize: 10,
+    fontSize: 12,
     color: colors.accent,
   },
   compactValue: {
-    fontSize: 13,
+    fontSize: 14,
     fontWeight: '600',
     color: colors.textPrimary,
     marginTop: 2,
   },
   moreOptionsHint: {
-    fontSize: 9,
+    fontSize: 10,
     color: colors.accent,
     marginTop: 2,
   },
@@ -473,44 +488,59 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: colors.textPrimary,
   },
-  // Schedule Section - with more spacing
+  // Schedule Section
   scheduleSection: {
     flex: 1,
     marginTop: spacing.sm,
+  },
+  scheduleTitleRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: spacing.sm,
   },
   scheduleTitle: {
     fontSize: 16,
     fontWeight: '700',
     color: colors.textPrimary,
-    marginBottom: 4,
-  },
-  scheduleHint: {
-    fontSize: 12,
-    color: colors.textSecondary,
-    marginBottom: spacing.xs,
-  },
-  timePeriodIndicator: {
-    backgroundColor: colors.accentSoft,
-    padding: spacing.sm,
-    borderRadius: borderRadius.md,
-    marginBottom: spacing.sm,
-    alignItems: 'center',
   },
   timePeriodText: {
-    fontSize: 14,
+    fontSize: 12,
     fontWeight: '600',
     color: colors.accent,
+    backgroundColor: colors.accentSoft,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 2,
+    borderRadius: borderRadius.sm,
   },
-  scrollHint: {
-    fontSize: 11,
+  // Time Header Row
+  timeHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: spacing.xs,
+  },
+  dayLabelPlaceholder: {
+    width: 44,
+    marginRight: spacing.sm,
+  },
+  timeHeaderScroll: {
+    flex: 1,
+  },
+  timeHeaderSlot: {
+    width: 34,
+    marginRight: 4,
+    alignItems: 'center',
+  },
+  timeHeaderText: {
+    fontSize: 10,
     color: colors.textSecondary,
-    marginTop: 2,
+    fontWeight: '500',
   },
   dayRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 10,
-    height: 40,
+    marginBottom: 8,
+    height: 38,
   },
   dayLabel: {
     width: 44,

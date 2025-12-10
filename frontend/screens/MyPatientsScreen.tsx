@@ -4,7 +4,7 @@
  */
 
 import React, { useState, useEffect } from 'react';
-import { StyleSheet, Text, View, TouchableOpacity, FlatList, TextInput, ActivityIndicator } from 'react-native';
+import { StyleSheet, Text, View, TouchableOpacity, FlatList, TextInput, ActivityIndicator, RefreshControl } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
@@ -46,44 +46,16 @@ export default function MyPatientsScreen() {
       if (result.success && result.data.patients) {
         setPatients(result.data.patients);
       } else {
-        // Mock data for demo
+        // Mock data for demo - 8 patients to test scrolling
         setPatients([
-          {
-            id: '1',
-            name: 'John Doe',
-            age: 45,
-            gender: 'Male',
-            last_visit: '2025-12-01',
-            conditions: ['Hypertension', 'Type 2 Diabetes'],
-            phone: '+593987654321'
-          },
-          {
-            id: '2',
-            name: 'Maria Santos',
-            age: 32,
-            gender: 'Female',
-            last_visit: '2025-11-28',
-            conditions: ['Asthma'],
-            phone: '+593987654322'
-          },
-          {
-            id: '3',
-            name: 'Carlos Rodriguez',
-            age: 58,
-            gender: 'Male',
-            last_visit: '2025-11-25',
-            conditions: ['Coronary Artery Disease', 'High Cholesterol'],
-            phone: '+593987654323'
-          },
-          {
-            id: '4',
-            name: 'Ana Martinez',
-            age: 28,
-            gender: 'Female',
-            last_visit: '2025-11-20',
-            conditions: ['Anxiety'],
-            phone: '+593987654324'
-          }
+          { id: '1', name: 'John Doe', age: 45, gender: 'Male', last_visit: '2025-12-01', conditions: ['Hypertension', 'Type 2 Diabetes'], phone: '+593987654321' },
+          { id: '2', name: 'Maria Santos', age: 32, gender: 'Female', last_visit: '2025-11-28', conditions: ['Asthma'], phone: '+593987654322' },
+          { id: '3', name: 'Carlos Rodriguez', age: 58, gender: 'Male', last_visit: '2025-11-25', conditions: ['Coronary Artery Disease', 'High Cholesterol'], phone: '+593987654323' },
+          { id: '4', name: 'Ana Martinez', age: 28, gender: 'Female', last_visit: '2025-11-20', conditions: ['Anxiety'], phone: '+593987654324' },
+          { id: '5', name: 'Luis Fernandez', age: 52, gender: 'Male', last_visit: '2025-11-15', conditions: ['COPD', 'Hypertension'], phone: '+593987654325' },
+          { id: '6', name: 'Sofia Ramirez', age: 41, gender: 'Female', last_visit: '2025-11-10', conditions: ['Migraine'], phone: '+593987654326' },
+          { id: '7', name: 'Pedro Gonzalez', age: 67, gender: 'Male', last_visit: '2025-11-05', conditions: ['Arthritis', 'Diabetes'], phone: '+593987654327' },
+          { id: '8', name: 'Elena Torres', age: 35, gender: 'Female', last_visit: '2025-11-01', conditions: ['Thyroid Disorder'], phone: '+593987654328' },
         ]);
       }
     } catch (error) {
@@ -147,7 +119,7 @@ export default function MyPatientsScreen() {
       allowedRoles={['doctor']}
       fallbackMessage="Only doctors can view patient lists."
     >
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={styles.container} edges={['top']}>
       <StandardHeader title="My Patients" />
       
       {/* Search Bar */}
@@ -188,6 +160,10 @@ export default function MyPatientsScreen() {
           keyExtractor={(item) => item.id}
           contentContainerStyle={styles.listContent}
           style={styles.list}
+          showsVerticalScrollIndicator={true}
+          refreshControl={
+            <RefreshControl refreshing={loading} onRefresh={loadPatients} />
+          }
           ListEmptyComponent={
             <View style={styles.emptyContainer}>
               <Text style={styles.emptyIcon}>👥</Text>

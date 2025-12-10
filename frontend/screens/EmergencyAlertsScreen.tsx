@@ -239,7 +239,7 @@ export default function EmergencyAlertsScreen() {
       allowedRoles={['doctor']}
       fallbackMessage="Only doctors can view emergency alerts."
     >
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={styles.container} edges={['top']}>
       <StandardHeader title="Emergency Alerts" />
       
       {/* Filter Tabs */}
