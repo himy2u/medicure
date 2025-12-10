@@ -153,6 +153,15 @@ export default function DoctorAvailabilityScreen() {
 
   const [locationExpanded, setLocationExpanded] = useState(false);
   const [overrideExpanded, setOverrideExpanded] = useState(false);
+  const [currentTimePeriod, setCurrentTimePeriod] = useState('Morning');
+
+  // Get time period label based on hour
+  const getTimePeriod = (hour: number): string => {
+    if (hour >= 0 && hour < 6) return '🌙 Night (12AM-6AM)';
+    if (hour >= 6 && hour < 12) return '🌅 Morning (6AM-12PM)';
+    if (hour >= 12 && hour < 18) return '🌞 Afternoon (12PM-6PM)';
+    return '🌆 Evening (6PM-12AM)';
+  };
 
   return (
     <RoleGuard 
@@ -276,10 +285,16 @@ export default function DoctorAvailabilityScreen() {
           </View>
         )}
 
-        {/* Weekly Schedule - with spacing and 24h horizontal scroll */}
+        {/* Weekly Schedule - with time period indicator */}
         <View style={styles.scheduleSection}>
           <Text style={styles.scheduleTitle}>Weekly Schedule</Text>
-          <Text style={styles.scheduleHint}>Tap slot to toggle • Long press day for presets • Scroll → for all hours</Text>
+          <Text style={styles.scheduleHint}>Tap slot to toggle • Long press day for presets</Text>
+          
+          {/* Time Period Indicator */}
+          <View style={styles.timePeriodIndicator}>
+            <Text style={styles.timePeriodText}>{currentTimePeriod}</Text>
+            <Text style={styles.scrollHint}>← Swipe to see all 24 hours →</Text>
+          </View>
           
           {weekSchedule.map((day, dayIndex) => (
             <View key={day.day} style={styles.dayRow}>
@@ -308,6 +323,14 @@ export default function DoctorAvailabilityScreen() {
                 showsHorizontalScrollIndicator={true}
                 style={styles.slotsRow}
                 contentContainerStyle={styles.slotsContent}
+                nestedScrollEnabled={true}
+                onScroll={(e) => {
+                  const offsetX = e.nativeEvent.contentOffset.x;
+                  const slotWidth = 38; // slot width + margin
+                  const visibleHour = Math.floor(offsetX / slotWidth);
+                  setCurrentTimePeriod(getTimePeriod(Math.min(visibleHour, 23)));
+                }}
+                scrollEventThrottle={100}
               >
                 {day.timeSlots.map((slot, slotIndex) => (
                   <TouchableOpacity
@@ -453,27 +476,45 @@ const styles = StyleSheet.create({
   // Schedule Section - with more spacing
   scheduleSection: {
     flex: 1,
-    marginTop: spacing.md,
+    marginTop: spacing.sm,
   },
   scheduleTitle: {
-    fontSize: 14,
+    fontSize: 16,
     fontWeight: '700',
     color: colors.textPrimary,
     marginBottom: 4,
   },
   scheduleHint: {
+    fontSize: 12,
+    color: colors.textSecondary,
+    marginBottom: spacing.xs,
+  },
+  timePeriodIndicator: {
+    backgroundColor: colors.accentSoft,
+    padding: spacing.sm,
+    borderRadius: borderRadius.md,
+    marginBottom: spacing.sm,
+    alignItems: 'center',
+  },
+  timePeriodText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: colors.accent,
+  },
+  scrollHint: {
     fontSize: 11,
     color: colors.textSecondary,
-    marginBottom: spacing.md,
+    marginTop: 2,
   },
   dayRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 8,
+    marginBottom: 10,
+    height: 40,
   },
   dayLabel: {
-    width: 40,
-    height: 32,
+    width: 44,
+    height: 36,
     backgroundColor: colors.backgroundSecondary,
     borderRadius: borderRadius.sm,
     alignItems: 'center',
@@ -481,20 +522,22 @@ const styles = StyleSheet.create({
     marginRight: spacing.sm,
   },
   dayText: {
-    fontSize: 12,
+    fontSize: 14,
     fontWeight: '700',
     color: colors.accent,
   },
   slotsRow: {
     flex: 1,
+    height: 36,
   },
   slotsContent: {
-    paddingRight: spacing.md,
+    paddingRight: spacing.lg,
+    alignItems: 'center',
   },
   slot: {
-    width: 30,
-    height: 30,
-    borderRadius: 4,
+    width: 34,
+    height: 34,
+    borderRadius: 6,
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: 4,
@@ -507,10 +550,9 @@ const styles = StyleSheet.create({
   slotUnavailable: {
     backgroundColor: colors.backgroundSecondary,
     borderColor: colors.border,
-    opacity: 0.6,
   },
   slotText: {
-    fontSize: 10,
+    fontSize: 12,
     fontWeight: '600',
   },
   slotTextAvailable: {
@@ -518,11 +560,11 @@ const styles = StyleSheet.create({
   },
   slotTextUnavailable: {
     color: colors.textSecondary,
-    fontSize: 10,
+    fontSize: 11,
   },
   slotCrossLine: {
     position: 'absolute',
-    width: 20,
+    width: 22,
     height: 2,
     backgroundColor: colors.emergency,
     transform: [{ rotate: '-45deg' }],

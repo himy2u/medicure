@@ -75,27 +75,12 @@ export default function DoctorScheduleScreen() {
       const userId = await SecureStore.getItemAsync('user_id');
       // Mock appointments for demo
       const mockAppointments: Appointment[] = [
-        {
-          id: '1',
-          patient_name: 'John Smith',
-          time: '09:00',
-          type: 'scheduled',
-          status: 'confirmed'
-        },
-        {
-          id: '2',
-          patient_name: 'Maria Garcia',
-          time: '10:30',
-          type: 'scheduled',
-          status: 'confirmed'
-        },
-        {
-          id: '3',
-          patient_name: 'Emergency Patient',
-          time: '14:15',
-          type: 'emergency',
-          status: 'pending'
-        }
+        { id: '1', patient_name: 'John Smith', time: '09:00', type: 'scheduled', status: 'confirmed' },
+        { id: '2', patient_name: 'Maria Garcia', time: '10:30', type: 'scheduled', status: 'confirmed' },
+        { id: '3', patient_name: 'Carlos Rodriguez', time: '11:00', type: 'scheduled', status: 'confirmed' },
+        { id: '4', patient_name: 'Ana Martinez', time: '14:00', type: 'scheduled', status: 'pending' },
+        { id: '5', patient_name: 'Emergency Patient', time: '14:15', type: 'emergency', status: 'pending' },
+        { id: '6', patient_name: 'Luis Fernandez', time: '15:30', type: 'scheduled', status: 'confirmed' },
       ];
       setAppointments(mockAppointments);
     } catch (error) {
@@ -185,21 +170,21 @@ export default function DoctorScheduleScreen() {
       <Text style={styles.dayTitle}>
         {selectedDate.toLocaleDateString('en-US', { 
           weekday: 'long', 
-          month: 'long', 
+          month: 'short', 
           day: 'numeric' 
         })}
       </Text>
       
-      <View style={styles.appointmentsList}>
-        {appointments.length === 0 ? (
-          <View style={styles.emptyState}>
-            <Text style={styles.emptyText}>No appointments today</Text>
-            <TouchableOpacity style={styles.setupButton} onPress={handleSetupSchedule}>
-              <Text style={styles.setupButtonText}>Setup Schedule</Text>
-            </TouchableOpacity>
-          </View>
-        ) : (
-          appointments.map((apt) => (
+      {appointments.length === 0 ? (
+        <View style={styles.emptyState}>
+          <Text style={styles.emptyText}>No appointments today</Text>
+          <TouchableOpacity style={styles.setupButton} onPress={handleSetupSchedule}>
+            <Text style={styles.setupButtonText}>Setup Schedule</Text>
+          </TouchableOpacity>
+        </View>
+      ) : (
+        <ScrollView style={styles.appointmentsList} showsVerticalScrollIndicator={true}>
+          {appointments.map((apt) => (
             <View key={apt.id} style={styles.appointmentCard}>
               <View style={styles.appointmentTime}>
                 <Text style={styles.timeText}>{apt.time}</Text>
@@ -210,7 +195,7 @@ export default function DoctorScheduleScreen() {
                   styles.appointmentType,
                   apt.type === 'emergency' && styles.emergencyType
                 ]}>
-                  {apt.type === 'emergency' ? '🚨 Emergency' : '📅 Scheduled'}
+                  {apt.type === 'emergency' ? '🚨 ER' : '📅'}
                 </Text>
               </View>
               <View style={[
@@ -221,9 +206,9 @@ export default function DoctorScheduleScreen() {
                 <Text style={styles.statusText}>{apt.status}</Text>
               </View>
             </View>
-          ))
-        )}
-      </View>
+          ))}
+        </ScrollView>
+      )}
     </View>
   );
 
@@ -292,24 +277,12 @@ export default function DoctorScheduleScreen() {
         </View>
       }
     >
-      {/* Navigation Controls */}
-      <View style={styles.navigationContainer}>
-        {/* Date Navigation Arrows */}
-        <View style={styles.dateNavigation}>
-          <TouchableOpacity style={styles.navArrow} onPress={() => navigateDate('prev')}>
-            <Text style={styles.navArrowText}>◀</Text>
-          </TouchableOpacity>
-          
-          <TouchableOpacity style={styles.todayButton} onPress={goToToday}>
-            <Text style={styles.todayButtonText}>Today</Text>
-          </TouchableOpacity>
-          
-          <TouchableOpacity style={styles.navArrow} onPress={() => navigateDate('next')}>
-            <Text style={styles.navArrowText}>▶</Text>
-          </TouchableOpacity>
-        </View>
-
-        {/* View Mode Toggle */}
+      {/* Combined Navigation - Arrows + Toggle in one row */}
+      <View style={styles.navigationBar}>
+        <TouchableOpacity style={styles.navArrow} onPress={() => navigateDate('prev')}>
+          <Text style={styles.navArrowText}>◀</Text>
+        </TouchableOpacity>
+        
         <View style={styles.viewModeContainer}>
           <TouchableOpacity
             style={[styles.viewModeButton, viewMode === 'day' && styles.activeViewMode]}
@@ -324,7 +297,16 @@ export default function DoctorScheduleScreen() {
             <Text style={[styles.viewModeText, viewMode === 'week' && styles.activeViewModeText]}>Week</Text>
           </TouchableOpacity>
         </View>
+        
+        <TouchableOpacity style={styles.navArrow} onPress={() => navigateDate('next')}>
+          <Text style={styles.navArrowText}>▶</Text>
+        </TouchableOpacity>
       </View>
+      
+      {/* Today Button */}
+      <TouchableOpacity style={styles.todayButtonRow} onPress={goToToday}>
+        <Text style={styles.todayButtonText}>↻ Today</Text>
+      </TouchableOpacity>
       
       {viewMode === 'day' ? renderDayView() : renderWeekView()}
     </BaseScreen>
@@ -460,24 +442,18 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: '#FFFFFF',
   },
-  // Navigation Container
-  navigationContainer: {
+  // Combined Navigation Bar
+  navigationBar: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
+    justifyContent: 'center',
     alignItems: 'center',
-    marginHorizontal: spacing.lg,
+    marginHorizontal: spacing.md,
     marginTop: spacing.sm,
-    marginBottom: spacing.sm,
     gap: spacing.sm,
   },
-  dateNavigation: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.xs,
-  },
   navArrow: {
-    width: 36,
-    height: 36,
+    width: 40,
+    height: 40,
     backgroundColor: colors.backgroundSecondary,
     borderRadius: borderRadius.md,
     alignItems: 'center',
@@ -486,20 +462,21 @@ const styles = StyleSheet.create({
     borderColor: colors.border,
   },
   navArrowText: {
-    fontSize: 14,
+    fontSize: 16,
     color: colors.accent,
     fontWeight: '700',
   },
-  todayButton: {
+  todayButtonRow: {
+    alignSelf: 'center',
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.xs,
-    backgroundColor: colors.accent,
-    borderRadius: borderRadius.md,
+    marginTop: spacing.xs,
+    marginBottom: spacing.sm,
   },
   todayButtonText: {
     fontSize: 12,
     fontWeight: '600',
-    color: '#FFFFFF',
+    color: colors.accent,
   },
   // View Mode Toggle
   viewModeContainer: {
@@ -507,6 +484,8 @@ const styles = StyleSheet.create({
     backgroundColor: colors.backgroundSecondary,
     borderRadius: borderRadius.md,
     padding: 2,
+    flex: 1,
+    maxWidth: 160,
   },
   viewModeButton: {
     flex: 1,

@@ -5,10 +5,10 @@
 
 import React, { useState, useEffect } from 'react';
 import { StyleSheet, Text, View, TouchableOpacity, FlatList, ActivityIndicator, Alert, Linking } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import * as SecureStore from 'expo-secure-store';
-import BaseScreen from '../components/BaseScreen';
 import StandardHeader from '../components/StandardHeader';
 import RoleGuard from '../components/RoleGuard';
 import { colors, spacing, borderRadius } from '../theme/colors';
@@ -239,27 +239,9 @@ export default function EmergencyAlertsScreen() {
       allowedRoles={['doctor']}
       fallbackMessage="Only doctors can view emergency alerts."
     >
-    <BaseScreen 
-      pattern="headerContentFooter" 
-      scrollable={false}
-      header={<StandardHeader title="Emergency Alerts" />}
-      footer={
-        <View style={styles.footer}>
-          <TouchableOpacity
-            style={styles.backButton}
-            onPress={() => navigation.goBack()}
-          >
-            <Text style={styles.backButtonText}>Back</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={styles.refreshButton}
-            onPress={loadAlerts}
-          >
-            <Text style={styles.refreshButtonText}>↻ Refresh</Text>
-          </TouchableOpacity>
-        </View>
-      }
-    >
+    <SafeAreaView style={styles.container}>
+      <StandardHeader title="Emergency Alerts" />
+      
       {/* Filter Tabs */}
       <View style={styles.filterContainer}>
         {(['pending', 'active', 'all'] as const).map((f) => (
@@ -286,6 +268,7 @@ export default function EmergencyAlertsScreen() {
           renderItem={renderAlert}
           keyExtractor={(item) => item.id}
           contentContainerStyle={styles.listContent}
+          style={styles.list}
           ListEmptyComponent={
             <View style={styles.emptyContainer}>
               <Text style={styles.emptyIcon}>✓</Text>
@@ -295,13 +278,36 @@ export default function EmergencyAlertsScreen() {
           }
         />
       )}
-    </BaseScreen>
+      
+      {/* Footer */}
+      <View style={styles.footer}>
+        <TouchableOpacity
+          style={styles.backButton}
+          onPress={() => navigation.goBack()}
+        >
+          <Text style={styles.backButtonText}>Back</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={styles.refreshButton}
+          onPress={loadAlerts}
+        >
+          <Text style={styles.refreshButtonText}>↻ Refresh</Text>
+        </TouchableOpacity>
+      </View>
+    </SafeAreaView>
     </RoleGuard>
   );
 }
 
 
 const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: colors.backgroundPrimary,
+  },
+  list: {
+    flex: 1,
+  },
   filterContainer: {
     flexDirection: 'row',
     marginHorizontal: spacing.md,

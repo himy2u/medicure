@@ -5,10 +5,10 @@
 
 import React, { useState, useEffect } from 'react';
 import { StyleSheet, Text, View, TouchableOpacity, FlatList, TextInput, ActivityIndicator } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import * as SecureStore from 'expo-secure-store';
-import BaseScreen from '../components/BaseScreen';
 import StandardHeader from '../components/StandardHeader';
 import RoleGuard from '../components/RoleGuard';
 import { colors, spacing, borderRadius } from '../theme/colors';
@@ -147,11 +147,9 @@ export default function MyPatientsScreen() {
       allowedRoles={['doctor']}
       fallbackMessage="Only doctors can view patient lists."
     >
-    <BaseScreen 
-      pattern="headerContentFooter" 
-      scrollable={false}
-      header={<StandardHeader title="My Patients" />}
-    >
+    <SafeAreaView style={styles.container}>
+      <StandardHeader title="My Patients" />
+      
       {/* Search Bar */}
       <View style={styles.searchContainer}>
         <TextInput
@@ -189,6 +187,7 @@ export default function MyPatientsScreen() {
           renderItem={renderPatient}
           keyExtractor={(item) => item.id}
           contentContainerStyle={styles.listContent}
+          style={styles.list}
           ListEmptyComponent={
             <View style={styles.emptyContainer}>
               <Text style={styles.emptyIcon}>👥</Text>
@@ -199,23 +198,18 @@ export default function MyPatientsScreen() {
           }
         />
       )}
-    </BaseScreen>
+    </SafeAreaView>
     </RoleGuard>
   );
 }
 
 const styles = StyleSheet.create({
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.md,
+  container: {
+    flex: 1,
+    backgroundColor: colors.backgroundPrimary,
   },
-  headerTitle: {
-    fontSize: 20,
-    fontWeight: '700',
-    color: colors.textPrimary,
-    marginLeft: spacing.md,
+  list: {
+    flex: 1,
   },
   searchContainer: {
     flexDirection: 'row',
