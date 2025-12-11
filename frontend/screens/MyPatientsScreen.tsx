@@ -166,6 +166,7 @@ export default function MyPatientsScreen() {
           contentContainerStyle={styles.listContent}
           style={styles.list}
           showsVerticalScrollIndicator={true}
+          indicatorStyle="black"
           bounces={true}
           scrollEnabled={true}
           nestedScrollEnabled={true}

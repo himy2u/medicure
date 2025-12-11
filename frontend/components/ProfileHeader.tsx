@@ -3,8 +3,13 @@ import { StyleSheet, Text, View, TouchableOpacity, Alert } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import * as SecureStore from 'expo-secure-store';
-// GoogleSignin disabled for Expo Go compatibility
-const GoogleSignin: any = null;
+// GoogleSignin: Conditionally import for Expo Go compatibility
+let GoogleSignin: any = null;
+try {
+  GoogleSignin = require('@react-native-google-signin/google-signin').GoogleSignin;
+} catch (e) {
+  console.log('GoogleSignin not available in ProfileHeader (Expo Go)');
+}
 import { colors, spacing, borderRadius } from '../theme/colors';
 import { RootStackParamList } from '../navigation/AppNavigator';
 import { getRoleBasedHomeScreen } from '../utils/navigationHelper';

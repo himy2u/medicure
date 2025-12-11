@@ -246,6 +246,7 @@ export default function DoctorScheduleScreen() {
         style={styles.appointmentsList}
         contentContainerStyle={styles.appointmentsContent}
         showsVerticalScrollIndicator={true}
+        indicatorStyle="black"
         bounces={true}
         scrollEnabled={true}
         nestedScrollEnabled={true}

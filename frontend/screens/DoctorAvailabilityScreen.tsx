@@ -308,15 +308,16 @@ export default function DoctorAvailabilityScreen() {
             <View style={styles.dayLabelPlaceholder} />
             <ScrollView
               ref={headerScrollRef}
-              horizontal
+              horizontal={true}
               showsHorizontalScrollIndicator={true}
               style={styles.timeHeaderScroll}
+              contentContainerStyle={{ minWidth: 24 * 38 }}
               onScroll={(e) => handleScroll(e, -1)}
               scrollEventThrottle={16}
               bounces={true}
-              decelerationRate="fast"
-              snapToInterval={38}
-              snapToAlignment="start"
+              scrollEnabled={true}
+              decelerationRate="normal"
+              indicatorStyle="black"
             >
               {Array.from({ length: 24 }, (_, i) => (
                 <View key={i} style={styles.timeHeaderSlot}>
@@ -353,19 +354,17 @@ export default function DoctorAvailabilityScreen() {
               <ScrollView
                 ref={(ref) => { scrollRefs.current[dayIndex] = ref; }}
                 testID={`time-slots-${day.day.toLowerCase()}`}
-                horizontal
+                horizontal={true}
                 showsHorizontalScrollIndicator={true}
                 style={styles.slotsRow}
                 contentContainerStyle={styles.slotsContent}
                 bounces={true}
                 scrollEnabled={true}
                 nestedScrollEnabled={true}
-                decelerationRate="fast"
-                persistentScrollbar={true}
+                decelerationRate="normal"
+                indicatorStyle="black"
                 onScroll={(e) => handleScroll(e, dayIndex)}
                 scrollEventThrottle={16}
-                snapToInterval={38}
-                snapToAlignment="start"
               >
                 {day.timeSlots.map((slot, slotIndex) => (
                   <TouchableOpacity
@@ -601,11 +600,13 @@ const styles = StyleSheet.create({
   },
   slotsRow: {
     flex: 1,
-    height: 36,
+    minHeight: 36,
+    maxHeight: 40,
   },
   slotsContent: {
     paddingRight: spacing.lg,
     alignItems: 'center',
+    minWidth: 24 * 38, // 24 hours * slot width to ensure content is wider than container
   },
   slot: {
     width: 34,

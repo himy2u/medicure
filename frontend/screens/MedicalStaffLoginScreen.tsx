@@ -6,8 +6,13 @@ import { StackNavigationProp } from '@react-navigation/stack';
 import { TextInput, Button } from 'react-native-paper';
 import { colors, spacing, borderRadius } from '../theme/colors';
 import { RootStackParamList } from '../navigation/AppNavigator';
-// GoogleSignin disabled for Expo Go compatibility
-const GoogleSignin: any = null;
+// GoogleSignin: Conditionally import for Expo Go compatibility
+let GoogleSignin: any = null;
+try {
+  GoogleSignin = require('@react-native-google-signin/google-signin').GoogleSignin;
+} catch (e) {
+  console.log('GoogleSignin not available (Expo Go) - using WhatsApp/Email login');
+}
 import * as SecureStore from 'expo-secure-store';
 import Constants from 'expo-constants';
 import { getRoleBasedHomeScreen } from '../utils/navigationHelper';
@@ -54,7 +59,7 @@ export default function MedicalStaffLoginScreen() {
 
       const apiBaseUrl = Constants.expoConfig?.extra?.apiBaseUrl || process.env.EXPO_PUBLIC_API_BASE_URL || 'http://192.168.100.91:8000';
 
-      const response = await fetch(`${apiBaseUrl}/auth/google-login`, {
+      const response = await fetch(`${apiBaseUrl}/auth/google`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ id_token: idToken }),
