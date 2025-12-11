@@ -336,11 +336,15 @@ export const safeAreaEdges = {
  * Use these for all ScrollViews
  */
 export const scrollViewDefaults = {
-  showsVerticalScrollIndicator: false,
+  showsVerticalScrollIndicator: true,
   showsHorizontalScrollIndicator: false,
   bounces: true,
+  scrollEnabled: true,
+  nestedScrollEnabled: true,
   keyboardShouldPersistTaps: 'handled' as const,
   contentInsetAdjustmentBehavior: 'automatic' as const,
+  decelerationRate: 'normal' as const,
+  scrollEventThrottle: 16,
 };
 
 export default {

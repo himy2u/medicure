@@ -4,7 +4,7 @@
  */
 
 import React, { useState, useEffect, useRef } from 'react';
-import { StyleSheet, Text, View, TouchableOpacity, Switch, Alert, ScrollView } from 'react-native';
+import { StyleSheet, Text, View, TouchableOpacity, Switch, Alert, ScrollView, Animated, PanResponder } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
@@ -41,6 +41,38 @@ export default function DoctorAvailabilityScreen() {
   const [acceptsEmergencies, setAcceptsEmergencies] = useState(true);
   const [selectedLocation, setSelectedLocation] = useState<Location | null>(null);
   const [saving, setSaving] = useState(false);
+
+  // Refs for synchronized horizontal scrolling
+  const scrollRefs = useRef<(ScrollView | null)[]>([]);
+  const headerScrollRef = useRef<ScrollView | null>(null);
+  const isScrolling = useRef(false);
+  const currentScrollX = useRef(0);
+
+  // Sync all scroll views when one scrolls
+  const handleScroll = (event: any, index: number) => {
+    if (isScrolling.current) return;
+    isScrolling.current = true;
+
+    const offsetX = event.nativeEvent.contentOffset.x;
+    currentScrollX.current = offsetX;
+
+    // Sync header scroll
+    headerScrollRef.current?.scrollTo({ x: offsetX, animated: false });
+
+    // Sync all day rows
+    scrollRefs.current.forEach((ref, i) => {
+      if (i !== index && ref) {
+        ref.scrollTo({ x: offsetX, animated: false });
+      }
+    });
+
+    // Update time period indicator
+    const slotWidth = 38;
+    const visibleHour = Math.floor(offsetX / slotWidth);
+    setCurrentTimePeriod(getTimePeriod(Math.min(visibleHour, 23)));
+
+    setTimeout(() => { isScrolling.current = false; }, 50);
+  };
 
   // Generate time slots for 24 hours
   const generateTimeSlots = (): TimeSlot[] => {
@@ -274,17 +306,17 @@ export default function DoctorAvailabilityScreen() {
           {/* Time Header Row - shows hours */}
           <View style={styles.timeHeaderRow}>
             <View style={styles.dayLabelPlaceholder} />
-            <ScrollView 
-              horizontal 
+            <ScrollView
+              ref={headerScrollRef}
+              horizontal
               showsHorizontalScrollIndicator={true}
               style={styles.timeHeaderScroll}
-              onScroll={(e) => {
-                const offsetX = e.nativeEvent.contentOffset.x;
-                const slotWidth = 38;
-                const visibleHour = Math.floor(offsetX / slotWidth);
-                setCurrentTimePeriod(getTimePeriod(Math.min(visibleHour, 23)));
-              }}
-              scrollEventThrottle={50}
+              onScroll={(e) => handleScroll(e, -1)}
+              scrollEventThrottle={16}
+              bounces={true}
+              decelerationRate="fast"
+              snapToInterval={38}
+              snapToAlignment="start"
             >
               {Array.from({ length: 24 }, (_, i) => (
                 <View key={i} style={styles.timeHeaderSlot}>
@@ -318,9 +350,10 @@ export default function DoctorAvailabilityScreen() {
                 <Text style={styles.dayText}>{day.day}</Text>
               </TouchableOpacity>
               
-              <ScrollView 
+              <ScrollView
+                ref={(ref) => { scrollRefs.current[dayIndex] = ref; }}
                 testID={`time-slots-${day.day.toLowerCase()}`}
-                horizontal 
+                horizontal
                 showsHorizontalScrollIndicator={true}
                 style={styles.slotsRow}
                 contentContainerStyle={styles.slotsContent}
@@ -329,6 +362,10 @@ export default function DoctorAvailabilityScreen() {
                 nestedScrollEnabled={true}
                 decelerationRate="fast"
                 persistentScrollbar={true}
+                onScroll={(e) => handleScroll(e, dayIndex)}
+                scrollEventThrottle={16}
+                snapToInterval={38}
+                snapToAlignment="start"
               >
                 {day.timeSlots.map((slot, slotIndex) => (
                   <TouchableOpacity

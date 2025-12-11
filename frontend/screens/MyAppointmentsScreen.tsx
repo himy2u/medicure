@@ -219,10 +219,15 @@ export default function MyAppointmentsScreen() {
         </View>
       ) : (
         <FlatList
+          testID="appointments-list"
           data={filteredAppointments}
           renderItem={renderAppointment}
           keyExtractor={(item) => item.id}
           contentContainerStyle={styles.listContent}
+          showsVerticalScrollIndicator={true}
+          bounces={true}
+          scrollEnabled={true}
+          nestedScrollEnabled={true}
           ListEmptyComponent={
             <View style={styles.emptyContainer}>
               <Text style={styles.emptyIcon}>📅</Text>

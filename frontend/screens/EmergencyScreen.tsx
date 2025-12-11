@@ -203,9 +203,9 @@ export default function EmergencyScreen() {
 
 
   return (
-    <BaseScreen 
+    <BaseScreen
       pattern="headerContentFooter"
-      scrollable={false}
+      scrollable={true}
       header={<StandardHeader title={t('emergencyTitle')} />}
       footer={
         <TouchableOpacity
@@ -237,7 +237,7 @@ export default function EmergencyScreen() {
         <Text style={styles.sectionTitle}>{t('mainSymptom')}</Text>
         
         {/* Common Symptoms - 2x3 Grid */}
-        <View style={styles.symptomGrid}>
+        <View style={styles.symptomGrid} testID="symptoms-grid">
           {commonSymptoms.map((symptom) => (
             <TouchableOpacity
               key={symptom}

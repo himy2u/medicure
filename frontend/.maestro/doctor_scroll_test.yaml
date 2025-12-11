@@ -2,6 +2,7 @@ appId: host.exp.Exponent
 ---
 # Doctor Dashboard Scroll Tests
 # Tests scroll functionality when logged in as doctor
+# Updated: Synchronized horizontal scroll + vertical scroll support
 
 - launchApp
 
@@ -13,20 +14,22 @@ appId: host.exp.Exponent
 # Take initial screenshot to see current state
 - takeScreenshot: "01_initial_state"
 
-# Test: Navigate to Schedule and test vertical scroll
+# ========================================
+# TEST 1: Schedule Screen - Vertical Scroll
+# ========================================
 - tapOn:
     text: "My Schedule"
     optional: true
 
 - takeScreenshot: "02_schedule_screen"
 
-# Perform vertical scroll down
+# Slow vertical scroll down
 - swipe:
     start: 50%, 70%
     end: 50%, 30%
     duration: 500
 
-- takeScreenshot: "03_after_scroll_down"
+- takeScreenshot: "03_schedule_scroll_down"
 
 # Scroll back up
 - swipe:
@@ -34,7 +37,7 @@ appId: host.exp.Exponent
     end: 50%, 70%
     duration: 500
 
-- takeScreenshot: "04_after_scroll_up"
+- takeScreenshot: "04_schedule_scroll_up"
 
 # Fast swipe (momentum scroll)
 - swipe:
@@ -42,61 +45,165 @@ appId: host.exp.Exponent
     end: 50%, 20%
     duration: 150
 
-- takeScreenshot: "05_after_fast_swipe"
+- takeScreenshot: "05_schedule_fast_swipe"
+
+# Pull to refresh gesture
+- swipe:
+    start: 50%, 20%
+    end: 50%, 70%
+    duration: 800
+
+- takeScreenshot: "06_schedule_pull_refresh"
 
 # Go back
 - tapOn:
     text: "Back"
     optional: true
 
-# Test: Navigate to My Patients
+# ========================================
+# TEST 2: My Patients Screen - Vertical Scroll
+# ========================================
 - tapOn:
     text: "My Patients"
     optional: true
 
-- takeScreenshot: "06_patients_screen"
+- takeScreenshot: "07_patients_screen"
 
-# Scroll through patients
+# Slow scroll through patients
 - swipe:
     start: 50%, 70%
     end: 50%, 30%
     duration: 500
 
-- takeScreenshot: "07_patients_scrolled"
+- takeScreenshot: "08_patients_scroll_down"
 
-# Scroll back
+# Continue scrolling
+- swipe:
+    start: 50%, 70%
+    end: 50%, 30%
+    duration: 500
+
+- takeScreenshot: "09_patients_scroll_more"
+
+# Fast swipe to bottom
+- swipe:
+    start: 50%, 80%
+    end: 50%, 20%
+    duration: 150
+
+- takeScreenshot: "10_patients_fast_swipe"
+
+# Scroll back to top
 - swipe:
     start: 50%, 30%
     end: 50%, 70%
     duration: 500
+- swipe:
+    start: 50%, 30%
+    end: 50%, 70%
+    duration: 500
+
+- takeScreenshot: "11_patients_back_to_top"
 
 # Go back
 - tapOn:
     text: "Back"
     optional: true
 
-# Test: Navigate to Availability for horizontal scroll
+# ========================================
+# TEST 3: Availability Screen - Horizontal Scroll
+# ========================================
 - tapOn:
     text: "Availability"
     optional: true
 
-- takeScreenshot: "08_availability_screen"
+- takeScreenshot: "12_availability_screen"
 
-# Horizontal scroll (swipe left to see more hours)
+# Slow horizontal scroll right (see afternoon/evening hours)
 - swipe:
-    start: 80%, 60%
-    end: 20%, 60%
+    start: 80%, 55%
+    end: 20%, 55%
+    duration: 600
+
+- takeScreenshot: "13_availability_scroll_right"
+
+# Continue scrolling to see evening hours
+- swipe:
+    start: 80%, 55%
+    end: 20%, 55%
+    duration: 600
+
+- takeScreenshot: "14_availability_evening_hours"
+
+# Fast horizontal swipe to end
+- swipe:
+    start: 80%, 55%
+    end: 10%, 55%
+    duration: 150
+
+- takeScreenshot: "15_availability_fast_swipe"
+
+# Swipe back to start (morning hours)
+- swipe:
+    start: 20%, 55%
+    end: 80%, 55%
+    duration: 600
+- swipe:
+    start: 20%, 55%
+    end: 80%, 55%
+    duration: 600
+- swipe:
+    start: 20%, 55%
+    end: 80%, 55%
+    duration: 600
+
+- takeScreenshot: "16_availability_back_to_morning"
+
+# Test snap-to-grid behavior (quick swipe)
+- swipe:
+    start: 70%, 55%
+    end: 50%, 55%
+    duration: 100
+
+- takeScreenshot: "17_availability_snap_test"
+
+# Test synchronized scroll on different day row
+- swipe:
+    start: 80%, 65%
+    end: 20%, 65%
     duration: 500
 
-- takeScreenshot: "09_horizontal_scroll_right"
+- takeScreenshot: "18_availability_sync_scroll"
 
-# Swipe back
+# Go back
+- tapOn:
+    text: "Back"
+    optional: true
+
+# ========================================
+# TEST 4: Emergency Screen - Vertical Scroll
+# ========================================
+- tapOn:
+    text: "Emergency"
+    optional: true
+
+- takeScreenshot: "19_emergency_screen"
+
+# Scroll down in emergency screen
 - swipe:
-    start: 20%, 60%
-    end: 80%, 60%
+    start: 50%, 70%
+    end: 50%, 30%
     duration: 500
 
-- takeScreenshot: "10_horizontal_scroll_left"
+- takeScreenshot: "20_emergency_scroll_down"
+
+# Scroll back up
+- swipe:
+    start: 50%, 30%
+    end: 50%, 70%
+    duration: 500
+
+- takeScreenshot: "21_emergency_scroll_up"
 
 # Final screenshot
-- takeScreenshot: "11_final_state"
+- takeScreenshot: "22_final_state"
