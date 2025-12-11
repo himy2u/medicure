@@ -319,10 +319,16 @@ export default function DoctorAvailabilityScreen() {
               </TouchableOpacity>
               
               <ScrollView 
+                testID={`time-slots-${day.day.toLowerCase()}`}
                 horizontal 
                 showsHorizontalScrollIndicator={true}
                 style={styles.slotsRow}
                 contentContainerStyle={styles.slotsContent}
+                bounces={true}
+                scrollEnabled={true}
+                nestedScrollEnabled={true}
+                decelerationRate="fast"
+                persistentScrollbar={true}
               >
                 {day.timeSlots.map((slot, slotIndex) => (
                   <TouchableOpacity

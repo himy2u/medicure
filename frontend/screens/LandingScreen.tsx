@@ -104,45 +104,33 @@ export default function LandingScreen() {
           <Text style={styles.primaryButtonText}>🔍 {t('findDoctors')}</Text>
         </TouchableOpacity>
 
-        <View style={styles.buttonRow}>
-          <TouchableOpacity 
-            style={[styles.actionButton, styles.prescriptionButton]}
-            onPress={() => handleRegularFeature('prescriptions', 'Signup')}
-          >
-            <Text style={styles.prescriptionButtonText}>💊 {t('prescriptions')}</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity 
-            style={[styles.actionButton, styles.healthButton]}
-            onPress={() => handleRegularFeature('my health', 'Signup')}
-          >
-            <Text style={styles.healthButtonText}>❤️ {t('myHealth')}</Text>
-          </TouchableOpacity>
-        </View>
-
-        <TouchableOpacity
-          style={[styles.actionButton, styles.labTestButton]}
-          onPress={() => handleRegularFeature('lab tests', 'Signup')}
+        <TouchableOpacity 
+          style={[styles.actionButton, styles.healthButtonFull]}
+          onPress={() => handleRegularFeature('my health', 'PatientDashboard')}
         >
-          <Text style={styles.labTestButtonText}>🧪 {t('labTests')}</Text>
+          <Text style={styles.healthButtonText}>❤️ {t('myHealth')}</Text>
         </TouchableOpacity>
 
-        {/* Healthcare Professional Section - Only show if not logged in */}
+        {/* Medical Staff Section - Only show if not logged in */}
         {!isLoggedIn && (
           <View style={styles.medicalStaffSection}>
-            <Text style={styles.medicalStaffLabel}>{t('notAPatient')}</Text>
+            <View style={styles.sectionDivider}>
+              <View style={styles.dividerLine} />
+              <Text style={styles.sectionLabel}>🏥 Medical Staff</Text>
+              <View style={styles.dividerLine} />
+            </View>
             <View style={styles.medicalStaffButtons}>
               <TouchableOpacity
                 style={styles.medicalStaffRegisterButton}
                 onPress={() => navigation.navigate('MedicalStaffSignup')}
               >
-                <Text style={styles.medicalStaffRegisterText}>{t('joinNetwork')}</Text>
+                <Text style={styles.medicalStaffRegisterText}>Register</Text>
               </TouchableOpacity>
               <TouchableOpacity
                 style={styles.medicalStaffLoginButton}
                 onPress={() => navigation.navigate('MedicalStaffLogin')}
               >
-                <Text style={styles.medicalStaffLoginText}>{t('providerLogin')}</Text>
+                <Text style={styles.medicalStaffLoginText}>Login</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -250,22 +238,6 @@ const styles = StyleSheet.create({
     color: '#2C3E50',
     marginBottom: spacing.xs,
   },
-  prescriptionButton: {
-    backgroundColor: '#6B8E9F', // Muted blue-gray
-    borderWidth: 2,
-    borderColor: '#5A7A8A',
-    flex: 1,
-    minWidth: 140,
-    paddingVertical: spacing.md,
-    paddingHorizontal: spacing.sm,
-  },
-  prescriptionButtonText: {
-    fontSize: 15,
-    fontWeight: '600',
-    color: '#FFFFFF',
-    flexShrink: 1,
-    textAlign: 'center',
-  },
   healthButton: {
     backgroundColor: '#8FBC8F', // Soft sage green
     borderWidth: 2,
@@ -275,6 +247,14 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.md,
     paddingHorizontal: spacing.sm,
   },
+  healthButtonFull: {
+    backgroundColor: '#8FBC8F', // Soft sage green
+    borderWidth: 2,
+    borderColor: '#7AB87A',
+    paddingVertical: spacing.lg,
+    paddingHorizontal: spacing.lg,
+    marginBottom: spacing.md,
+  },
   healthButtonText: {
     fontSize: 15,
     fontWeight: '600',
@@ -282,25 +262,7 @@ const styles = StyleSheet.create({
     flexShrink: 1,
     textAlign: 'center',
   },
-  labTestButton: {
-    backgroundColor: '#9B59B6', // Purple
-    borderRadius: borderRadius.lg,
-    paddingVertical: spacing.lg,
-    paddingHorizontal: spacing.lg,
-    alignItems: 'center',
-    marginBottom: spacing.md,
-    shadowColor: colors.shadow,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
-    shadowRadius: 4,
-    elevation: 6,
-  },
-  labTestButtonText: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#FFFFFF',
-  },
-  // Button Row - My Health & Prescription
+  // Button Row - unused but kept for potential future use
   buttonRow: {
     flexDirection: 'row',
     flexWrap: 'wrap',
@@ -346,16 +308,23 @@ const styles = StyleSheet.create({
     backgroundColor: colors.backgroundPrimary,
     paddingVertical: spacing.md,
     paddingHorizontal: spacing.lg,
-    borderTopWidth: 2,
-    borderTopColor: colors.border,
-    alignItems: 'center',
     marginTop: spacing.lg,
   },
-  medicalStaffLabel: {
-    fontSize: 14,
-    color: colors.textSecondary,
-    marginBottom: spacing.sm,
-    fontWeight: '500',
+  sectionDivider: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: spacing.md,
+  },
+  dividerLine: {
+    flex: 1,
+    height: 1,
+    backgroundColor: colors.border,
+  },
+  sectionLabel: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: colors.textPrimary,
+    marginHorizontal: spacing.md,
   },
   medicalStaffButtons: {
     flexDirection: 'row',

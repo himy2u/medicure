@@ -1,0 +1,97 @@
+appId: host.exp.Exponent
+---
+# Scroll and Swipe Tests for Medicure App
+# These tests verify scroll functionality on doctor screens
+
+- launchApp
+
+# Test 1: Verify Landing Screen loads
+- assertVisible: "Medicure"
+- assertVisible: "Medical Staff"
+
+# Test 2: Navigate to Doctor Dashboard (assuming logged in as doctor)
+- tapOn: "My Schedule"
+
+# Test 3: Vertical Scroll on Schedule Screen
+- assertVisible: "Schedule"
+
+# Scroll down through appointments using swipe
+- swipe:
+    start: 50%, 70%
+    end: 50%, 30%
+    duration: 500
+
+# Take screenshot after scroll
+- takeScreenshot: "after_scroll_down"
+
+# Scroll back up
+- swipe:
+    start: 50%, 30%
+    end: 50%, 70%
+    duration: 500
+
+- takeScreenshot: "after_scroll_up"
+
+# Test 4: Fast swipe gesture
+- swipe:
+    start: 50%, 80%
+    end: 50%, 20%
+    duration: 200
+
+- takeScreenshot: "after_fast_swipe_up"
+
+- swipe:
+    start: 50%, 20%
+    end: 50%, 80%
+    duration: 200
+
+- takeScreenshot: "after_fast_swipe_down"
+
+# Test 5: Navigate to Availability for horizontal scroll
+- tapOn: "Back"
+- tapOn: "Availability"
+
+# Horizontal scroll on time slots (swipe left to scroll right)
+- swipe:
+    start: 80%, 50%
+    end: 20%, 50%
+    duration: 500
+
+- takeScreenshot: "after_horizontal_scroll_right"
+
+# Swipe right to scroll left
+- swipe:
+    start: 20%, 50%
+    end: 80%, 50%
+    duration: 500
+
+- takeScreenshot: "after_horizontal_scroll_left"
+
+# Test 6: Navigate to My Patients
+- tapOn: "Back"
+- tapOn: "My Patients"
+
+# Vertical scroll through patient list
+- swipe:
+    start: 50%, 70%
+    end: 50%, 30%
+    duration: 500
+
+- takeScreenshot: "patients_scroll_down"
+
+# Scroll back up
+- swipe:
+    start: 50%, 30%
+    end: 50%, 70%
+    duration: 500
+
+# Test 7: Pull to refresh (slow swipe down from top)
+- swipe:
+    start: 50%, 15%
+    end: 50%, 60%
+    duration: 800
+
+- takeScreenshot: "after_pull_to_refresh"
+
+# Final verification
+- assertVisible: "My Patients"

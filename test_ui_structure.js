@@ -73,6 +73,20 @@ test('Has vertical scroll indicator', () => {
   assertContains(content, 'showsVerticalScrollIndicator', 'Should show vertical scroll indicator');
 });
 
+test('Has scroll properties (bounces, scrollEnabled)', () => {
+  const content = readScreen('DoctorScheduleScreen.tsx');
+  assertContains(content, 'bounces={true}', 'Should have bounces={true}');
+  assertContains(content, 'scrollEnabled={true}', 'Should have scrollEnabled={true}');
+});
+
+test('Has enough appointments for scroll testing (8+)', () => {
+  const content = readScreen('DoctorScheduleScreen.tsx');
+  const appointmentMatches = content.match(/id:\s*['"][0-9]+['"]/g);
+  if (!appointmentMatches || appointmentMatches.length < 8) {
+    throw new Error(`Expected at least 8 appointments, found ${appointmentMatches?.length || 0}`);
+  }
+});
+
 // ============================================================================
 // DoctorAvailabilityScreen Tests
 // ============================================================================
@@ -101,6 +115,12 @@ test('Has container with flex: 1', () => {
   if (!content.match(/container:\s*\{[\s\S]*?flex:\s*1/)) {
     throw new Error('Container should have flex: 1');
   }
+});
+
+test('Has horizontal scroll properties (bounces, scrollEnabled)', () => {
+  const content = readScreen('DoctorAvailabilityScreen.tsx');
+  assertContains(content, 'bounces={true}', 'Should have bounces={true}');
+  assertContains(content, 'scrollEnabled={true}', 'Should have scrollEnabled={true}');
 });
 
 // ============================================================================
@@ -133,6 +153,18 @@ test('Has vertical scroll indicator', () => {
   assertContains(content, 'showsVerticalScrollIndicator', 'Should show vertical scroll indicator');
 });
 
+test('Has scroll properties (bounces, scrollEnabled)', () => {
+  const content = readScreen('MyPatientsScreen.tsx');
+  assertContains(content, 'bounces={true}', 'Should have bounces={true}');
+  assertContains(content, 'scrollEnabled={true}', 'Should have scrollEnabled={true}');
+});
+
+test('Has fixed footer', () => {
+  const content = readScreen('MyPatientsScreen.tsx');
+  assertContains(content, 'styles.footer', 'Should have footer');
+  assertContains(content, 'footerButton', 'Should have footer buttons');
+});
+
 // ============================================================================
 // EmergencyAlertsScreen Tests
 // ============================================================================
@@ -154,6 +186,51 @@ test('Has container with flex: 1', () => {
   const content = readScreen('EmergencyAlertsScreen.tsx');
   if (!content.match(/container:\s*\{[\s\S]*?flex:\s*1/)) {
     throw new Error('Container should have flex: 1');
+  }
+});
+
+test('Has scroll properties (bounces, scrollEnabled)', () => {
+  const content = readScreen('EmergencyAlertsScreen.tsx');
+  assertContains(content, 'bounces={true}', 'Should have bounces={true}');
+  assertContains(content, 'scrollEnabled={true}', 'Should have scrollEnabled={true}');
+});
+
+// ============================================================================
+// LandingScreen Tests
+// ============================================================================
+console.log('\n📱 LandingScreen');
+
+test('Has Medical Staff section with proper label', () => {
+  const content = readScreen('LandingScreen.tsx');
+  assertContains(content, 'Medical Staff', 'Should have Medical Staff section');
+  assertContains(content, 'sectionLabel', 'Should have section label style');
+});
+
+test('Does NOT show Lab Tests button', () => {
+  const content = readScreen('LandingScreen.tsx');
+  assertNotContains(content, 'labTestButton', 'Should NOT have Lab Tests button');
+});
+
+test('Does NOT show Prescriptions button', () => {
+  const content = readScreen('LandingScreen.tsx');
+  assertNotContains(content, 'prescriptionButton', 'Should NOT have Prescriptions button');
+});
+
+// ============================================================================
+// MedicalStaffSignupScreen Tests
+// ============================================================================
+console.log('\n📱 MedicalStaffSignupScreen');
+
+test('Only shows Doctor and Medical Staff roles', () => {
+  const content = readScreen('MedicalStaffSignupScreen.tsx');
+  // Should have doctor and medical_staff
+  assertContains(content, "key: 'doctor'", 'Should have doctor role');
+  assertContains(content, "key: 'medical_staff'", 'Should have medical_staff role');
+  // Should NOT have other roles in the allRoles array
+  if (content.includes("key: 'ambulance_staff'") || 
+      content.includes("key: 'lab_staff'") || 
+      content.includes("key: 'pharmacy_staff'")) {
+    throw new Error('Should NOT show ambulance, lab, or pharmacy roles');
   }
 });
 

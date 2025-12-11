@@ -38,13 +38,11 @@ export default function MedicalStaffSignupScreen() {
   const [otp, setOtp] = useState('');
   const [otpSent, setOtpSent] = useState(false);
 
-  // All roles with shorter descriptions for compact layout
+  // Only show Doctor and Medical Staff roles for registration
+  // Other roles (ambulance, lab, pharmacy) are assigned by clinic admin
   const allRoles = [
     { key: 'doctor', label: '👨‍⚕️ Doctor', description: 'Licensed physician' },
     { key: 'medical_staff', label: '👩‍⚕️ Medical Staff', description: 'Nurses & assistants' },
-    { key: 'ambulance_staff', label: '🚑 Ambulance', description: 'Emergency services' },
-    { key: 'lab_staff', label: '🧪 Lab Staff', description: 'Lab technicians' },
-    { key: 'pharmacy_staff', label: '💊 Pharmacy', description: 'Pharmacists' },
   ];
 
   // Configure Google Sign-In (disabled in Expo Go)

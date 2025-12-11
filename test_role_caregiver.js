@@ -49,12 +49,12 @@ async function testCaregiverWorkflow() {
   
   // 3. Book appointment for family member
   console.log('\n3️⃣  Book Appointment for Family Member');
-  const tomorrow = new Date();
-  tomorrow.setDate(tomorrow.getDate() + 1);
+  const appointmentDate = new Date();
+  appointmentDate.setDate(appointmentDate.getDate() + 3); // 3 days from now for 24h cancellation rule
   const bookResult = await makeRequest('POST', '/api/appointments/book', {
     doctor_id: 1,
     appointment_type: 'scheduled',
-    appointment_date: tomorrow.toISOString(),
+    appointment_date: appointmentDate.toISOString(),
     symptom: 'Elderly parent needs checkup',
     notes: 'Booking on behalf of elderly parent'
   });

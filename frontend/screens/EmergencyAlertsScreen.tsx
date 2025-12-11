@@ -264,11 +264,16 @@ export default function EmergencyAlertsScreen() {
         </View>
       ) : (
         <FlatList
+          testID="alerts-list"
           data={alerts}
           renderItem={renderAlert}
           keyExtractor={(item) => item.id}
           contentContainerStyle={styles.listContent}
           style={styles.list}
+          showsVerticalScrollIndicator={true}
+          bounces={true}
+          scrollEnabled={true}
+          nestedScrollEnabled={true}
           ListEmptyComponent={
             <View style={styles.emptyContainer}>
               <Text style={styles.emptyIcon}>✓</Text>

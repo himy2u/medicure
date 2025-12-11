@@ -73,14 +73,20 @@ export default function DoctorScheduleScreen() {
     setLoading(true);
     try {
       const userId = await SecureStore.getItemAsync('user_id');
-      // Mock appointments for demo
+      // Mock appointments for demo - enough to require scrolling
       const mockAppointments: Appointment[] = [
-        { id: '1', patient_name: 'John Smith', time: '09:00', type: 'scheduled', status: 'confirmed' },
-        { id: '2', patient_name: 'Maria Garcia', time: '10:30', type: 'scheduled', status: 'confirmed' },
-        { id: '3', patient_name: 'Carlos Rodriguez', time: '11:00', type: 'scheduled', status: 'confirmed' },
-        { id: '4', patient_name: 'Ana Martinez', time: '14:00', type: 'scheduled', status: 'pending' },
-        { id: '5', patient_name: 'Emergency Patient', time: '14:15', type: 'emergency', status: 'pending' },
-        { id: '6', patient_name: 'Luis Fernandez', time: '15:30', type: 'scheduled', status: 'confirmed' },
+        { id: '1', patient_name: 'John Smith', time: '08:00', type: 'scheduled', status: 'confirmed' },
+        { id: '2', patient_name: 'Maria Garcia', time: '08:30', type: 'scheduled', status: 'confirmed' },
+        { id: '3', patient_name: 'Carlos Rodriguez', time: '09:00', type: 'scheduled', status: 'confirmed' },
+        { id: '4', patient_name: 'Ana Martinez', time: '09:30', type: 'scheduled', status: 'pending' },
+        { id: '5', patient_name: 'Emergency Patient', time: '10:00', type: 'emergency', status: 'pending' },
+        { id: '6', patient_name: 'Luis Fernandez', time: '10:30', type: 'scheduled', status: 'confirmed' },
+        { id: '7', patient_name: 'Sofia Ramirez', time: '11:00', type: 'scheduled', status: 'confirmed' },
+        { id: '8', patient_name: 'Pedro Sanchez', time: '11:30', type: 'scheduled', status: 'pending' },
+        { id: '9', patient_name: 'Isabella Torres', time: '14:00', type: 'scheduled', status: 'confirmed' },
+        { id: '10', patient_name: 'Miguel Herrera', time: '14:30', type: 'scheduled', status: 'confirmed' },
+        { id: '11', patient_name: 'Carmen Diaz', time: '15:00', type: 'scheduled', status: 'pending' },
+        { id: '12', patient_name: 'Roberto Flores', time: '15:30', type: 'scheduled', status: 'confirmed' },
       ];
       setAppointments(mockAppointments);
     } catch (error) {
@@ -233,12 +239,19 @@ export default function DoctorScheduleScreen() {
       </Text>
       
       <FlatList
+        testID="appointments-list"
         data={appointments}
         keyExtractor={(item) => item.id}
         renderItem={renderAppointment}
         style={styles.appointmentsList}
         contentContainerStyle={styles.appointmentsContent}
         showsVerticalScrollIndicator={true}
+        bounces={true}
+        scrollEnabled={true}
+        nestedScrollEnabled={true}
+        initialNumToRender={5}
+        windowSize={10}
+        removeClippedSubviews={false}
         refreshControl={
           <RefreshControl refreshing={loading} onRefresh={loadAppointments} />
         }
@@ -298,7 +311,7 @@ export default function DoctorScheduleScreen() {
       allowedRoles={['doctor']}
       fallbackMessage="Only doctors can view schedules."
     >
-    <SafeAreaView style={styles.container} edges={['top']}>
+    <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
       <StandardHeader title="Schedule" />
       
       {/* Combined Navigation - Arrows + Toggle in one row */}
@@ -361,7 +374,8 @@ const styles = StyleSheet.create({
   },
   dayView: {
     flex: 1,
-    padding: spacing.lg,
+    paddingHorizontal: spacing.lg,
+    paddingTop: spacing.sm,
   },
   dayTitle: {
     fontSize: 20,
@@ -375,6 +389,7 @@ const styles = StyleSheet.create({
   },
   appointmentsContent: {
     paddingBottom: spacing.lg,
+    flexGrow: 1,
   },
   appointmentActions: {
     flexDirection: 'row',

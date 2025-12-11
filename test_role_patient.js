@@ -49,12 +49,12 @@ async function testPatientWorkflow() {
   
   // 3. Book appointment
   console.log('\n3️⃣  Book Scheduled Appointment');
-  const tomorrow = new Date();
-  tomorrow.setDate(tomorrow.getDate() + 1);
+  const appointmentDate = new Date();
+  appointmentDate.setDate(appointmentDate.getDate() + 3); // 3 days from now for 24h cancellation rule
   const bookResult = await makeRequest('POST', '/api/appointments/book', {
     doctor_id: 1,
     appointment_type: 'scheduled',
-    appointment_date: tomorrow.toISOString(),
+    appointment_date: appointmentDate.toISOString(),
     symptom: 'Regular checkup',
     notes: 'Annual physical'
   });

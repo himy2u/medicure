@@ -62,14 +62,18 @@ export default function PatientDashboardScreen() {
             <ProfileHeader hideHomeButton={false} />
           </View>
 
-          {/* Emergency Quick Access */}
+          {/* Emergency Quick Access - Consistent size */}
           <TouchableOpacity
             style={styles.emergencyCard}
             onPress={handleEmergency}
           >
-            <Text style={styles.emergencyEmoji}>🚨</Text>
-            <Text style={styles.emergencyTitle}>Emergency</Text>
-            <Text style={styles.emergencySubtitle}>Get immediate help</Text>
+            <View style={styles.emergencyContent}>
+              <Text style={styles.emergencyEmoji}>🚨</Text>
+              <View style={styles.emergencyTextContainer}>
+                <Text style={styles.emergencyTitle}>Emergency</Text>
+                <Text style={styles.emergencySubtitle}>Get immediate help</Text>
+              </View>
+            </View>
           </TouchableOpacity>
 
           {/* Main Dashboard Sections */}
@@ -94,28 +98,10 @@ export default function PatientDashboardScreen() {
               <Text style={styles.actionSubtitle}>View upcoming and past appointments</Text>
             </TouchableOpacity>
 
-            <TouchableOpacity
-              style={styles.actionCard}
-              onPress={() => navigation.navigate('MyPrescriptions')}
-            >
-              <Text style={styles.actionEmoji}>💊</Text>
-              <Text style={styles.actionTitle}>My Prescriptions</Text>
-              <Text style={styles.actionSubtitle}>View and refill prescriptions</Text>
-            </TouchableOpacity>
-
             <TouchableOpacity style={styles.actionCard}>
               <Text style={styles.actionEmoji}>❤️</Text>
               <Text style={styles.actionTitle}>Health Records</Text>
               <Text style={styles.actionSubtitle}>Access your medical history</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={styles.actionCard}
-              onPress={() => navigation.navigate('LabResults')}
-            >
-              <Text style={styles.actionEmoji}>🧪</Text>
-              <Text style={styles.actionTitle}>Lab Results</Text>
-              <Text style={styles.actionSubtitle}>View test results and reports</Text>
             </TouchableOpacity>
 
             {userRole === 'caregiver' && (
@@ -144,12 +130,24 @@ export default function PatientDashboardScreen() {
             </TouchableOpacity>
           </View>
 
-          {/* Logout Button */}
-          <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
-            <Text style={styles.logoutButtonText}>Logout</Text>
-          </TouchableOpacity>
         </View>
       </ScrollView>
+      
+      {/* Fixed Footer */}
+      <View style={styles.footer}>
+        <TouchableOpacity
+          style={styles.footerButton}
+          onPress={() => navigation.goBack()}
+        >
+          <Text style={styles.footerButtonText}>Back</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.footerButton, styles.footerButtonPrimary]}
+          onPress={() => navigation.navigate('ProfileSettings' as any)}
+        >
+          <Text style={styles.footerButtonTextPrimary}>Profile</Text>
+        </TouchableOpacity>
+      </View>
     </SafeAreaView>
   );
 }
@@ -192,28 +190,33 @@ const styles = StyleSheet.create({
   },
   emergencyCard: {
     backgroundColor: colors.emergency,
-    borderRadius: borderRadius.xl,
-    padding: spacing.lg,
+    borderRadius: borderRadius.lg,
+    padding: spacing.md,
     marginBottom: spacing.lg,
-    alignItems: 'center',
     shadowColor: colors.shadowDark,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 8,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 4,
+  },
+  emergencyContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  emergencyTextContainer: {
+    marginLeft: spacing.md,
+    flex: 1,
   },
   emergencyEmoji: {
-    fontSize: 48,
-    marginBottom: spacing.sm,
+    fontSize: 28,
   },
   emergencyTitle: {
-    fontSize: 20,
+    fontSize: 16,
     fontWeight: '700',
     color: '#FFFFFF',
-    marginBottom: spacing.xs,
   },
   emergencySubtitle: {
-    fontSize: 14,
+    fontSize: 12,
     color: '#FFFFFF',
     opacity: 0.9,
   },
@@ -255,19 +258,36 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: colors.textSecondary,
   },
-  logoutButton: {
+  footer: {
+    flexDirection: 'row',
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
     backgroundColor: colors.backgroundSecondary,
-    borderRadius: borderRadius.lg,
-    paddingVertical: spacing.md,
-    paddingHorizontal: spacing.lg,
-    alignItems: 'center',
-    borderWidth: 2,
-    borderColor: colors.emergency,
-    marginTop: spacing.lg,
+    borderTopWidth: 1,
+    borderTopColor: colors.border,
+    gap: spacing.sm,
   },
-  logoutButtonText: {
-    fontSize: 16,
+  footerButton: {
+    flex: 1,
+    backgroundColor: colors.backgroundPrimary,
+    paddingVertical: spacing.sm,
+    borderRadius: borderRadius.md,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  footerButtonPrimary: {
+    backgroundColor: colors.accent,
+    borderColor: colors.accent,
+  },
+  footerButtonText: {
+    fontSize: 14,
     fontWeight: '600',
-    color: colors.emergency,
+    color: colors.textPrimary,
+  },
+  footerButtonTextPrimary: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#FFFFFF',
   },
 });

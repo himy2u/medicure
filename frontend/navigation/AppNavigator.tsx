@@ -24,6 +24,7 @@ import LabResultsScreen from '../screens/LabResultsScreen';
 import ChatScreen from '../screens/ChatScreen';
 import VideoCallScreen from '../screens/VideoCallScreen';
 import BookAppointmentScreen from '../screens/BookAppointmentScreen';
+import ProfileSettingsScreen from '../screens/ProfileSettingsScreen';
 
 // Doctor Screens
 import DoctorHomeScreen from '../screens/DoctorHomeScreen';
@@ -89,6 +90,7 @@ export type RootStackParamList = {
   Chat: { appointmentId: string; otherUserName: string; otherUserId: string };
   VideoCall: { appointmentId: string; otherUserName: string; roomId: string };
   BookAppointment: { doctor: any };
+  ProfileSettings: undefined;
 
   // Doctor
   DoctorHome: undefined;
@@ -278,6 +280,11 @@ export default function AppNavigator() {
             name="BookAppointment"
             component={BookAppointmentScreen}
             options={{ title: 'Book Appointment' }}
+          />
+          <Stack.Screen
+            name="ProfileSettings"
+            component={ProfileSettingsScreen}
+            options={{ headerShown: false }}
           />
 
           {/* Doctor Workflow Screens */}

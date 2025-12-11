@@ -46,7 +46,7 @@ export default function MyPatientsScreen() {
       if (result.success && result.data.patients) {
         setPatients(result.data.patients);
       } else {
-        // Mock data for demo - 8 patients to test scrolling
+        // Mock data for demo - 12 patients to ensure scrolling is needed
         setPatients([
           { id: '1', name: 'John Doe', age: 45, gender: 'Male', last_visit: '2025-12-01', conditions: ['Hypertension', 'Type 2 Diabetes'], phone: '+593987654321' },
           { id: '2', name: 'Maria Santos', age: 32, gender: 'Female', last_visit: '2025-11-28', conditions: ['Asthma'], phone: '+593987654322' },
@@ -56,6 +56,10 @@ export default function MyPatientsScreen() {
           { id: '6', name: 'Sofia Ramirez', age: 41, gender: 'Female', last_visit: '2025-11-10', conditions: ['Migraine'], phone: '+593987654326' },
           { id: '7', name: 'Pedro Gonzalez', age: 67, gender: 'Male', last_visit: '2025-11-05', conditions: ['Arthritis', 'Diabetes'], phone: '+593987654327' },
           { id: '8', name: 'Elena Torres', age: 35, gender: 'Female', last_visit: '2025-11-01', conditions: ['Thyroid Disorder'], phone: '+593987654328' },
+          { id: '9', name: 'Roberto Mendez', age: 49, gender: 'Male', last_visit: '2025-10-28', conditions: ['Back Pain', 'Insomnia'], phone: '+593987654329' },
+          { id: '10', name: 'Carmen Diaz', age: 55, gender: 'Female', last_visit: '2025-10-25', conditions: ['Osteoporosis'], phone: '+593987654330' },
+          { id: '11', name: 'Miguel Herrera', age: 38, gender: 'Male', last_visit: '2025-10-20', conditions: ['Allergies', 'Sinusitis'], phone: '+593987654331' },
+          { id: '12', name: 'Isabella Flores', age: 29, gender: 'Female', last_visit: '2025-10-15', conditions: ['Depression'], phone: '+593987654332' },
         ]);
       }
     } catch (error) {
@@ -155,12 +159,19 @@ export default function MyPatientsScreen() {
         </View>
       ) : (
         <FlatList
+          testID="patients-list"
           data={filteredPatients}
           renderItem={renderPatient}
           keyExtractor={(item) => item.id}
           contentContainerStyle={styles.listContent}
           style={styles.list}
           showsVerticalScrollIndicator={true}
+          bounces={true}
+          scrollEnabled={true}
+          nestedScrollEnabled={true}
+          initialNumToRender={5}
+          windowSize={10}
+          removeClippedSubviews={false}
           refreshControl={
             <RefreshControl refreshing={loading} onRefresh={loadPatients} />
           }
@@ -174,6 +185,22 @@ export default function MyPatientsScreen() {
           }
         />
       )}
+      
+      {/* Fixed Footer */}
+      <View style={styles.footer}>
+        <TouchableOpacity
+          style={styles.footerButton}
+          onPress={() => navigation.goBack()}
+        >
+          <Text style={styles.footerButtonText}>Back</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.footerButton, styles.footerButtonPrimary]}
+          onPress={() => navigation.navigate('DoctorHome')}
+        >
+          <Text style={styles.footerButtonTextPrimary}>Dashboard</Text>
+        </TouchableOpacity>
+      </View>
     </SafeAreaView>
     </RoleGuard>
   );
@@ -220,6 +247,7 @@ const styles = StyleSheet.create({
   listContent: {
     paddingHorizontal: spacing.lg,
     paddingBottom: spacing.xl,
+    flexGrow: 1,
   },
   patientCard: {
     backgroundColor: colors.backgroundSecondary,
@@ -334,5 +362,37 @@ const styles = StyleSheet.create({
   emptyText: {
     fontSize: 18,
     color: colors.textSecondary,
+  },
+  footer: {
+    flexDirection: 'row',
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    backgroundColor: colors.backgroundSecondary,
+    borderTopWidth: 1,
+    borderTopColor: colors.border,
+    gap: spacing.sm,
+  },
+  footerButton: {
+    flex: 1,
+    backgroundColor: colors.backgroundPrimary,
+    paddingVertical: spacing.sm,
+    borderRadius: borderRadius.md,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  footerButtonPrimary: {
+    backgroundColor: colors.accent,
+    borderColor: colors.accent,
+  },
+  footerButtonText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: colors.textPrimary,
+  },
+  footerButtonTextPrimary: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#FFFFFF',
   },
 });

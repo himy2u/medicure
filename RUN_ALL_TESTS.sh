@@ -34,6 +34,7 @@ echo ""
 echo "📱 FRONTEND STRUCTURE TESTS"
 echo "---------------------------"
 run_test "UI Structure Test" "node test_ui_structure.js"
+run_test "Scroll Configuration Test" "node test_scroll_config.js"
 
 echo ""
 echo "====================================="
