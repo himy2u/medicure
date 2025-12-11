@@ -1,0 +1,34 @@
+appId: host.exp.Exponent
+---
+# Real Scroll Test - Takes screenshots to verify content movement
+
+- launchApp
+- extendedWaitUntil:
+    visible: ".*"
+    timeout: 15000
+
+- takeScreenshot: "01_before_scroll"
+
+# Scroll down
+- swipe:
+    start: 50%, 70%
+    end: 50%, 30%
+    duration: 500
+
+- takeScreenshot: "02_after_scroll_down"
+
+# Scroll up
+- swipe:
+    start: 50%, 30%
+    end: 50%, 70%
+    duration: 500
+
+- takeScreenshot: "03_after_scroll_up"
+
+# Fast swipe
+- swipe:
+    start: 50%, 80%
+    end: 50%, 20%
+    duration: 150
+
+- takeScreenshot: "04_after_fast_swipe"

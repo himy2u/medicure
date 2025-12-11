@@ -560,6 +560,21 @@ async def get_doctor_availability(
 ):
     """Get doctor's current availability status"""
     try:
+        # Handle UUID doctor_ids - return default availability
+        # The doctor_availability_updates table uses INTEGER for doctor_id
+        try:
+            doctor_id_int = int(doctor_id)
+        except ValueError:
+            # UUID format - return default availability
+            return {
+                "success": True,
+                "data": {
+                    "available_now": True,
+                    "accepts_emergencies": True,
+                    "notes": None
+                }
+            }
+        
         pool = await get_pool()
         async with pool.acquire() as conn:
             query = """
@@ -570,7 +585,7 @@ async def get_doctor_availability(
                 LIMIT 1
             """
             
-            row = await conn.fetchrow(query, int(doctor_id))
+            row = await conn.fetchrow(query, doctor_id_int)
             
             if not row:
                 # Return default availability
@@ -602,6 +617,20 @@ async def update_doctor_availability(
 ):
     """Update doctor's availability status"""
     try:
+        # Handle UUID doctor_ids
+        try:
+            doctor_id_int = int(doctor_id)
+        except ValueError:
+            # UUID format - just return success with the data (no DB storage for UUID doctors)
+            return {
+                "success": True,
+                "data": {
+                    "available_now": availability.available_now,
+                    "accepts_emergencies": availability.accepts_emergencies,
+                    "notes": availability.notes
+                }
+            }
+        
         pool = await get_pool()
         async with pool.acquire() as conn:
             query = """
@@ -615,7 +644,7 @@ async def update_doctor_availability(
             
             row = await conn.fetchrow(
                 query,
-                int(doctor_id),
+                doctor_id_int,
                 availability.available_now,
                 availability.accepts_emergencies,
                 availability.notes

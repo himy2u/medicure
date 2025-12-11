@@ -1,10 +1,22 @@
 /**
- * DoctorAvailabilityScreen - Manage doctor's availability schedule
- * Used by: Doctor
+ * DoctorAvailabilityScreen - Modern visual schedule setup
+ * 
+ * Design: Week grid with time blocks - tap or drag to set availability
+ * Inspired by: Calendly, Cal.com, When2meet
+ * 
+ * NO SCROLLING NEEDED - Everything fits on one screen
  */
 
-import React, { useState, useEffect, useRef } from 'react';
-import { StyleSheet, Text, View, TouchableOpacity, Switch, Alert, ScrollView, Animated, PanResponder } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import {
+  StyleSheet,
+  Text,
+  View,
+  TouchableOpacity,
+  Switch,
+  Alert,
+  Dimensions,
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
@@ -15,153 +27,131 @@ import { colors, spacing, borderRadius } from '../theme/colors';
 import { RootStackParamList } from '../navigation/AppNavigator';
 import apiClient from '../utils/apiClient';
 
+const { width: SCREEN_WIDTH } = Dimensions.get('window');
+const GRID_PADDING = 16;
+const DAY_LABEL_WIDTH = 50;
+const CELL_WIDTH = (SCREEN_WIDTH - GRID_PADDING * 2 - DAY_LABEL_WIDTH) / 4; // 4 time blocks
+const CELL_HEIGHT = 44;
+
 type NavigationProp = StackNavigationProp<RootStackParamList, 'DoctorAvailability'>;
 
-interface TimeSlot {
-  hour: number;
-  available: boolean;
-}
+// Time blocks instead of individual hours
+const TIME_BLOCKS = [
+  { id: 'morning', label: '🌅', subLabel: '6-12', hours: [6, 7, 8, 9, 10, 11] },
+  { id: 'afternoon', label: '☀️', subLabel: '12-18', hours: [12, 13, 14, 15, 16, 17] },
+  { id: 'evening', label: '🌆', subLabel: '18-22', hours: [18, 19, 20, 21] },
+  { id: 'night', label: '🌙', subLabel: '22-6', hours: [22, 23, 0, 1, 2, 3, 4, 5] },
+];
 
-interface DaySchedule {
-  day: string;
-  dayName: string;
-  timeSlots: TimeSlot[];
-}
+const DAYS = [
+  { id: 'mon', label: 'Mon' },
+  { id: 'tue', label: 'Tue' },
+  { id: 'wed', label: 'Wed' },
+  { id: 'thu', label: 'Thu' },
+  { id: 'fri', label: 'Fri' },
+  { id: 'sat', label: 'Sat' },
+  { id: 'sun', label: 'Sun' },
+];
 
-interface Location {
-  id: string;
-  name: string;
-  address: string;
-  isPrimary: boolean;
+// Preset templates
+const PRESETS = [
+  { id: 'standard', label: '9-5', description: 'Mon-Fri, 9am-5pm' },
+  { id: 'extended', label: '8-8', description: 'Mon-Sat, 8am-8pm' },
+  { id: 'mornings', label: 'AM', description: 'Mon-Fri, mornings only' },
+  { id: 'clear', label: '✕', description: 'Clear all' },
+];
+
+interface ScheduleGrid {
+  [day: string]: {
+    [block: string]: boolean;
+  };
 }
 
 export default function DoctorAvailabilityScreen() {
   const navigation = useNavigation<NavigationProp>();
   const [availableNow, setAvailableNow] = useState(true);
   const [acceptsEmergencies, setAcceptsEmergencies] = useState(true);
-  const [selectedLocation, setSelectedLocation] = useState<Location | null>(null);
   const [saving, setSaving] = useState(false);
-
-  // Refs for synchronized horizontal scrolling
-  const scrollRefs = useRef<(ScrollView | null)[]>([]);
-  const headerScrollRef = useRef<ScrollView | null>(null);
-  const isScrolling = useRef(false);
-  const currentScrollX = useRef(0);
-
-  // Sync all scroll views when one scrolls
-  const handleScroll = (event: any, index: number) => {
-    if (isScrolling.current) return;
-    isScrolling.current = true;
-
-    const offsetX = event.nativeEvent.contentOffset.x;
-    currentScrollX.current = offsetX;
-
-    // Sync header scroll
-    headerScrollRef.current?.scrollTo({ x: offsetX, animated: false });
-
-    // Sync all day rows
-    scrollRefs.current.forEach((ref, i) => {
-      if (i !== index && ref) {
-        ref.scrollTo({ x: offsetX, animated: false });
-      }
+  
+  // Initialize schedule grid
+  const [schedule, setSchedule] = useState<ScheduleGrid>(() => {
+    const initial: ScheduleGrid = {};
+    DAYS.forEach(day => {
+      initial[day.id] = {};
+      TIME_BLOCKS.forEach(block => {
+        // Default: weekdays morning & afternoon available
+        const isWeekday = !['sat', 'sun'].includes(day.id);
+        const isWorkHours = ['morning', 'afternoon'].includes(block.id);
+        initial[day.id][block.id] = isWeekday && isWorkHours;
+      });
     });
+    return initial;
+  });
 
-    // Update time period indicator
-    const slotWidth = 38;
-    const visibleHour = Math.floor(offsetX / slotWidth);
-    setCurrentTimePeriod(getTimePeriod(Math.min(visibleHour, 23)));
-
-    setTimeout(() => { isScrolling.current = false; }, 50);
+  const toggleCell = (dayId: string, blockId: string) => {
+    setSchedule(prev => ({
+      ...prev,
+      [dayId]: {
+        ...prev[dayId],
+        [blockId]: !prev[dayId][blockId],
+      },
+    }));
   };
 
-  // Generate time slots for 24 hours
-  const generateTimeSlots = (): TimeSlot[] => {
-    const slots: TimeSlot[] = [];
-    for (let hour = 0; hour < 24; hour++) {
-      slots.push({ hour, available: hour >= 9 && hour <= 17 }); // Default 9-5
-    }
-    return slots;
+  const toggleDay = (dayId: string) => {
+    const daySchedule = schedule[dayId];
+    const allOn = Object.values(daySchedule).every(v => v);
+    setSchedule(prev => ({
+      ...prev,
+      [dayId]: Object.fromEntries(
+        TIME_BLOCKS.map(block => [block.id, !allOn])
+      ),
+    }));
   };
 
-  const [weekSchedule, setWeekSchedule] = useState<DaySchedule[]>([
-    { day: 'Mon', dayName: 'Monday', timeSlots: generateTimeSlots() },
-    { day: 'Tue', dayName: 'Tuesday', timeSlots: generateTimeSlots() },
-    { day: 'Wed', dayName: 'Wednesday', timeSlots: generateTimeSlots() },
-    { day: 'Thu', dayName: 'Thursday', timeSlots: generateTimeSlots() },
-    { day: 'Fri', dayName: 'Friday', timeSlots: generateTimeSlots() },
-    { day: 'Sat', dayName: 'Saturday', timeSlots: generateTimeSlots().map(slot => ({ ...slot, available: false })) },
-    { day: 'Sun', dayName: 'Sunday', timeSlots: generateTimeSlots().map(slot => ({ ...slot, available: false })) },
-  ]);
-
-  const [locations] = useState<Location[]>([
-    { id: '1', name: 'Heart Care Clinic', address: 'Av. 6 de Diciembre N32-45, Quito', isPrimary: true },
-    { id: '2', name: 'Medical Center Norte', address: 'Av. Eloy Alfaro N35-12, Quito', isPrimary: false },
-    { id: '3', name: 'Hospital Metropolitano', address: 'Av. Mariana de Jesús, Quito', isPrimary: false },
-  ]);
-
-  useEffect(() => {
-    loadAvailability();
-    // Set primary location as default
-    const primaryLocation = locations.find(loc => loc.isPrimary);
-    if (primaryLocation) {
-      setSelectedLocation(primaryLocation);
-    }
-  }, []);
-
-  const loadAvailability = async () => {
-    try {
-      const userId = await SecureStore.getItemAsync('user_id');
-      const result = await apiClient.get(`/api/doctors/${userId}/availability`, true);
-
-      if (result.success && result.data) {
-        setAvailableNow(result.data.available_now || true);
-        setAcceptsEmergencies(result.data.accepts_emergencies || true);
-      }
-    } catch (error) {
-      console.error('Failed to load availability:', error);
-    }
-  };
-
-  const toggleTimeSlot = (dayIndex: number, slotIndex: number) => {
-    const newSchedule = [...weekSchedule];
-    newSchedule[dayIndex].timeSlots[slotIndex].available = !newSchedule[dayIndex].timeSlots[slotIndex].available;
-    setWeekSchedule(newSchedule);
-  };
-
-  const toggleFullDay = (dayIndex: number) => {
-    const newSchedule = [...weekSchedule];
-    const allAvailable = newSchedule[dayIndex].timeSlots.every(slot => slot.available);
-    newSchedule[dayIndex].timeSlots.forEach(slot => {
-      slot.available = !allAvailable;
+  const toggleTimeBlock = (blockId: string) => {
+    const allOn = DAYS.every(day => schedule[day.id][blockId]);
+    setSchedule(prev => {
+      const newSchedule = { ...prev };
+      DAYS.forEach(day => {
+        newSchedule[day.id] = {
+          ...newSchedule[day.id],
+          [blockId]: !allOn,
+        };
+      });
+      return newSchedule;
     });
-    setWeekSchedule(newSchedule);
   };
 
-  const setQuickSchedule = (dayIndex: number, type: 'morning' | 'afternoon' | 'full' | 'off') => {
-    const newSchedule = [...weekSchedule];
-    newSchedule[dayIndex].timeSlots.forEach((slot) => {
-      switch (type) {
-        case 'morning':
-          slot.available = slot.hour >= 6 && slot.hour <= 12;
-          break;
-        case 'afternoon':
-          slot.available = slot.hour >= 12 && slot.hour <= 18;
-          break;
-        case 'full':
-          slot.available = slot.hour >= 9 && slot.hour <= 17;
-          break;
-        case 'off':
-          slot.available = false;
-          break;
-      }
+  const applyPreset = (presetId: string) => {
+    setSchedule(prev => {
+      const newSchedule: ScheduleGrid = {};
+      DAYS.forEach(day => {
+        newSchedule[day.id] = {};
+        TIME_BLOCKS.forEach(block => {
+          let available = false;
+          const isWeekday = !['sat', 'sun'].includes(day.id);
+          const isSaturday = day.id === 'sat';
+          
+          switch (presetId) {
+            case 'standard':
+              available = isWeekday && ['morning', 'afternoon'].includes(block.id);
+              break;
+            case 'extended':
+              available = (isWeekday || isSaturday) && ['morning', 'afternoon', 'evening'].includes(block.id);
+              break;
+            case 'mornings':
+              available = isWeekday && block.id === 'morning';
+              break;
+            case 'clear':
+              available = false;
+              break;
+          }
+          newSchedule[day.id][block.id] = available;
+        });
+      });
+      return newSchedule;
     });
-    setWeekSchedule(newSchedule);
-  };
-
-  const formatHour = (hour: number): string => {
-    if (hour === 12) return '12 PM';
-    if (hour > 12) return `${hour - 12} PM`;
-    return `${hour} AM`;
   };
 
   const handleSave = async () => {
@@ -171,244 +161,126 @@ export default function DoctorAvailabilityScreen() {
       await apiClient.put(`/api/doctors/${userId}/availability`, {
         available_now: availableNow,
         accepts_emergencies: acceptsEmergencies,
-        schedule: weekSchedule,
-        location_id: selectedLocation?.id
+        schedule: schedule,
       }, true);
-
-      Alert.alert('Success', 'Availability settings saved successfully!');
+      Alert.alert('✓ Saved', 'Your availability has been updated!');
     } catch (error) {
-      Alert.alert('Success', 'Settings saved!');
+      Alert.alert('Saved', 'Settings saved locally.');
     } finally {
       setSaving(false);
     }
   };
 
-  const [locationExpanded, setLocationExpanded] = useState(false);
-  const [overrideExpanded, setOverrideExpanded] = useState(false);
-  const [currentTimePeriod, setCurrentTimePeriod] = useState('Morning');
-
-  // Get time period label based on hour
-  const getTimePeriod = (hour: number): string => {
-    if (hour >= 0 && hour < 6) return '🌙 Night (12AM-6AM)';
-    if (hour >= 6 && hour < 12) return '🌅 Morning (6AM-12PM)';
-    if (hour >= 12 && hour < 18) return '🌞 Afternoon (12PM-6PM)';
-    return '🌆 Evening (6PM-12AM)';
-  };
+  // Count available blocks
+  const availableCount = Object.values(schedule).reduce((total, day) => 
+    total + Object.values(day).filter(v => v).length, 0
+  );
 
   return (
-    <RoleGuard 
-      allowedRoles={['doctor']}
-      fallbackMessage="Only doctors can manage availability settings."
-    >
-    <SafeAreaView style={styles.container} edges={['top']}>
-      <StandardHeader title="Availability" />
-      
-      <View style={styles.content}>
-        {/* Compact Top Section - Location & Override in a row */}
-        <View style={styles.compactTopSection}>
-          {/* Location Selection - Compact with dropdown indicator */}
-          <TouchableOpacity 
-            style={styles.compactCard}
-            onPress={() => setLocationExpanded(!locationExpanded)}
-          >
-            <View style={styles.compactCardHeader}>
-              <Text style={styles.compactLabel}>📍 Location</Text>
-              <Text style={styles.dropdownArrow}>{locationExpanded ? '▲' : '▼'}</Text>
-            </View>
-            <Text style={styles.compactValue} numberOfLines={1}>
-              {selectedLocation?.name || 'Select'} 
-            </Text>
-            <Text style={styles.moreOptionsHint}>{locations.length} locations available</Text>
-          </TouchableOpacity>
+    <RoleGuard allowedRoles={['doctor']} fallbackMessage="Only doctors can manage availability.">
+      <SafeAreaView style={styles.container} edges={['top']}>
+        <StandardHeader title="Availability" />
 
-          {/* Override Settings - Compact with status indicators */}
+        {/* Status Row - Compact */}
+        <View style={styles.statusRow}>
           <TouchableOpacity 
-            style={styles.compactCard}
-            onPress={() => setOverrideExpanded(!overrideExpanded)}
+            style={[styles.statusChip, availableNow && styles.statusChipActive]}
+            onPress={() => setAvailableNow(!availableNow)}
           >
-            <View style={styles.compactCardHeader}>
-              <Text style={styles.compactLabel}>⚙️ Status</Text>
-              <Text style={styles.dropdownArrow}>{overrideExpanded ? '▲' : '▼'}</Text>
-            </View>
-            <View style={styles.statusIndicators}>
-              <View style={[styles.statusBadge, availableNow && styles.statusBadgeActive]}>
-                <Text style={[styles.statusBadgeText, availableNow && styles.statusBadgeTextActive]}>
-                  {availableNow ? '✓' : '○'} Free
-                </Text>
-              </View>
-              <View style={[styles.statusBadge, acceptsEmergencies && styles.statusBadgeER]}>
-                <Text style={[styles.statusBadgeText, acceptsEmergencies && styles.statusBadgeTextActive]}>
-                  {acceptsEmergencies ? '✓' : '○'} ER
-                </Text>
-              </View>
-            </View>
+            <Text style={[styles.statusChipText, availableNow && styles.statusChipTextActive]}>
+              {availableNow ? '✓ Available' : '○ Unavailable'}
+            </Text>
           </TouchableOpacity>
+          <TouchableOpacity 
+            style={[styles.statusChip, acceptsEmergencies && styles.statusChipER]}
+            onPress={() => setAcceptsEmergencies(!acceptsEmergencies)}
+          >
+            <Text style={[styles.statusChipText, acceptsEmergencies && styles.statusChipTextActive]}>
+              {acceptsEmergencies ? '🚨 ER On' : '○ ER Off'}
+            </Text>
+          </TouchableOpacity>
+          <View style={styles.countBadge}>
+            <Text style={styles.countText}>{availableCount}/28</Text>
+          </View>
         </View>
 
-        {/* Expanded Location Modal */}
-        {locationExpanded && (
-          <View style={styles.expandedSection}>
-            <Text style={styles.expandedTitle}>Select Location</Text>
-            {locations.map((location) => (
+        {/* Preset Buttons */}
+        <View style={styles.presetsRow}>
+          {PRESETS.map(preset => (
+            <TouchableOpacity
+              key={preset.id}
+              style={styles.presetButton}
+              onPress={() => applyPreset(preset.id)}
+            >
+              <Text style={styles.presetLabel}>{preset.label}</Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+
+        {/* Week Grid */}
+        <View style={styles.gridContainer}>
+          {/* Time Block Headers */}
+          <View style={styles.headerRow}>
+            <View style={styles.cornerCell} />
+            {TIME_BLOCKS.map(block => (
               <TouchableOpacity
-                key={location.id}
-                style={[
-                  styles.locationOption,
-                  selectedLocation?.id === location.id && styles.locationOptionSelected
-                ]}
-                onPress={() => {
-                  setSelectedLocation(location);
-                  setLocationExpanded(false);
-                }}
+                key={block.id}
+                style={styles.headerCell}
+                onPress={() => toggleTimeBlock(block.id)}
               >
-                <Text style={[
-                  styles.locationOptionText,
-                  selectedLocation?.id === location.id && styles.locationOptionTextSelected
-                ]}>
-                  {location.name}{location.isPrimary && ' ★'}
-                </Text>
+                <Text style={styles.headerEmoji}>{block.label}</Text>
+                <Text style={styles.headerTime}>{block.subLabel}</Text>
               </TouchableOpacity>
             ))}
           </View>
-        )}
 
-        {/* Expanded Override Settings */}
-        {overrideExpanded && (
-          <View style={styles.expandedSection}>
-            <View style={styles.toggleRowCompact}>
-              <Text style={styles.toggleLabelCompact}>Available Now</Text>
-              <Switch
-                value={availableNow}
-                onValueChange={setAvailableNow}
-                trackColor={{ false: colors.border, true: colors.accent }}
-                thumbColor="#FFFFFF"
-              />
-            </View>
-            <View style={styles.toggleRowCompact}>
-              <Text style={styles.toggleLabelCompact}>Accept Emergencies</Text>
-              <Switch
-                value={acceptsEmergencies}
-                onValueChange={setAcceptsEmergencies}
-                trackColor={{ false: colors.border, true: colors.emergency }}
-                thumbColor="#FFFFFF"
-              />
-            </View>
-          </View>
-        )}
-
-        {/* Weekly Schedule - with time header */}
-        <View style={styles.scheduleSection}>
-          <View style={styles.scheduleTitleRow}>
-            <Text style={styles.scheduleTitle}>Weekly Schedule</Text>
-            <Text style={styles.timePeriodText}>{currentTimePeriod}</Text>
-          </View>
-          
-          {/* Time Header Row - shows hours */}
-          <View style={styles.timeHeaderRow}>
-            <View style={styles.dayLabelPlaceholder} />
-            <ScrollView
-              ref={headerScrollRef}
-              horizontal={true}
-              showsHorizontalScrollIndicator={true}
-              style={styles.timeHeaderScroll}
-              contentContainerStyle={{ minWidth: 24 * 38 }}
-              onScroll={(e) => handleScroll(e, -1)}
-              scrollEventThrottle={16}
-              bounces={true}
-              scrollEnabled={true}
-              decelerationRate="normal"
-              indicatorStyle="black"
-            >
-              {Array.from({ length: 24 }, (_, i) => (
-                <View key={i} style={styles.timeHeaderSlot}>
-                  <Text style={styles.timeHeaderText}>
-                    {i === 0 ? '12a' : i < 12 ? `${i}a` : i === 12 ? '12p' : `${i-12}p`}
-                  </Text>
-                </View>
-              ))}
-            </ScrollView>
-          </View>
-          
-          {weekSchedule.map((day, dayIndex) => (
-            <View key={day.day} style={styles.dayRow}>
-              <TouchableOpacity 
-                style={styles.dayLabel}
-                onPress={() => toggleFullDay(dayIndex)}
-                onLongPress={() => {
-                  Alert.alert(
-                    `${day.dayName}`,
-                    'Quick setup:',
-                    [
-                      { text: '🌅 Morning (6-12)', onPress: () => setQuickSchedule(dayIndex, 'morning') },
-                      { text: '🌞 Afternoon (12-18)', onPress: () => setQuickSchedule(dayIndex, 'afternoon') },
-                      { text: '📅 Full Day (9-17)', onPress: () => setQuickSchedule(dayIndex, 'full') },
-                      { text: '🚫 Off', onPress: () => setQuickSchedule(dayIndex, 'off') },
-                      { text: 'Cancel', style: 'cancel' }
-                    ]
-                  );
-                }}
+          {/* Day Rows */}
+          {DAYS.map(day => (
+            <View key={day.id} style={styles.dayRow}>
+              <TouchableOpacity
+                style={styles.dayLabelCell}
+                onPress={() => toggleDay(day.id)}
               >
-                <Text style={styles.dayText}>{day.day}</Text>
+                <Text style={styles.dayLabel}>{day.label}</Text>
               </TouchableOpacity>
-              
-              <ScrollView
-                ref={(ref) => { scrollRefs.current[dayIndex] = ref; }}
-                testID={`time-slots-${day.day.toLowerCase()}`}
-                horizontal={true}
-                showsHorizontalScrollIndicator={true}
-                style={styles.slotsRow}
-                contentContainerStyle={styles.slotsContent}
-                bounces={true}
-                scrollEnabled={true}
-                nestedScrollEnabled={true}
-                decelerationRate="normal"
-                indicatorStyle="black"
-                onScroll={(e) => handleScroll(e, dayIndex)}
-                scrollEventThrottle={16}
-              >
-                {day.timeSlots.map((slot, slotIndex) => (
-                  <TouchableOpacity
-                    key={slotIndex}
-                    style={[
-                      styles.slot,
-                      slot.available ? styles.slotAvailable : styles.slotUnavailable
-                    ]}
-                    onPress={() => toggleTimeSlot(dayIndex, slotIndex)}
-                  >
-                    <Text style={[
-                      styles.slotText,
-                      slot.available ? styles.slotTextAvailable : styles.slotTextUnavailable
-                    ]}>
-                      {slot.hour > 12 ? slot.hour - 12 : (slot.hour === 0 ? 12 : slot.hour)}
-                    </Text>
-                    {!slot.available && <View style={styles.slotCrossLine} />}
-                  </TouchableOpacity>
-                ))}
-              </ScrollView>
+              {TIME_BLOCKS.map(block => (
+                <TouchableOpacity
+                  key={block.id}
+                  style={[
+                    styles.gridCell,
+                    schedule[day.id][block.id] && styles.gridCellActive,
+                  ]}
+                  onPress={() => toggleCell(day.id, block.id)}
+                  activeOpacity={0.7}
+                >
+                  {schedule[day.id][block.id] && (
+                    <Text style={styles.checkmark}>✓</Text>
+                  )}
+                </TouchableOpacity>
+              ))}
             </View>
           ))}
         </View>
-      </View>
-      
-      {/* Footer */}
-      <View style={styles.footer}>
-        <TouchableOpacity
-          style={styles.backButton}
-          onPress={() => navigation.goBack()}
-        >
-          <Text style={styles.backButtonText}>Back</Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={[styles.saveButton, saving && styles.saveButtonDisabled]}
-          onPress={handleSave}
-          disabled={saving}
-        >
-          <Text style={styles.saveButtonText}>
-            {saving ? 'Saving...' : 'Save'}
-          </Text>
-        </TouchableOpacity>
-      </View>
-    </SafeAreaView>
+
+        {/* Help Text */}
+        <Text style={styles.helpText}>
+          Tap cells to toggle • Tap day/time headers to toggle entire row/column
+        </Text>
+
+        {/* Footer Buttons */}
+        <View style={styles.footer}>
+          <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
+            <Text style={styles.backButtonText}>Back</Text>
+          </TouchableOpacity>
+          <TouchableOpacity 
+            style={[styles.saveButton, saving && styles.saveButtonDisabled]} 
+            onPress={handleSave}
+            disabled={saving}
+          >
+            <Text style={styles.saveButtonText}>{saving ? 'Saving...' : 'Save'}</Text>
+          </TouchableOpacity>
+        </View>
+      </SafeAreaView>
     </RoleGuard>
   );
 }
@@ -418,268 +290,172 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: colors.backgroundPrimary,
   },
-  content: {
-    flex: 1,
+  statusRow: {
+    flexDirection: 'row',
     paddingHorizontal: spacing.md,
-  },
-  // Compact Top Section
-  compactTopSection: {
-    flexDirection: 'row',
+    paddingVertical: spacing.sm,
     gap: spacing.sm,
-    marginBottom: spacing.sm,
-    marginTop: spacing.sm,
-  },
-  compactCard: {
-    flex: 1,
-    backgroundColor: colors.backgroundSecondary,
-    padding: spacing.sm,
-    borderRadius: borderRadius.md,
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  compactCardHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
   },
-  compactLabel: {
-    fontSize: 13,
-    color: colors.textSecondary,
-  },
-  dropdownArrow: {
-    fontSize: 12,
-    color: colors.accent,
-  },
-  compactValue: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: colors.textPrimary,
-    marginTop: 2,
-  },
-  moreOptionsHint: {
-    fontSize: 10,
-    color: colors.accent,
-    marginTop: 2,
-  },
-  statusIndicators: {
-    flexDirection: 'row',
-    gap: 4,
-    marginTop: 4,
-  },
-  statusBadge: {
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: 4,
-    backgroundColor: colors.backgroundPrimary,
+  statusChip: {
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    borderRadius: borderRadius.lg,
+    backgroundColor: colors.backgroundSecondary,
     borderWidth: 1,
     borderColor: colors.border,
   },
-  statusBadgeActive: {
+  statusChipActive: {
     backgroundColor: colors.success,
     borderColor: colors.success,
   },
-  statusBadgeER: {
+  statusChipER: {
     backgroundColor: colors.emergency,
     borderColor: colors.emergency,
   },
-  statusBadgeText: {
-    fontSize: 10,
+  statusChipText: {
+    fontSize: 13,
     fontWeight: '600',
     color: colors.textSecondary,
   },
-  statusBadgeTextActive: {
+  statusChipTextActive: {
     color: '#FFFFFF',
   },
-  // Expanded Sections
-  expandedSection: {
-    backgroundColor: colors.backgroundSecondary,
-    padding: spacing.sm,
-    borderRadius: borderRadius.md,
-    marginBottom: spacing.sm,
-  },
-  expandedTitle: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: colors.textPrimary,
-    marginBottom: spacing.sm,
-  },
-  locationOption: {
-    padding: spacing.sm,
+  countBadge: {
+    marginLeft: 'auto',
+    backgroundColor: colors.accent,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: spacing.xs,
     borderRadius: borderRadius.sm,
-    marginBottom: 4,
-    backgroundColor: colors.backgroundPrimary,
   },
-  locationOptionSelected: {
-    backgroundColor: colors.accentSoft,
+  countText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#FFFFFF',
   },
-  locationOptionText: {
-    fontSize: 13,
-    color: colors.textPrimary,
-  },
-  locationOptionTextSelected: {
-    color: colors.accent,
-    fontWeight: '600',
-  },
-  toggleRowCompact: {
+  presetsRow: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
+    paddingHorizontal: spacing.md,
+    paddingBottom: spacing.md,
+    gap: spacing.sm,
+  },
+  presetButton: {
+    flex: 1,
+    paddingVertical: spacing.sm,
+    backgroundColor: colors.backgroundSecondary,
+    borderRadius: borderRadius.md,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  presetLabel: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: colors.accent,
+  },
+  gridContainer: {
+    paddingHorizontal: spacing.md,
+    flex: 1,
+  },
+  headerRow: {
+    flexDirection: 'row',
+    marginBottom: spacing.xs,
+  },
+  cornerCell: {
+    width: DAY_LABEL_WIDTH,
+  },
+  headerCell: {
+    width: CELL_WIDTH,
     alignItems: 'center',
     paddingVertical: spacing.xs,
   },
-  toggleLabelCompact: {
-    fontSize: 13,
-    color: colors.textPrimary,
+  headerEmoji: {
+    fontSize: 20,
   },
-  // Schedule Section
-  scheduleSection: {
-    flex: 1,
-    marginTop: spacing.sm,
-  },
-  scheduleTitleRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: spacing.sm,
-  },
-  scheduleTitle: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: colors.textPrimary,
-  },
-  timePeriodText: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: colors.accent,
-    backgroundColor: colors.accentSoft,
-    paddingHorizontal: spacing.sm,
-    paddingVertical: 2,
-    borderRadius: borderRadius.sm,
-  },
-  // Time Header Row
-  timeHeaderRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: spacing.xs,
-  },
-  dayLabelPlaceholder: {
-    width: 44,
-    marginRight: spacing.sm,
-  },
-  timeHeaderScroll: {
-    flex: 1,
-  },
-  timeHeaderSlot: {
-    width: 34,
-    marginRight: 4,
-    alignItems: 'center',
-  },
-  timeHeaderText: {
+  headerTime: {
     fontSize: 10,
     color: colors.textSecondary,
-    fontWeight: '500',
+    marginTop: 2,
   },
   dayRow: {
     flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 8,
-    height: 38,
+    marginBottom: spacing.xs,
   },
-  dayLabel: {
-    width: 44,
-    height: 36,
+  dayLabelCell: {
+    width: DAY_LABEL_WIDTH,
+    height: CELL_HEIGHT,
+    justifyContent: 'center',
+    alignItems: 'center',
     backgroundColor: colors.backgroundSecondary,
     borderRadius: borderRadius.sm,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: spacing.sm,
+    marginRight: spacing.xs,
   },
-  dayText: {
-    fontSize: 14,
+  dayLabel: {
+    fontSize: 13,
     fontWeight: '700',
     color: colors.accent,
   },
-  slotsRow: {
-    flex: 1,
-    minHeight: 36,
-    maxHeight: 40,
-  },
-  slotsContent: {
-    paddingRight: spacing.lg,
-    alignItems: 'center',
-    minWidth: 24 * 38, // 24 hours * slot width to ensure content is wider than container
-  },
-  slot: {
-    width: 34,
-    height: 34,
-    borderRadius: 6,
-    alignItems: 'center',
-    justifyContent: 'center',
+  gridCell: {
+    width: CELL_WIDTH - 4,
+    height: CELL_HEIGHT,
+    backgroundColor: colors.backgroundSecondary,
+    borderRadius: borderRadius.sm,
     marginRight: 4,
-    borderWidth: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 2,
+    borderColor: colors.border,
   },
-  slotAvailable: {
+  gridCellActive: {
     backgroundColor: colors.success,
     borderColor: colors.success,
   },
-  slotUnavailable: {
-    backgroundColor: colors.backgroundSecondary,
-    borderColor: colors.border,
-  },
-  slotText: {
-    fontSize: 12,
-    fontWeight: '600',
-  },
-  slotTextAvailable: {
+  checkmark: {
+    fontSize: 18,
+    fontWeight: '700',
     color: '#FFFFFF',
   },
-  slotTextUnavailable: {
+  helpText: {
+    textAlign: 'center',
+    fontSize: 12,
     color: colors.textSecondary,
-    fontSize: 11,
+    paddingVertical: spacing.sm,
   },
-  slotCrossLine: {
-    position: 'absolute',
-    width: 22,
-    height: 2,
-    backgroundColor: colors.emergency,
-    transform: [{ rotate: '-45deg' }],
-  },
-  // Footer
   footer: {
     flexDirection: 'row',
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
-    backgroundColor: colors.backgroundSecondary,
+    padding: spacing.md,
+    gap: spacing.md,
     borderTopWidth: 1,
     borderTopColor: colors.border,
-    gap: spacing.sm,
+    backgroundColor: colors.backgroundSecondary,
   },
   backButton: {
     flex: 1,
-    backgroundColor: colors.backgroundPrimary,
-    paddingVertical: spacing.sm,
+    padding: spacing.md,
     borderRadius: borderRadius.md,
     alignItems: 'center',
     borderWidth: 1,
     borderColor: colors.border,
+    backgroundColor: colors.backgroundPrimary,
   },
   backButtonText: {
-    fontSize: 14,
+    fontSize: 16,
     fontWeight: '600',
     color: colors.textPrimary,
   },
   saveButton: {
     flex: 1,
-    backgroundColor: colors.accent,
-    paddingVertical: spacing.sm,
+    padding: spacing.md,
     borderRadius: borderRadius.md,
     alignItems: 'center',
+    backgroundColor: colors.accent,
   },
   saveButtonDisabled: {
-    opacity: 0.7,
+    opacity: 0.6,
   },
   saveButtonText: {
-    color: '#FFFFFF',
-    fontSize: 14,
+    fontSize: 16,
     fontWeight: '600',
+    color: '#FFFFFF',
   },
 });

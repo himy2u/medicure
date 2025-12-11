@@ -1,0 +1,117 @@
+appId: host.exp.Exponent
+---
+# Scroll Verification Test
+# Tests that scrolling actually works on key screens
+
+- launchApp
+
+# Wait for app to load
+- extendedWaitUntil:
+    visible: ".*"
+    timeout: 15000
+
+- takeScreenshot: "01_initial_state"
+
+# Login as doctor
+- tapOn:
+    text: "Medical Staff"
+    optional: true
+
+- tapOn:
+    text: "Login"
+    optional: true
+
+# Fill login form
+- tapOn:
+    text: "Email"
+    optional: true
+
+- inputText: "doctor@test.com"
+
+- tapOn:
+    text: "Password"
+    optional: true
+
+- inputText: "Test123!"
+
+- tapOn:
+    text: "Login"
+    optional: true
+
+# Wait for login
+- extendedWaitUntil:
+    visible: ".*Schedule.*|.*Dashboard.*|.*Home.*"
+    timeout: 10000
+
+- takeScreenshot: "02_logged_in"
+
+# Test Schedule screen scroll
+- tapOn:
+    text: "My Schedule"
+    optional: true
+
+- takeScreenshot: "03_schedule_before_scroll"
+
+# Vertical scroll down
+- swipe:
+    start: 50%, 70%
+    end: 50%, 30%
+    duration: 400
+
+- takeScreenshot: "04_schedule_after_scroll"
+
+# Scroll back up
+- swipe:
+    start: 50%, 30%
+    end: 50%, 70%
+    duration: 400
+
+- takeScreenshot: "05_schedule_scrolled_back"
+
+# Go to Availability
+- tapOn:
+    text: "Back"
+    optional: true
+
+- tapOn:
+    text: "Availability"
+    optional: true
+
+- takeScreenshot: "06_availability_screen"
+
+# Horizontal scroll right
+- swipe:
+    start: 80%, 55%
+    end: 20%, 55%
+    duration: 500
+
+- takeScreenshot: "07_availability_scrolled_right"
+
+# Horizontal scroll left
+- swipe:
+    start: 20%, 55%
+    end: 80%, 55%
+    duration: 500
+
+- takeScreenshot: "08_availability_scrolled_left"
+
+# Go to My Patients
+- tapOn:
+    text: "Back"
+    optional: true
+
+- tapOn:
+    text: "My Patients"
+    optional: true
+
+- takeScreenshot: "09_patients_before_scroll"
+
+# Vertical scroll
+- swipe:
+    start: 50%, 70%
+    end: 50%, 30%
+    duration: 400
+
+- takeScreenshot: "10_patients_after_scroll"
+
+- takeScreenshot: "11_final_state"
