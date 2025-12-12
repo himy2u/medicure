@@ -89,6 +89,19 @@ class ApiClient {
       // Log response
       testLogger.apiResponse(method, endpoint, response.status, data);
 
+      // Handle token expiration - clear all auth data
+      if (response.status === 401) {
+        const isExpired = data?.detail?.includes('expired') || data?.detail?.includes('Invalid token');
+        if (isExpired) {
+          testLogger.warning('API_CLIENT', 'Token expired, clearing auth');
+          await SecureStore.deleteItemAsync('auth_token');
+          await SecureStore.deleteItemAsync('user_role');
+          await SecureStore.deleteItemAsync('user_id');
+          await SecureStore.deleteItemAsync('user_name');
+          await SecureStore.deleteItemAsync('user_email');
+        }
+      }
+
       // Return formatted response
       if (response.ok) {
         return {

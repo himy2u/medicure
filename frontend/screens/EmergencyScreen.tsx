@@ -1,19 +1,28 @@
+/**
+ * EmergencyScreen - NO-SCROLL Compact Emergency UI
+ * 
+ * Smart Design Features:
+ * - Large emergency action buttons at top
+ * - 3x2 symptom grid (tap to select)
+ * - Compact custom input
+ * - Everything fits on one screen
+ */
+
 import React, { useState, useEffect } from 'react';
-import { StyleSheet, Text, View, Alert, TouchableOpacity, Linking, ActivityIndicator } from 'react-native';
-import { TextInput } from 'react-native-paper';
+import { StyleSheet, Text, View, Alert, TouchableOpacity, Linking, ActivityIndicator, TextInput as RNTextInput, Dimensions } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { useTranslation } from 'react-i18next';
-import BaseScreen from '../components/BaseScreen';
 import StandardHeader from '../components/StandardHeader';
 import { colors, spacing, borderRadius } from '../theme/colors';
 import { RootStackParamList } from '../navigation/AppNavigator';
 import * as Location from 'expo-location';
 import Constants from 'expo-constants';
 
+const { width: SCREEN_WIDTH } = Dimensions.get('window');
+
 type EmergencyScreenNavigationProp = StackNavigationProp<RootStackParamList, 'Emergency'>;
-
-
 
 export default function EmergencyScreen() {
   const navigation = useNavigation<EmergencyScreenNavigationProp>();
@@ -24,13 +33,14 @@ export default function EmergencyScreen() {
   const [loadingLocation, setLoadingLocation] = useState(false);
   const [loadingDoctors, setLoadingDoctors] = useState(false);
 
+  // Compact symptom list with icons
   const commonSymptoms = [
-    t('chestPain'),
-    t('difficultyBreathing'),
-    t('severeHeadache'),
-    t('abdominalPain'),
-    t('feverChills'),
-    t('injuryBleeding')
+    { id: 'chest', icon: '💔', label: t('chestPain') },
+    { id: 'breathing', icon: '😮‍💨', label: t('difficultyBreathing') },
+    { id: 'head', icon: '🤕', label: t('severeHeadache') },
+    { id: 'stomach', icon: '🤢', label: t('abdominalPain') },
+    { id: 'fever', icon: '🤒', label: t('feverChills') },
+    { id: 'injury', icon: '🩸', label: t('injuryBleeding') },
   ];
 
   const handleCall911 = () => {
@@ -203,149 +213,188 @@ export default function EmergencyScreen() {
 
 
   return (
-    <BaseScreen
-      pattern="headerContentFooter"
-      scrollable={true}
-      header={<StandardHeader title={t('emergencyTitle')} />}
-      footer={
-        <TouchableOpacity
-          style={styles.findDoctorsButton}
-          onPress={handleFindDoctors}
-          activeOpacity={0.7}
-          disabled={loadingDoctors || loadingLocation}
-        >
-          {loadingDoctors ? (
-            <ActivityIndicator size="small" color="#FFFFFF" />
-          ) : (
-            <Text style={styles.findDoctorsText}>🔍 Find Doctors Now</Text>
-          )}
-        </TouchableOpacity>
-      }
-    >
-      {/* Emergency Call Buttons - Compact */}
+    <SafeAreaView style={styles.container} edges={['top']}>
+      <StandardHeader title={t('emergencyTitle')} />
+
+      {/* Emergency Call Buttons - Large & Prominent */}
       <View style={styles.emergencyActions}>
         <TouchableOpacity style={styles.call911Button} onPress={handleCall911}>
-          <Text style={styles.emergencyButtonText}>🚨 911</Text>
+          <Text style={styles.emergencyIcon}>🚨</Text>
+          <Text style={styles.emergencyButtonText}>Call 911</Text>
         </TouchableOpacity>
         <TouchableOpacity style={styles.ambulanceButton} onPress={handleCallAmbulance}>
-          <Text style={styles.emergencyButtonText}>🚑 Ambulance</Text>
+          <Text style={styles.emergencyIcon}>🚑</Text>
+          <Text style={styles.emergencyButtonText}>Ambulance</Text>
         </TouchableOpacity>
       </View>
 
-      {/* Symptom Selection */}
+      {/* Location Status */}
+      <View style={styles.locationBar}>
+        {loadingLocation ? (
+          <Text style={styles.locationText}>📍 Getting location...</Text>
+        ) : location ? (
+          <Text style={styles.locationText}>📍 Location ready</Text>
+        ) : (
+          <Text style={styles.locationTextError}>📍 Location unavailable</Text>
+        )}
+      </View>
+
+      {/* Symptom Selection - 3x2 Grid */}
       <View style={styles.symptomSection}>
         <Text style={styles.sectionTitle}>{t('mainSymptom')}</Text>
         
-        {/* Common Symptoms - 2x3 Grid */}
         <View style={styles.symptomGrid} testID="symptoms-grid">
           {commonSymptoms.map((symptom) => (
             <TouchableOpacity
-              key={symptom}
+              key={symptom.id}
               style={[
                 styles.symptomCard,
-                selectedSymptom === symptom && styles.symptomCardSelected
+                selectedSymptom === symptom.label && styles.symptomCardSelected
               ]}
               onPress={() => {
-                setSelectedSymptom(symptom);
+                setSelectedSymptom(symptom.label);
                 setCustomSymptom('');
               }}
             >
+              <Text style={styles.symptomIcon}>{symptom.icon}</Text>
               <Text style={[
                 styles.symptomText,
-                selectedSymptom === symptom && styles.symptomTextSelected
-              ]}>
-                {symptom}
+                selectedSymptom === symptom.label && styles.symptomTextSelected
+              ]} numberOfLines={2}>
+                {symptom.label}
               </Text>
             </TouchableOpacity>
           ))}
         </View>
-
-        {/* Custom Symptom Input - Compact */}
-        <View style={styles.customSymptomCard}>
-          <Text style={styles.customSymptomTitle}>{t('describeSymptoms')}</Text>
-          <TextInput
-            label={t('symptomsPlaceholder')}
-            value={customSymptom}
-            onChangeText={(text) => {
-              setCustomSymptom(text);
-              setSelectedSymptom('');
-            }}
-            mode="outlined"
-            multiline
-            numberOfLines={2}
-            style={styles.customInput}
-          />
-        </View>
       </View>
-    </BaseScreen>
+
+      {/* Custom Symptom - Compact */}
+      <View style={styles.customSection}>
+        <Text style={styles.customLabel}>Or describe:</Text>
+        <RNTextInput
+          style={styles.customInput}
+          placeholder={t('symptomsPlaceholder')}
+          placeholderTextColor={colors.textSecondary}
+          value={customSymptom}
+          onChangeText={(text) => {
+            setCustomSymptom(text);
+            setSelectedSymptom('');
+          }}
+          multiline
+          numberOfLines={2}
+        />
+      </View>
+
+      {/* Find Doctors Button - Fixed at Bottom */}
+      <View style={styles.footer}>
+        <TouchableOpacity
+          style={styles.backButton}
+          onPress={() => navigation.goBack()}
+        >
+          <Text style={styles.backButtonText}>Back</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.findDoctorsButton, (!selectedSymptom && !customSymptom) && styles.findDoctorsButtonDisabled]}
+          onPress={handleFindDoctors}
+          activeOpacity={0.7}
+          disabled={loadingDoctors || loadingLocation || (!selectedSymptom && !customSymptom)}
+        >
+          {loadingDoctors ? (
+            <ActivityIndicator size="small" color="#FFFFFF" />
+          ) : (
+            <Text style={styles.findDoctorsText}>🔍 Find Doctors</Text>
+          )}
+        </TouchableOpacity>
+      </View>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: colors.backgroundPrimary,
+  },
   emergencyActions: {
     flexDirection: 'row',
-    paddingHorizontal: spacing.lg,
-    marginBottom: spacing.md,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
     gap: spacing.md,
   },
   call911Button: {
     flex: 1,
-    backgroundColor: colors.backgroundSecondary,
+    backgroundColor: colors.emergency,
     paddingVertical: spacing.md,
     borderRadius: borderRadius.lg,
     alignItems: 'center',
-    borderWidth: 1,
-    borderColor: colors.border,
   },
   ambulanceButton: {
     flex: 1,
-    backgroundColor: colors.backgroundSecondary,
+    backgroundColor: colors.accent,
     paddingVertical: spacing.md,
     borderRadius: borderRadius.lg,
     alignItems: 'center',
-    borderWidth: 1,
-    borderColor: colors.border,
+  },
+  emergencyIcon: {
+    fontSize: 24,
+    marginBottom: spacing.xs,
   },
   emergencyButtonText: {
-    color: colors.textPrimary,
+    color: '#FFFFFF',
     fontSize: 14,
     fontWeight: '700',
   },
+  locationBar: {
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.xs,
+  },
+  locationText: {
+    fontSize: 12,
+    color: colors.success,
+    textAlign: 'center',
+  },
+  locationTextError: {
+    fontSize: 12,
+    color: colors.emergency,
+    textAlign: 'center',
+  },
   symptomSection: {
     flex: 1,
-    paddingHorizontal: spacing.lg,
+    paddingHorizontal: spacing.md,
   },
   sectionTitle: {
-    fontSize: 16,
+    fontSize: 14,
     fontWeight: '600',
     color: colors.textPrimary,
-    marginBottom: spacing.md,
+    marginBottom: spacing.sm,
   },
   symptomGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    justifyContent: 'space-between',
-    marginBottom: spacing.md,
+    gap: spacing.sm,
   },
   symptomCard: {
-    width: '48%',
+    width: (SCREEN_WIDTH - spacing.md * 2 - spacing.sm * 2) / 3,
     backgroundColor: colors.backgroundSecondary,
     paddingVertical: spacing.sm,
     paddingHorizontal: spacing.xs,
     borderRadius: borderRadius.md,
     alignItems: 'center',
-    marginBottom: spacing.sm,
     borderWidth: 2,
     borderColor: 'transparent',
-    minHeight: 50,
+    minHeight: 70,
     justifyContent: 'center',
   },
   symptomCardSelected: {
     backgroundColor: colors.accent,
     borderColor: colors.accent,
   },
+  symptomIcon: {
+    fontSize: 24,
+    marginBottom: spacing.xs,
+  },
   symptomText: {
-    fontSize: 12,
+    fontSize: 10,
     fontWeight: '600',
     color: colors.textPrimary,
     textAlign: 'center',
@@ -353,32 +402,63 @@ const styles = StyleSheet.create({
   symptomTextSelected: {
     color: '#FFFFFF',
   },
-  customSymptomCard: {
-    backgroundColor: colors.backgroundSecondary,
-    padding: spacing.md,
-    borderRadius: borderRadius.lg,
-    marginBottom: spacing.md,
+  customSection: {
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
   },
-  customSymptomTitle: {
+  customLabel: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: colors.textSecondary,
+    marginBottom: spacing.xs,
+  },
+  customInput: {
+    backgroundColor: colors.backgroundSecondary,
+    borderRadius: borderRadius.md,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    fontSize: 14,
+    color: colors.textPrimary,
+    minHeight: 50,
+    textAlignVertical: 'top',
+  },
+  footer: {
+    flexDirection: 'row',
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    backgroundColor: colors.backgroundSecondary,
+    borderTopWidth: 1,
+    borderTopColor: colors.border,
+    gap: spacing.sm,
+  },
+  backButton: {
+    flex: 1,
+    backgroundColor: colors.backgroundPrimary,
+    paddingVertical: spacing.md,
+    borderRadius: borderRadius.md,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  backButtonText: {
     fontSize: 14,
     fontWeight: '600',
     color: colors.textPrimary,
-    marginBottom: spacing.sm,
-  },
-  customInput: {
-    backgroundColor: colors.backgroundPrimary,
   },
   findDoctorsButton: {
+    flex: 2,
     backgroundColor: colors.accent,
-    paddingVertical: spacing.lg,
-    marginHorizontal: spacing.lg,
-    borderRadius: borderRadius.lg,
+    paddingVertical: spacing.md,
+    borderRadius: borderRadius.md,
     alignItems: 'center',
     justifyContent: 'center',
   },
+  findDoctorsButtonDisabled: {
+    opacity: 0.5,
+  },
   findDoctorsText: {
     color: '#FFFFFF',
-    fontSize: 16,
+    fontSize: 14,
     fontWeight: '700',
   },
 });

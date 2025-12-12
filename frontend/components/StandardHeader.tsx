@@ -16,6 +16,7 @@ interface StandardHeaderProps {
   title: string;
   showBackButton?: boolean;
   showHomeButton?: boolean;
+  showSignOutButton?: boolean;
   onBackPress?: () => void;
   rightComponent?: React.ReactNode;
 }
@@ -24,6 +25,7 @@ export default function StandardHeader({
   title,
   showBackButton = true,
   showHomeButton = true,
+  showSignOutButton = true,
   onBackPress,
   rightComponent
 }: StandardHeaderProps) {
@@ -49,6 +51,18 @@ export default function StandardHeader({
   const handleHomePress = () => {
     const homeScreen = getRoleBasedHomeScreen(userRole);
     navigation.navigate(homeScreen as any);
+  };
+
+  const handleSignOut = async () => {
+    await SecureStore.deleteItemAsync('auth_token');
+    await SecureStore.deleteItemAsync('user_role');
+    await SecureStore.deleteItemAsync('user_id');
+    await SecureStore.deleteItemAsync('user_name');
+    await SecureStore.deleteItemAsync('user_email');
+    navigation.reset({
+      index: 0,
+      routes: [{ name: 'Landing' }],
+    });
   };
 
   return (
@@ -81,7 +95,15 @@ export default function StandardHeader({
       </View>
 
       <View style={styles.rightSection}>
-        {rightComponent || <View style={styles.placeholder} />}
+        {rightComponent ? rightComponent : showSignOutButton ? (
+          <TouchableOpacity 
+            style={styles.signOutButton}
+            onPress={handleSignOut}
+            activeOpacity={0.7}
+          >
+            <Text style={styles.signOutText}>Sign Out</Text>
+          </TouchableOpacity>
+        ) : <View style={styles.placeholder} />}
       </View>
     </View>
   );
@@ -136,5 +158,18 @@ const styles = StyleSheet.create({
   placeholder: {
     width: 40,
     height: 40,
+  },
+  signOutButton: {
+    backgroundColor: colors.backgroundSecondary,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    borderRadius: borderRadius.md,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  signOutText: {
+    fontSize: 13,
+    fontWeight: '500',
+    color: colors.textSecondary,
   },
 });

@@ -30,6 +30,7 @@ import ProfileSettingsScreen from '../screens/ProfileSettingsScreen';
 import DoctorHomeScreen from '../screens/DoctorHomeScreen';
 import DoctorAvailabilityScreen from '../screens/DoctorAvailabilityScreen';
 import DoctorScheduleScreen from '../screens/DoctorScheduleScreen';
+import UnifiedCalendarScreen from '../screens/UnifiedCalendarScreen';
 import MyPatientsScreen from '../screens/MyPatientsScreen';
 import PatientHistoryScreen from '../screens/PatientHistoryScreen';
 import EmergencyAlertsScreen from '../screens/EmergencyAlertsScreen';
@@ -96,6 +97,7 @@ export type RootStackParamList = {
   DoctorHome: undefined;
   DoctorAvailability: undefined;
   DoctorSchedule: undefined;
+  UnifiedCalendar: undefined;
   MyPatients: undefined;
   PatientHistory: { patientId: string; patientName: string };
   EmergencyAlerts: undefined;
@@ -296,6 +298,11 @@ export default function AppNavigator() {
           <Stack.Screen
             name="DoctorSchedule"
             component={DoctorScheduleScreen}
+            options={{ headerShown: false }}
+          />
+          <Stack.Screen
+            name="UnifiedCalendar"
+            component={UnifiedCalendarScreen}
             options={{ headerShown: false }}
           />
           <Stack.Screen
