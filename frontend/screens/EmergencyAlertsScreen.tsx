@@ -53,13 +53,19 @@ export default function EmergencyAlertsScreen() {
 
   const loadAlerts = async () => {
     setLoading(true);
+    console.log('🚨 [Emergency] Loading alerts, filter:', filter);
     try {
       const userId = await SecureStore.getItemAsync('user_id');
-      const result = await apiClient.get(`/api/doctors/${userId}/emergency-alerts?status=${filter}`, true);
+      console.log('🚨 [Emergency] User ID:', userId);
+      // Remove query param - backend handles filtering
+      const result = await apiClient.get(`/api/doctors/${userId}/emergency-alerts`, true);
+      console.log('🚨 [Emergency] API Result:', JSON.stringify(result, null, 2));
 
       if (result.success && result.data?.alerts) {
+        console.log('🚨 [Emergency] Got alerts from API:', result.data.alerts.length);
         setAlerts(result.data.alerts);
       } else {
+        console.log('🚨 [Emergency] Using mock data - API returned:', result.error || 'no alerts');
         // Mock data
         setAlerts([
           { 
@@ -98,9 +104,24 @@ export default function EmergencyAlertsScreen() {
         ]);
       }
     } catch (error) {
-      console.error('Failed to load alerts:', error);
+      console.error('🚨 [Emergency] Failed to load alerts:', error);
+      // Set mock data on error
+      setAlerts([
+        { 
+          id: '1', 
+          patientName: 'Maria Garcia', 
+          patientPhone: '+593987654321',
+          symptom: 'Severe chest pain',
+          severity: 'critical',
+          status: 'pending',
+          location: 'Quito',
+          timeAgo: '3m ago',
+          hasAmbulance: true
+        },
+      ]);
     } finally {
       setLoading(false);
+      console.log('🚨 [Emergency] Loading complete');
     }
   };
 

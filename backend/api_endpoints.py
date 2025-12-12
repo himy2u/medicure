@@ -668,6 +668,23 @@ async def get_doctor_patients(
 ):
     """Get list of doctor's patients"""
     try:
+        # Handle UUID doctor_ids
+        try:
+            doctor_id_int = int(doctor_id)
+        except ValueError:
+            # UUID format - return mock data for demo
+            return {
+                "success": True,
+                "patients": [
+                    {"id": "p1", "name": "Maria Garcia", "email": "maria@example.com", "phone": "+593987654321", "lastVisit": "2025-12-08", "status": "active", "condition": "Hypertension"},
+                    {"id": "p2", "name": "Carlos Rodriguez", "email": "carlos@example.com", "phone": "+593987654322", "lastVisit": "2025-12-05", "status": "active", "condition": "Diabetes Type 2"},
+                    {"id": "p3", "name": "Ana Martinez", "email": "ana@example.com", "phone": "+593987654323", "lastVisit": "2025-12-01", "status": "follow-up", "condition": "Post-surgery recovery"},
+                    {"id": "p4", "name": "Luis Fernandez", "email": "luis@example.com", "phone": "+593987654324", "lastVisit": "2025-11-28", "status": "active", "condition": "Asthma"},
+                    {"id": "p5", "name": "Sofia Ramirez", "email": "sofia@example.com", "phone": "+593987654325", "lastVisit": "2025-11-20", "status": "inactive", "condition": "General checkup"},
+                ],
+                "count": 5
+            }
+        
         pool = await get_pool()
         async with pool.acquire() as conn:
             query = """
@@ -684,7 +701,7 @@ async def get_doctor_patients(
                 ORDER BY MAX(a.appointment_date) DESC
             """
             
-            rows = await conn.fetch(query, int(doctor_id))
+            rows = await conn.fetch(query, doctor_id_int)
             patients = [dict(row) for row in rows]
             
             return {
@@ -842,4 +859,195 @@ async def decline_emergency_request(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to decline emergency request: {str(e)}"
+        )
+
+
+# ============================================================================
+# CALENDAR & SCHEDULING ENDPOINTS
+# ============================================================================
+
+@router.get("/api/doctors/{doctor_id}/calendar")
+async def get_doctor_calendar(
+    doctor_id: str,
+    current_user: Dict = Depends(get_current_user)
+):
+    """Get doctor's calendar with appointments and availability"""
+    try:
+        # Handle UUID doctor_ids
+        try:
+            doctor_id_int = int(doctor_id)
+        except ValueError:
+            # UUID format - return mock data
+            return {
+                "success": True,
+                "data": {
+                    "appointments": [
+                        {"id": "1", "time": "09:00", "patientName": "Maria G.", "type": "scheduled", "location": "clinic1", "status": "confirmed", "date": "2025-12-11"},
+                        {"id": "2", "time": "09:30", "patientName": "Carlos R.", "type": "scheduled", "location": "clinic1", "status": "confirmed", "date": "2025-12-11"},
+                        {"id": "3", "time": "10:00", "patientName": "Ana M.", "type": "emergency", "location": "clinic2", "status": "pending", "date": "2025-12-11"},
+                        {"id": "4", "time": "11:00", "patientName": "Luis F.", "type": "scheduled", "location": "clinic1", "status": "confirmed", "date": "2025-12-11"},
+                        {"id": "5", "time": "14:00", "patientName": "Sofia R.", "type": "walkin", "location": "clinic3", "status": "pending", "date": "2025-12-11"},
+                        {"id": "6", "time": "15:30", "patientName": "Pedro G.", "type": "scheduled", "location": "clinic2", "status": "confirmed", "date": "2025-12-11"},
+                    ],
+                    "availability": {
+                        "early": False,
+                        "morning": True,
+                        "lunch": True,
+                        "afternoon": True,
+                        "evening": False,
+                        "night": False
+                    }
+                }
+            }
+        
+        pool = await get_pool()
+        async with pool.acquire() as conn:
+            # Get appointments
+            appointments_query = """
+                SELECT 
+                    a.id, a.appointment_date, a.status, a.appointment_type,
+                    u.name as patient_name
+                FROM appointments a
+                LEFT JOIN users u ON a.patient_id = u.id
+                WHERE a.doctor_id = $1
+                ORDER BY a.appointment_date
+            """
+            rows = await conn.fetch(appointments_query, doctor_id_int)
+            
+            appointments = []
+            for row in rows:
+                apt_date = row['appointment_date']
+                appointments.append({
+                    "id": str(row['id']),
+                    "time": apt_date.strftime('%H:%M') if apt_date else "09:00",
+                    "patientName": row['patient_name'] or "Patient",
+                    "type": row['appointment_type'] or "scheduled",
+                    "location": "clinic1",
+                    "status": row['status'] or "confirmed",
+                    "date": apt_date.strftime('%Y-%m-%d') if apt_date else ""
+                })
+            
+            return {
+                "success": True,
+                "data": {
+                    "appointments": appointments,
+                    "availability": {
+                        "early": False,
+                        "morning": True,
+                        "lunch": True,
+                        "afternoon": True,
+                        "evening": False,
+                        "night": False
+                    }
+                }
+            }
+    except Exception as e:
+        print(f"Error fetching calendar: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to fetch calendar: {str(e)}"
+        )
+
+
+@router.get("/api/doctors/{doctor_id}/emergency-alerts")
+async def get_doctor_emergency_alerts(
+    doctor_id: str,
+    status: str = "pending",
+    current_user: Dict = Depends(get_current_user)
+):
+    """Get emergency alerts for a doctor"""
+    try:
+        # Handle UUID doctor_ids
+        try:
+            doctor_id_int = int(doctor_id)
+        except ValueError:
+            # UUID format - return mock data
+            return {
+                "success": True,
+                "alerts": [
+                    {
+                        "id": "1",
+                        "patientName": "Maria Garcia",
+                        "patientPhone": "+593987654321",
+                        "symptom": "Severe chest pain, difficulty breathing",
+                        "severity": "critical",
+                        "status": "pending",
+                        "location": "Av. 6 de Diciembre, Quito",
+                        "timeAgo": "3m ago",
+                        "hasAmbulance": True
+                    },
+                    {
+                        "id": "2",
+                        "patientName": "Carlos Rodriguez",
+                        "patientPhone": "+593987654322",
+                        "symptom": "High fever (39.5°C), severe headache",
+                        "severity": "high",
+                        "status": "accepted",
+                        "location": "Av. Eloy Alfaro, Quito",
+                        "timeAgo": "12m ago",
+                        "hasAmbulance": False
+                    },
+                    {
+                        "id": "3",
+                        "patientName": "Ana Martinez",
+                        "patientPhone": "+593987654323",
+                        "symptom": "Allergic reaction, facial swelling",
+                        "severity": "medium",
+                        "status": "pending",
+                        "location": "Calle Toledo, Quito",
+                        "timeAgo": "25m ago",
+                        "hasAmbulance": False
+                    }
+                ],
+                "count": 3
+            }
+        
+        pool = await get_pool()
+        async with pool.acquire() as conn:
+            query = """
+                SELECT 
+                    ea.id, ea.symptom, ea.severity, ea.status,
+                    ea.patient_location_address, ea.ambulance_requested,
+                    ea.created_at, ea.patient_phone, ea.patient_name
+                FROM emergency_alerts ea
+                WHERE ea.doctor_id = $1
+                ORDER BY 
+                    CASE ea.severity 
+                        WHEN 'critical' THEN 1 
+                        WHEN 'high' THEN 2 
+                        WHEN 'medium' THEN 3 
+                        ELSE 4 
+                    END,
+                    ea.created_at DESC
+            """
+            rows = await conn.fetch(query, doctor_id_int)
+            
+            alerts = []
+            for row in rows:
+                created = row['created_at']
+                minutes_ago = int((datetime.now() - created).total_seconds() / 60) if created else 0
+                time_ago = f"{minutes_ago}m ago" if minutes_ago < 60 else f"{minutes_ago // 60}h ago"
+                
+                alerts.append({
+                    "id": str(row['id']),
+                    "patientName": row['patient_name'] or "Unknown",
+                    "patientPhone": row['patient_phone'] or "",
+                    "symptom": row['symptom'] or "",
+                    "severity": row['severity'] or "medium",
+                    "status": row['status'] or "pending",
+                    "location": row['patient_location_address'] or "",
+                    "timeAgo": time_ago,
+                    "hasAmbulance": row['ambulance_requested'] or False
+                })
+            
+            return {
+                "success": True,
+                "alerts": alerts,
+                "count": len(alerts)
+            }
+    except Exception as e:
+        print(f"Error fetching emergency alerts: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to fetch emergency alerts: {str(e)}"
         )

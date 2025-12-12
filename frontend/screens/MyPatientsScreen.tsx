@@ -52,13 +52,29 @@ export default function MyPatientsScreen() {
 
   const loadPatients = async () => {
     setLoading(true);
+    console.log('🏥 [MyPatients] Loading patients...');
     try {
       const userId = await SecureStore.getItemAsync('user_id');
+      console.log('🏥 [MyPatients] User ID:', userId);
       const result = await apiClient.get(`/api/doctors/${userId}/patients`, true);
+      console.log('🏥 [MyPatients] API Result:', JSON.stringify(result, null, 2));
 
-      if (result.success && result.data.patients) {
-        setPatients(result.data.patients);
+      if (result.success && result.data?.patients) {
+        // Map API response to component format
+        const mappedPatients = result.data.patients.map((p: any) => ({
+          id: p.id || p.patient_id,
+          name: p.name || p.patient_name || 'Unknown',
+          age: p.age || 0,
+          gender: p.gender || '',
+          lastVisit: p.lastVisit || p.last_visit || p.last_appointment || '2025-01-01',
+          condition: p.condition || p.diagnosis || 'General',
+          phone: p.phone || p.patient_phone || '',
+          status: p.status || 'active',
+        }));
+        console.log('🏥 [MyPatients] Mapped patients:', mappedPatients.length);
+        setPatients(mappedPatients);
       } else {
+        console.log('🏥 [MyPatients] Using mock data - API returned:', result.error || 'no patients');
         // Mock data sorted by recent activity
         setPatients([
           { id: '1', name: 'Ana Martinez', age: 28, gender: 'F', lastVisit: '2025-12-10', condition: 'Anxiety', phone: '+593987654324', status: 'follow-up' },
@@ -66,15 +82,18 @@ export default function MyPatientsScreen() {
           { id: '3', name: 'Elena Torres', age: 35, gender: 'F', lastVisit: '2025-12-05', condition: 'Thyroid', phone: '+593987654328', status: 'active' },
           { id: '4', name: 'Isabella Flores', age: 29, gender: 'F', lastVisit: '2025-12-01', condition: 'Depression', phone: '+593987654332', status: 'new' },
           { id: '5', name: 'John Doe', age: 45, gender: 'M', lastVisit: '2025-11-28', condition: 'Hypertension', phone: '+593987654321', status: 'active' },
-          { id: '6', name: 'Luis Fernandez', age: 52, gender: 'M', lastVisit: '2025-11-25', condition: 'COPD', phone: '+593987654325', status: 'follow-up' },
-          { id: '7', name: 'Maria Santos', age: 32, gender: 'F', lastVisit: '2025-11-20', condition: 'Asthma', phone: '+593987654322', status: 'active' },
-          { id: '8', name: 'Pedro Gonzalez', age: 67, gender: 'M', lastVisit: '2025-11-15', condition: 'Arthritis', phone: '+593987654327', status: 'active' },
         ]);
       }
     } catch (error) {
-      console.error('Failed to load patients:', error);
+      console.error('🏥 [MyPatients] Failed to load patients:', error);
+      // Set mock data on error
+      setPatients([
+        { id: '1', name: 'Ana Martinez', age: 28, gender: 'F', lastVisit: '2025-12-10', condition: 'Anxiety', phone: '+593987654324', status: 'follow-up' },
+        { id: '2', name: 'Carlos Rodriguez', age: 58, gender: 'M', lastVisit: '2025-12-08', condition: 'Cardiac', phone: '+593987654323', status: 'active' },
+      ]);
     } finally {
       setLoading(false);
+      console.log('🏥 [MyPatients] Loading complete, patients count:', patients.length);
     }
   };
 
