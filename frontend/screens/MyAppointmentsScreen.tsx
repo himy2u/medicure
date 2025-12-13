@@ -5,10 +5,10 @@
 
 import React, { useState } from 'react';
 import { StyleSheet, Text, View, TouchableOpacity, FlatList, ActivityIndicator } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import * as SecureStore from 'expo-secure-store';
-import BaseScreen from '../components/BaseScreen';
 import StandardHeader from '../components/StandardHeader';
 import RoleGuard from '../components/RoleGuard';
 import { colors, spacing, borderRadius } from '../theme/colors';
@@ -188,10 +188,9 @@ export default function MyAppointmentsScreen() {
       allowedRoles={['patient', 'caregiver', 'doctor']}
       fallbackMessage="Only patients, caregivers, and doctors can view appointments."
     >
-    <BaseScreen 
-      pattern="headerWithScroll" 
-      header={<StandardHeader title="My Appointments" />}
-    >
+    <SafeAreaView style={styles.container} edges={['top']}>
+      <StandardHeader title="My Appointments" />
+      
       {/* Tab Selector */}
       <View style={styles.tabContainer}>
         <TouchableOpacity
@@ -226,8 +225,6 @@ export default function MyAppointmentsScreen() {
           contentContainerStyle={styles.listContent}
           showsVerticalScrollIndicator={true}
           bounces={true}
-          scrollEnabled={true}
-          nestedScrollEnabled={true}
           ListEmptyComponent={
             <View style={styles.emptyContainer}>
               <Text style={styles.emptyIcon}>📅</Text>
@@ -246,23 +243,15 @@ export default function MyAppointmentsScreen() {
           }
         />
       )}
-    </BaseScreen>
+    </SafeAreaView>
     </RoleGuard>
   );
 }
 
 const styles = StyleSheet.create({
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.md,
-  },
-  headerTitle: {
-    fontSize: 20,
-    fontWeight: '700',
-    color: colors.textPrimary,
-    marginLeft: spacing.md,
+  container: {
+    flex: 1,
+    backgroundColor: colors.backgroundPrimary,
   },
   tabContainer: {
     flexDirection: 'row',

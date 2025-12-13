@@ -76,20 +76,32 @@ export default function DoctorHomeScreen() {
           </TouchableOpacity>
         </View>
 
-        {/* Quick Stats */}
+        {/* Quick Stats - Clickable */}
         <View style={styles.statsRow}>
-          <View style={styles.statCard}>
+          <TouchableOpacity 
+            style={styles.statCard}
+            onPress={() => navigation.navigate('UnifiedCalendar')}
+            activeOpacity={0.7}
+          >
             <Text style={styles.statNumber}>8</Text>
             <Text style={styles.statLabel}>Today</Text>
-          </View>
-          <View style={styles.statCard}>
+          </TouchableOpacity>
+          <TouchableOpacity 
+            style={styles.statCard}
+            onPress={() => navigation.navigate('MyAppointments')}
+            activeOpacity={0.7}
+          >
             <Text style={styles.statNumber}>2</Text>
             <Text style={styles.statLabel}>Pending</Text>
-          </View>
-          <View style={[styles.statCard, styles.statCardAlert]}>
+          </TouchableOpacity>
+          <TouchableOpacity 
+            style={[styles.statCard, styles.statCardAlert]}
+            onPress={() => navigation.navigate('EmergencyAlerts')}
+            activeOpacity={0.7}
+          >
             <Text style={[styles.statNumber, styles.statNumberAlert]}>1</Text>
             <Text style={[styles.statLabel, styles.statLabelAlert]}>Emergency</Text>
-          </View>
+          </TouchableOpacity>
         </View>
 
         {/* Menu Items */}

@@ -1,0 +1,15 @@
+# Maestro Configuration
+# https://maestro.mobile.dev/
+
+appId: com.medicure.app
+name: Medicure
+
+# Default settings
+flows:
+  - flows/*.yaml
+
+# Environment variables for tests
+env:
+  TEST_PHONE: "+593987654321"
+  TEST_EMAIL: "testpatient@test.com"
+  TEST_PASSWORD: "Test123!"

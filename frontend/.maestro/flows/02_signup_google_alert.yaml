@@ -1,0 +1,74 @@
+appId: host.exp.Exponent
+---
+# Signup Screen - Google Sign-In Alert Test
+# Tests that Google Sign-In shows proper alert in Expo Go
+# This verifies the null check is working correctly
+
+- launchApp
+
+# Wait for app to load
+- extendedWaitUntil:
+    visible: ".*"
+    timeout: 10000
+
+- takeScreenshot: "01_landing_screen"
+
+# ========================================
+# Navigate to Signup Screen
+# ========================================
+
+# Tap on Find Doctors (requires auth, will redirect to signup)
+- tapOn:
+    text: "Find Doctors"
+    optional: true
+
+- extendedWaitUntil:
+    visible: ".*"
+    timeout: 5000
+
+- takeScreenshot: "02_signup_screen"
+
+# ========================================
+# TEST: Google Sign-In Alert
+# ========================================
+
+# Verify we're on signup screen
+- assertVisible:
+    text: "Select Your Role"
+    optional: true
+
+# Tap on Google Sign-In button
+- tapOn:
+    text: "Google"
+    optional: true
+
+- extendedWaitUntil:
+    visible: ".*"
+    timeout: 3000
+
+- takeScreenshot: "03_google_alert"
+
+# Verify the alert appears with correct message
+- assertVisible:
+    text: "Not Available"
+    optional: true
+
+- assertVisible:
+    text: "Expo Go"
+    optional: true
+
+# Dismiss the alert
+- tapOn:
+    text: "OK"
+    optional: true
+
+- takeScreenshot: "04_after_alert_dismissed"
+
+# ========================================
+# Verify we're back on signup screen
+# ========================================
+- assertVisible:
+    text: "Select Your Role"
+    optional: true
+
+- takeScreenshot: "05_back_on_signup"

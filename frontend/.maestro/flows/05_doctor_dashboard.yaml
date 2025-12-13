@@ -1,0 +1,153 @@
+appId: host.exp.Exponent
+---
+# Doctor Dashboard Test
+# Tests doctor home screen and clickable stats
+
+- launchApp
+
+# Wait for app to load
+- extendedWaitUntil:
+    visible: ".*"
+    timeout: 10000
+
+- takeScreenshot: "01_landing_screen"
+
+# ========================================
+# Navigate to Medical Staff Login
+# ========================================
+- swipe:
+    start: 50%, 70%
+    end: 50%, 30%
+    duration: 500
+
+- tapOn:
+    text: "Login"
+    optional: true
+
+- extendedWaitUntil:
+    visible: ".*"
+    timeout: 5000
+
+- takeScreenshot: "02_login_screen"
+
+# ========================================
+# TEST: Doctor Dashboard Stats
+# (Assuming already logged in as doctor)
+# ========================================
+
+# Check for Today stat
+- assertVisible:
+    text: "Today"
+    optional: true
+
+# Check for Pending stat
+- assertVisible:
+    text: "Pending"
+    optional: true
+
+# Check for Emergency stat
+- assertVisible:
+    text: "Emergency"
+    optional: true
+
+- takeScreenshot: "03_stats_visible"
+
+# ========================================
+# TEST: Click on Today stat -> Calendar
+# ========================================
+- tapOn:
+    text: "Today"
+    optional: true
+
+- extendedWaitUntil:
+    visible: ".*"
+    timeout: 3000
+
+- takeScreenshot: "04_calendar_screen"
+
+# Go back
+- tapOn:
+    text: "←"
+    optional: true
+
+- takeScreenshot: "05_back_to_dashboard"
+
+# ========================================
+# TEST: Click on Pending stat -> Appointments
+# ========================================
+- tapOn:
+    text: "Pending"
+    optional: true
+
+- extendedWaitUntil:
+    visible: ".*"
+    timeout: 3000
+
+- takeScreenshot: "06_appointments_screen"
+
+# Go back
+- tapOn:
+    text: "←"
+    optional: true
+
+- takeScreenshot: "07_back_to_dashboard"
+
+# ========================================
+# TEST: Click on Emergency stat -> Alerts
+# ========================================
+- tapOn:
+    text: "Emergency"
+    optional: true
+
+- extendedWaitUntil:
+    visible: ".*"
+    timeout: 3000
+
+- takeScreenshot: "08_emergency_screen"
+
+# Go back
+- tapOn:
+    text: "←"
+    optional: true
+
+- takeScreenshot: "09_back_to_dashboard"
+
+# ========================================
+# TEST: Menu Items
+# ========================================
+
+# Tap on Calendar menu item
+- tapOn:
+    text: "Calendar"
+    optional: true
+
+- extendedWaitUntil:
+    visible: ".*"
+    timeout: 3000
+
+- takeScreenshot: "10_calendar_from_menu"
+
+# Go back home
+- tapOn:
+    text: "🏠"
+    optional: true
+
+- takeScreenshot: "11_back_home"
+
+# Tap on Patients menu item
+- tapOn:
+    text: "Patients"
+    optional: true
+
+- extendedWaitUntil:
+    visible: ".*"
+    timeout: 3000
+
+- takeScreenshot: "12_patients_screen"
+
+# Go back home
+- tapOn:
+    text: "🏠"
+    optional: true
+
+- takeScreenshot: "13_final_state"

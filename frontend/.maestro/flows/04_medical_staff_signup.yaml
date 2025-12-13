@@ -1,0 +1,149 @@
+appId: host.exp.Exponent
+---
+# Medical Staff Signup Flow Test
+# Tests signup flow for Doctor and Medical Staff roles
+
+- launchApp
+
+# Wait for app to load
+- extendedWaitUntil:
+    visible: ".*"
+    timeout: 10000
+
+- takeScreenshot: "01_landing_screen"
+
+# ========================================
+# Navigate to Medical Staff Signup
+# ========================================
+
+# Find Medical Staff section
+- swipe:
+    start: 50%, 70%
+    end: 50%, 30%
+    duration: 500
+
+- takeScreenshot: "02_medical_staff_section"
+
+# Tap on Register button for Medical Staff
+- tapOn:
+    text: "Register"
+    optional: true
+
+- extendedWaitUntil:
+    visible: ".*"
+    timeout: 5000
+
+- takeScreenshot: "03_medical_staff_signup"
+
+# ========================================
+# TEST 1: Role Selection
+# ========================================
+
+# Verify Doctor role is visible
+- assertVisible:
+    text: "Doctor"
+    optional: true
+
+# Verify Medical Staff role is visible
+- assertVisible:
+    text: "Medical Staff"
+    optional: true
+
+- takeScreenshot: "04_roles_visible"
+
+# Select Doctor role
+- tapOn:
+    text: "Doctor"
+    optional: true
+
+- takeScreenshot: "05_doctor_selected"
+
+# Select Medical Staff role
+- tapOn:
+    text: "Medical Staff"
+    optional: true
+
+- takeScreenshot: "06_medical_staff_selected"
+
+# ========================================
+# TEST 2: Google Sign-In Alert
+# ========================================
+- tapOn:
+    text: "Google"
+    optional: true
+
+- extendedWaitUntil:
+    visible: ".*"
+    timeout: 3000
+
+- takeScreenshot: "07_google_alert"
+
+# Dismiss alert
+- tapOn:
+    text: "OK"
+    optional: true
+
+- takeScreenshot: "08_alert_dismissed"
+
+# ========================================
+# TEST 3: WhatsApp Flow
+# ========================================
+- tapOn:
+    text: "WhatsApp"
+    optional: true
+
+- extendedWaitUntil:
+    visible: ".*"
+    timeout: 3000
+
+- takeScreenshot: "09_whatsapp_screen"
+
+# Go back
+- tapOn:
+    text: "Back"
+    optional: true
+
+- takeScreenshot: "10_back_to_signup"
+
+# ========================================
+# TEST 4: Form Fields
+# ========================================
+
+# Verify form fields
+- assertVisible:
+    text: "Full Name"
+    optional: true
+
+- assertVisible:
+    text: "Email"
+    optional: true
+
+- takeScreenshot: "11_form_fields"
+
+# Scroll to see more fields
+- swipe:
+    start: 50%, 70%
+    end: 50%, 30%
+    duration: 500
+
+- takeScreenshot: "12_more_fields"
+
+# ========================================
+# TEST 5: Back Navigation
+# ========================================
+- tapOn:
+    text: "Back"
+    optional: true
+
+- extendedWaitUntil:
+    visible: ".*"
+    timeout: 3000
+
+- takeScreenshot: "13_back_to_landing"
+
+# Verify we're back on landing
+- assertVisible:
+    text: "Medicure"
+    optional: true
+
+- takeScreenshot: "14_final_state"

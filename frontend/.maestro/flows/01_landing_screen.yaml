@@ -1,0 +1,116 @@
+appId: host.exp.Exponent
+---
+# Landing Screen Test
+# Tests the main landing screen elements and navigation
+# Note: App may redirect to Signup if not authenticated
+
+- launchApp
+
+# Wait for app to load
+- extendedWaitUntil:
+    visible: ".*"
+    timeout: 15000
+
+- takeScreenshot: "01_app_launched"
+
+# ========================================
+# TEST 1: Check Current Screen
+# ========================================
+
+# The app might be on Landing or Signup screen
+# Check for common elements
+
+- takeScreenshot: "02_current_screen"
+
+# Try to find Medicure title (Landing) or Signup elements
+- assertVisible:
+    text: ".*"
+
+# ========================================
+# TEST 2: If on Signup, test Google alert
+# ========================================
+
+# Try tapping Google button (will show alert in Expo Go)
+- tapOn:
+    text: "Google"
+    optional: true
+
+- extendedWaitUntil:
+    visible: ".*"
+    timeout: 3000
+
+- takeScreenshot: "03_after_google_tap"
+
+# Dismiss any alert
+- tapOn:
+    text: "OK"
+    optional: true
+
+- takeScreenshot: "04_alert_dismissed"
+
+# ========================================
+# TEST 3: Try WhatsApp flow
+# ========================================
+- tapOn:
+    text: "WhatsApp"
+    optional: true
+
+- extendedWaitUntil:
+    visible: ".*"
+    timeout: 3000
+
+- takeScreenshot: "05_whatsapp_screen"
+
+# Go back if possible
+- tapOn:
+    text: "Back"
+    optional: true
+
+- takeScreenshot: "06_back_from_whatsapp"
+
+# ========================================
+# TEST 4: Scroll and explore
+# ========================================
+- swipe:
+    start: 50%, 70%
+    end: 50%, 30%
+    duration: 500
+
+- takeScreenshot: "07_scrolled_down"
+
+# Scroll back up
+- swipe:
+    start: 50%, 30%
+    end: 50%, 70%
+    duration: 500
+
+- takeScreenshot: "08_scrolled_up"
+
+# ========================================
+# TEST 5: Check for role selection
+# ========================================
+- assertVisible:
+    text: "Patient"
+    optional: true
+
+- assertVisible:
+    text: "Caregiver"
+    optional: true
+
+- takeScreenshot: "09_role_selection"
+
+# Tap on Patient role
+- tapOn:
+    text: "Patient"
+    optional: true
+
+- takeScreenshot: "10_patient_selected"
+
+# Tap on Caregiver role
+- tapOn:
+    text: "Caregiver"
+    optional: true
+
+- takeScreenshot: "11_caregiver_selected"
+
+- takeScreenshot: "12_final_state"

@@ -172,24 +172,51 @@ async def get_user_appointments(
     user_id: str,
     current_user: Dict = Depends(get_current_user)
 ):
-    """Get all appointments for a user"""
+    """Get all appointments for a user (patient or doctor)"""
     try:
         pool = await get_pool()
         async with pool.acquire() as conn:
-            query = """
-                SELECT 
-                    a.*,
-                    d.full_name as doctor_name,
-                    d.specialty,
-                    d.sub_specialty,
-                    d.phone as doctor_phone
-                FROM appointments a
-                LEFT JOIN doctors d ON a.doctor_id = d.id
-                WHERE a.patient_id = $1
-                ORDER BY a.appointment_date DESC
-            """
+            # Check if user is a doctor
+            user_role = await conn.fetchval("SELECT role FROM users WHERE id = $1", user_id)
             
-            rows = await conn.fetch(query, user_id)
+            if user_role == 'doctor':
+                # For doctors, find their doctor_id first, then get appointments
+                doctor_id = await conn.fetchval(
+                    "SELECT id FROM doctors WHERE user_id = $1",
+                    user_id
+                )
+                
+                if doctor_id:
+                    query = """
+                        SELECT 
+                            a.*,
+                            u.name as patient_name,
+                            u.phone as patient_phone
+                        FROM appointments a
+                        LEFT JOIN users u ON a.patient_id = u.id
+                        WHERE a.doctor_id = $1
+                        ORDER BY a.appointment_date DESC
+                    """
+                    rows = await conn.fetch(query, doctor_id)
+                else:
+                    # No doctor record found, return empty
+                    rows = []
+            else:
+                # For patients/caregivers, query by patient_id
+                query = """
+                    SELECT 
+                        a.*,
+                        d.full_name as doctor_name,
+                        d.specialty,
+                        d.sub_specialty,
+                        d.phone as doctor_phone
+                    FROM appointments a
+                    LEFT JOIN doctors d ON a.doctor_id = d.id
+                    WHERE a.patient_id = $1
+                    ORDER BY a.appointment_date DESC
+                """
+                rows = await conn.fetch(query, user_id)
+            
             appointments = [dict(row) for row in rows]
             
             return {

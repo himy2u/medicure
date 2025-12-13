@@ -1,13 +1,14 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { StyleSheet, Text, View, Alert, Pressable, TouchableOpacity, ScrollView, SafeAreaView } from 'react-native';
 import { Button, TextInput } from 'react-native-paper';
-import { RadioButton } from 'react-native-paper';
 import { useNavigation } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { useForm, Controller } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 import * as SecureStore from 'expo-secure-store';
 import Constants from 'expo-constants';
+import * as Google from 'expo-auth-session/providers/google';
+import * as WebBrowser from 'expo-web-browser';
 import { colors, spacing, borderRadius } from '../theme/colors';
 
 import { RootStackParamList } from '../navigation/AppNavigator';
@@ -15,12 +16,15 @@ import { getRoleBasedHomeScreen } from '../utils/navigationHelper';
 import { errorLogger } from '../utils/errorLogger';
 import ProfileHeader from '../components/ProfileHeader';
 
-// GoogleSignin: Conditionally import for Expo Go compatibility
+// Complete auth session for web browser
+WebBrowser.maybeCompleteAuthSession();
+
+// GoogleSignin: Conditionally import for development builds only
 let GoogleSignin: any = null;
 try {
   GoogleSignin = require('@react-native-google-signin/google-signin').GoogleSignin;
 } catch (e) {
-  console.log('GoogleSignin not available (Expo Go) - using WhatsApp only');
+  console.log('GoogleSignin not available (Expo Go) - using expo-auth-session');
 }
 
 // Move styles to top to fix "styles used before declaration" errors
@@ -311,44 +315,41 @@ const styles = StyleSheet.create({
     color: colors.textPrimary,
     marginBottom: spacing.sm,
   },
-  roleRow: {
+  roleCardsRow: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: spacing.xs,
+    gap: spacing.sm,
   },
-  roleRowCompact: {
-    flexDirection: 'column',
-    marginBottom: spacing.md,
-  },
-  radioItemCompact: {
+  roleCardCompact: {
+    flex: 1,
     backgroundColor: colors.backgroundSecondary,
-    borderRadius: borderRadius.lg,
+    borderRadius: borderRadius.md,
     padding: spacing.md,
-    marginBottom: spacing.sm,
     borderWidth: 2,
     borderColor: 'transparent',
+    alignItems: 'center',
   },
-  radioItemSelected: {
+  roleCardCompactSelected: {
     backgroundColor: colors.accentSoft,
     borderColor: colors.accent,
   },
-  radioLabelCompact: {
-    fontSize: 18,
+  roleCardLabel: {
+    fontSize: 15,
+    fontWeight: '700',
     color: colors.textPrimary,
-    fontWeight: '600',
     marginBottom: spacing.xs,
+    textAlign: 'center',
   },
-  radioLabelSelected: {
+  roleCardLabelSelected: {
     color: colors.accent,
   },
-  roleDescriptionText: {
-    fontSize: 14,
+  roleCardDescription: {
+    fontSize: 12,
     color: colors.textSecondary,
-    marginTop: spacing.xs,
+    textAlign: 'center',
   },
-  roleDescriptionSelected: {
+  roleCardDescriptionSelected: {
     color: colors.accent,
-    opacity: 0.8,
+    opacity: 0.9,
   },
   authButtons: {
     marginBottom: spacing.lg,
@@ -1182,6 +1183,13 @@ export default function SignupScreen() {
   
   console.log('State:', { loading, showWhatsAppFlow, phoneNumber, otpSent });
 
+  // expo-auth-session Google OAuth (works in Expo Go on real devices)
+  const [request, response, promptAsync] = Google.useAuthRequest({
+    webClientId: process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID,
+    iosClientId: process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID,
+    androidClientId: process.env.EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID,
+  });
+
   const { control, handleSubmit, formState: { errors }, watch, setValue } = useForm<SignupFormData>({
     defaultValues: {
       role: 'patient'
@@ -1203,42 +1211,18 @@ export default function SignupScreen() {
       const userRole = await SecureStore.getItemAsync('user_role');
 
       if (authToken && userId) {
-        console.log('User already authenticated, checking profile completion');
-        // Check if profile is complete before redirecting
-        const apiBaseUrl = Constants.expoConfig?.extra?.apiBaseUrl || process.env.EXPO_PUBLIC_API_BASE_URL || 'http://192.168.100.91:8000';
-
-        try {
-          const response = await fetch(`${apiBaseUrl}/users/${userId}/profile`, {
-            headers: {
-              'Authorization': `Bearer ${authToken}`,
-            },
-          });
-
-          if (response.ok) {
-            const profileData = await response.json();
-            if (profileData.profile_complete) {
-              console.log('Profile complete, redirecting to role-based home');
-              const homeScreen = getRoleBasedHomeScreen(userRole || 'patient');
-              navigation.navigate(homeScreen);
-            } else {
-              console.log('Profile incomplete, showing profile form');
-              setShowProfileStep(true);
-            }
-          }
-        } catch (error) {
-          console.error('Error checking profile completion:', error);
-          // On error, redirect to home anyway
-          const homeScreen = getRoleBasedHomeScreen(userRole || 'patient');
-          navigation.navigate(homeScreen);
-        }
+        // User already authenticated, redirect to home
+        console.log('User already authenticated, redirecting to home');
+        const homeScreen = getRoleBasedHomeScreen(userRole || 'patient');
+        navigation.navigate(homeScreen);
       }
     } catch (error) {
       console.error('Error checking auth status:', error);
     }
   };
 
-  // Configure Google Sign-In (only if available - not in Expo Go)
-  React.useEffect(() => {
+  // Configure native Google Sign-In (only if available - development builds)
+  useEffect(() => {
     if (GoogleSignin) {
       GoogleSignin.configure({
         webClientId: process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID,
@@ -1246,15 +1230,75 @@ export default function SignupScreen() {
         offlineAccess: false,
         forceCodeForRefreshToken: false,
       });
-      console.log('=== GoogleSignin configured ===');
+      console.log('=== Native GoogleSignin configured ===');
     } else {
-      console.log('=== GoogleSignin not available (Expo Go) - WhatsApp only ===');
+      console.log('=== Using expo-auth-session for Google OAuth ===');
     }
   }, []);
 
+  // Handle expo-auth-session Google OAuth response
+  useEffect(() => {
+    if (response?.type === 'success') {
+      console.log('=== EXPO AUTH SESSION SUCCESS ===');
+      const { authentication } = response;
+      if (authentication?.accessToken) {
+        handleGoogleAuthSuccess(authentication.accessToken);
+      }
+    } else if (response?.type === 'error') {
+      console.error('Google OAuth error:', response.error);
+      Alert.alert('Error', 'Google authentication failed');
+    }
+  }, [response]);
+
+  // Handle successful Google auth (from either method)
+  const handleGoogleAuthSuccess = async (accessToken: string) => {
+    setLoading(true);
+    try {
+      // Get user info from Google
+      const userInfoResponse = await fetch('https://www.googleapis.com/userinfo/v2/me', {
+        headers: { Authorization: `Bearer ${accessToken}` },
+      });
+      const userInfo = await userInfoResponse.json();
+      console.log('Google user info:', userInfo.email);
+
+      // Send to backend
+      const apiBaseUrl = Constants.expoConfig?.extra?.apiBaseUrl || process.env.EXPO_PUBLIC_API_BASE_URL || 'http://192.168.100.91:8000';
+      const backendResponse = await fetch(`${apiBaseUrl}/auth/google`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          access_token: accessToken,
+          role: currentRole || 'patient',
+          name: userInfo.name,
+          email: userInfo.email,
+        }),
+      });
+
+      const data = await backendResponse.json();
+      if (backendResponse.ok) {
+        console.log('✅ Google auth success');
+        await SecureStore.setItemAsync('auth_token', data.access_token);
+        await SecureStore.setItemAsync('user_role', data.role);
+        await SecureStore.setItemAsync('user_id', data.user_id);
+        await SecureStore.setItemAsync('user_name', userInfo.name || '');
+        await SecureStore.setItemAsync('user_email', userInfo.email || '');
+        
+        const homeScreen = getRoleBasedHomeScreen(data.role);
+        navigation.navigate(homeScreen);
+      } else {
+        Alert.alert('Error', data.detail || 'Authentication failed');
+      }
+    } catch (error: any) {
+      console.error('Google auth error:', error);
+      Alert.alert('Error', error.message || 'Authentication failed');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const roles = [
-    { key: 'patient', label: '🩺 ' + t('patient'), description: 'Seeking medical care for yourself' },
-    { key: 'caregiver', label: '👨‍👩‍👧 ' + t('caregiver'), description: 'Managing health for a family member or dependent' }
+    { key: 'patient', label: '🩺 Patient', description: 'Seeking medical care' },
+    { key: 'caregiver', label: '👨‍👩‍👧 Caregiver', description: 'Managing family health' }
   ];
 
   const password = watch('password');
@@ -1296,10 +1340,10 @@ export default function SignupScreen() {
         await SecureStore.setItemAsync('user_name', data.name);
         await SecureStore.setItemAsync('user_email', data.email);
         
-        console.log('Auth data stored, showing profile step');
-        
-        // Show profile completion step
-        setShowProfileStep(true);
+        // For patient/caregiver, always go to home - profile can be filled later
+        console.log('Navigating to role-based home for role:', responseData.role);
+        const homeScreen = getRoleBasedHomeScreen(responseData.role);
+        navigation.navigate(homeScreen);
       } else {
         console.error('Signup failed:', responseData);
         Alert.alert('Signup Failed', responseData.detail || 'Unable to create account');
@@ -1359,9 +1403,24 @@ export default function SignupScreen() {
   };
 
   const handleGoogleSignup = async () => {
+    console.log('=== GOOGLE SIGN-IN STARTED ===');
+    console.log('Native GoogleSignin available:', !!GoogleSignin);
+    console.log('Expo auth request ready:', !!request);
+    
+    // Use expo-auth-session if native GoogleSignin is not available (Expo Go)
+    if (!GoogleSignin) {
+      console.log('Using expo-auth-session for Google OAuth');
+      if (request) {
+        promptAsync();
+      } else {
+        Alert.alert('Error', 'Google Sign-In is not ready. Please try again.');
+      }
+      return;
+    }
+    
+    // Use native GoogleSignin (development builds)
     try {
       setLoading(true);
-      console.log('=== GOOGLE SIGN-IN STARTED ===');
       
       // Check if Google Play Services are available
       await GoogleSignin.hasPlayServices({ showPlayServicesUpdateDialog: true });
@@ -1423,15 +1482,11 @@ export default function SignupScreen() {
         await SecureStore.setItemAsync('user_name', signInResult.data?.user.name || '');
         await SecureStore.setItemAsync('user_email', signInResult.data?.user.email || '');
         
-        // Navigate based on profile completion - no popups
-        if (data.profile_complete) {
-          console.log('Profile complete, navigating to role-based home');
-          const homeScreen = getRoleBasedHomeScreen(data.role);
-          navigation.navigate(homeScreen);
-        } else {
-          console.log('Profile incomplete, showing profile form');
-          setShowProfileStep(true);
-        }
+        // For patient/caregiver, always go to home - profile can be filled later
+        // Profile step is optional and can be done from ProfileSettings
+        console.log('Navigating to role-based home for role:', data.role);
+        const homeScreen = getRoleBasedHomeScreen(data.role);
+        navigation.navigate(homeScreen);
       } else {
         console.error('Backend error:', data.detail);
         Alert.alert('Authentication Failed', data.detail || 'Unable to authenticate with Google');
@@ -1558,14 +1613,10 @@ export default function SignupScreen() {
         await SecureStore.setItemAsync('user_name', userName);
         await SecureStore.setItemAsync('user_email', phoneNumber);
         
-        // Navigate based on profile completion
-        if (verifyData.profile_complete) {
-          const homeScreen = getRoleBasedHomeScreen(verifyData.role || 'patient');
-          navigation.navigate(homeScreen);
-        } else {
-          setShowWhatsAppFlow(false);
-          setShowProfileStep(true);
-        }
+        // For patient/caregiver, always go to home - profile can be filled later
+        console.log('Navigating to role-based home for role:', verifyData.role);
+        const homeScreen = getRoleBasedHomeScreen(verifyData.role || 'patient');
+        navigation.navigate(homeScreen);
       } else {
         const errorMsg = (verifyData && verifyData.detail) ? verifyData.detail : 'Invalid OTP';
         console.error('❌ Verification failed:', errorMsg);
@@ -1770,39 +1821,37 @@ export default function SignupScreen() {
 
       <View style={styles.content}>
 
-      {/* Role Selection First */}
+      {/* Role Selection - Compact Style */}
       <View style={styles.roleSection}>
         <Text style={styles.roleTitle}>Select Your Role</Text>
         <Controller
           control={control}
           render={({ field: { onChange, value } }) => (
-            <RadioButton.Group onValueChange={onChange} value={value}>
-              <View style={styles.roleRowCompact}>
-                {roles.map((role) => (
-                  <TouchableOpacity
-                    key={role.key}
-                    style={[
-                      styles.radioItemCompact,
-                      value === role.key ? styles.radioItemSelected : {}
-                    ]}
-                    onPress={() => onChange(role.key)}
-                  >
-                    <Text style={[
-                      styles.radioLabelCompact,
-                      value === role.key ? styles.radioLabelSelected : {}
-                    ]}>
-                      {role.label}
-                    </Text>
-                    <Text style={[
-                      styles.roleDescriptionText,
-                      value === role.key ? styles.roleDescriptionSelected : {}
-                    ]}>
-                      {role.description}
-                    </Text>
-                  </TouchableOpacity>
-                ))}
-              </View>
-            </RadioButton.Group>
+            <View style={styles.roleCardsRow}>
+              {roles.map((role) => (
+                <TouchableOpacity
+                  key={role.key}
+                  style={[
+                    styles.roleCardCompact,
+                    value === role.key && styles.roleCardCompactSelected
+                  ]}
+                  onPress={() => onChange(role.key)}
+                >
+                  <Text style={[
+                    styles.roleCardLabel,
+                    value === role.key && styles.roleCardLabelSelected
+                  ]}>
+                    {role.label}
+                  </Text>
+                  <Text style={[
+                    styles.roleCardDescription,
+                    value === role.key && styles.roleCardDescriptionSelected
+                  ]}>
+                    {role.description}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
           )}
           name="role"
         />

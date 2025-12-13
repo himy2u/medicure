@@ -128,14 +128,25 @@ export default function ProfileSettingsScreen() {
   }
 
   return (
-    <SafeAreaView style={styles.container} edges={['top']}>
-      <StandardHeader title="Profile Settings" />
+    <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
+      <StandardHeader 
+        title="Profile Settings" 
+        showBackButton={true}
+        showHomeButton={true}
+        showSignOutButton={false}
+      />
       
       <KeyboardAvoidingView 
         style={styles.keyboardView}
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        keyboardVerticalOffset={0}
       >
-        <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
+        <ScrollView 
+          style={styles.scrollView} 
+          showsVerticalScrollIndicator={true}
+          contentContainerStyle={styles.scrollContent}
+          bounces={true}
+        >
           <View style={styles.content}>
             {/* Basic Info Section */}
             <View style={styles.section}>
@@ -274,9 +285,12 @@ const styles = StyleSheet.create({
   scrollView: {
     flex: 1,
   },
+  scrollContent: {
+    flexGrow: 1,
+  },
   content: {
     padding: spacing.lg,
-    paddingBottom: spacing.xl,
+    paddingBottom: spacing.xl * 2,
   },
   loadingContainer: {
     flex: 1,

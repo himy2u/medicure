@@ -15,8 +15,6 @@ import {
   View,
   TouchableOpacity,
   Dimensions,
-  PanResponder,
-  GestureResponderEvent,
   ScrollView,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -36,6 +34,7 @@ type NavigationProp = StackNavigationProp<RootStackParamList>;
 interface Appointment {
   id: string;
   time: string;
+  date?: string;
   patientName: string;
   type: string;
   location: string;
@@ -73,8 +72,10 @@ export default function UnifiedCalendarScreen() {
   const navigation = useNavigation<NavigationProp>();
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [viewMode, setViewMode] = useState<'day' | 'week'>('day');
-  const [selectedLocation, setSelectedLocation] = useState('clinic1');
+  const [selectedLocation, setSelectedLocation] = useState('all'); // Default to ALL locations
+  const [editingLocation, setEditingLocation] = useState('clinic1'); // Location being edited
   const [isEditMode, setIsEditMode] = useState(false);
+  // Availability stored per location: { "clinic1-2025-12-11-09:00": true, "clinic2-2025-12-11-09:00": false }
   const [availability, setAvailability] = useState<{[key: string]: boolean}>({});
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [dragMode, setDragMode] = useState<'set' | 'clear' | null>(null);
@@ -88,16 +89,25 @@ export default function UnifiedCalendarScreen() {
     loadData();
   }, [selectedDate]);
 
-  // Initialize default availability
+  // Initialize default availability PER LOCATION
   useEffect(() => {
     const defaultAvail: {[key: string]: boolean} = {};
+    const locations = LOCATIONS.filter(l => l.id !== 'all');
+    
     getWeekDates().forEach(date => {
       const dayKey = date.toISOString().split('T')[0];
       TIME_SLOTS.forEach(slot => {
         // Default: 9 AM - 5 PM available on weekdays
         const isWeekday = date.getDay() !== 0 && date.getDay() !== 6;
         const isWorkHours = slot.hour >= 9 && slot.hour < 17;
-        defaultAvail[`${dayKey}-${slot.id}`] = isWeekday && isWorkHours;
+        
+        // Set availability for EACH location
+        locations.forEach(loc => {
+          const key = `${loc.id}-${dayKey}-${slot.id}`;
+          if (!(key in availability)) {
+            defaultAvail[key] = isWeekday && isWorkHours;
+          }
+        });
       });
     });
     setAvailability(prev => ({ ...defaultAvail, ...prev }));
@@ -147,15 +157,43 @@ export default function UnifiedCalendarScreen() {
     return dates;
   };
 
+  // Check if a slot is booked at ANY location (for double-booking prevention)
+  const isSlotBookedAnywhere = (dayKey: string, slotId: string) => {
+    return appointments.some(apt => {
+      const [h, m] = apt.time.split(':').map(Number);
+      const aptDate = apt.date || dayKey;
+      return aptDate === dayKey && h === parseInt(slotId.split(':')[0]) && 
+             (m < 30 ? slotId.endsWith(':00') : slotId.endsWith(':30'));
+    });
+  };
+
+  // Get availability for a slot - considers location filter
+  const getSlotAvailability = (dayKey: string, slotId: string, locationId?: string) => {
+    const loc = locationId || editingLocation;
+    return availability[`${loc}-${dayKey}-${slotId}`] || false;
+  };
+
+  // Check if slot is available at ANY location (for "All" view)
+  const isSlotAvailableAnywhere = (dayKey: string, slotId: string) => {
+    return LOCATIONS.filter(l => l.id !== 'all').some(loc => 
+      availability[`${loc.id}-${dayKey}-${slotId}`]
+    );
+  };
+
   const toggleSlot = (dayKey: string, slotId: string) => {
     if (!isEditMode) return;
-    const key = `${dayKey}-${slotId}`;
+    // Toggle for the currently editing location
+    const key = `${editingLocation}-${dayKey}-${slotId}`;
     setAvailability(prev => ({ ...prev, [key]: !prev[key] }));
   };
 
   const handleSlotPress = (dayKey: string, slotId: string) => {
     if (!isEditMode) return;
-    const key = `${dayKey}-${slotId}`;
+    // Check if slot is booked anywhere - can't change if booked
+    if (isSlotBookedAnywhere(dayKey, slotId)) {
+      return; // Can't modify booked slots
+    }
+    const key = `${editingLocation}-${dayKey}-${slotId}`;
     const newValue = !availability[key];
     setAvailability(prev => ({ ...prev, [key]: newValue }));
     setDragMode(newValue ? 'set' : 'clear');
@@ -163,7 +201,8 @@ export default function UnifiedCalendarScreen() {
 
   const handleSlotDrag = (dayKey: string, slotId: string) => {
     if (!isEditMode || !dragMode) return;
-    const key = `${dayKey}-${slotId}`;
+    if (isSlotBookedAnywhere(dayKey, slotId)) return;
+    const key = `${editingLocation}-${dayKey}-${slotId}`;
     setAvailability(prev => ({ ...prev, [key]: dragMode === 'set' }));
   };
 
@@ -175,10 +214,18 @@ export default function UnifiedCalendarScreen() {
     return LOCATIONS.find(l => l.id === locationId)?.color || '#666';
   };
 
-  const getAppointmentsForSlot = (slot: typeof TIME_SLOTS[0]) => {
+  // Get appointments for a slot - filtered by location in view mode, ALL in edit mode
+  const getAppointmentsForSlot = (slot: typeof TIME_SLOTS[0], dayKey?: string) => {
     return appointments.filter(apt => {
       const [h, m] = apt.time.split(':').map(Number);
-      return h === slot.hour && (m < 30 ? slot.minute === 0 : slot.minute === 30);
+      const timeMatch = h === slot.hour && (m < 30 ? slot.minute === 0 : slot.minute === 30);
+      
+      // In edit mode, show ALL appointments to prevent double-booking
+      if (isEditMode) return timeMatch;
+      
+      // In view mode, filter by selected location (unless "all")
+      if (selectedLocation === 'all') return timeMatch;
+      return timeMatch && apt.location === selectedLocation;
     });
   };
 
@@ -187,7 +234,7 @@ export default function UnifiedCalendarScreen() {
 
   // Week View with 30-min slots
   const renderWeekView = () => (
-    <View style={styles.weekContainer}>
+    <View style={styles.weekContainerInner}>
       {/* Day Headers */}
       <View style={styles.weekHeader}>
         <View style={styles.timeColumn} />
@@ -222,26 +269,36 @@ export default function UnifiedCalendarScreen() {
               return (
                 <View key={dayIdx} style={styles.dayColumn}>
                   {block.slots.map((slot, slotIdx) => {
-                    const key = `${dayKey}-${slot.id}`;
-                    const isAvailable = availability[key];
+                    const isBooked = isSlotBookedAnywhere(dayKey, slot.id);
+                    // In edit mode: show availability for editing location
+                    // In view mode: show if available anywhere (for "all") or at selected location
+                    const isAvailable = isEditMode 
+                      ? getSlotAvailability(dayKey, slot.id, editingLocation)
+                      : (selectedLocation === 'all' 
+                          ? isSlotAvailableAnywhere(dayKey, slot.id)
+                          : getSlotAvailability(dayKey, slot.id, selectedLocation));
+                    
                     return (
                       <TouchableOpacity
                         key={slot.id}
                         style={[
                           styles.slot,
-                          isAvailable ? styles.slotAvailable : styles.slotBlocked,
+                          isBooked ? styles.slotBooked : (isAvailable ? styles.slotAvailable : styles.slotBlocked),
                           !isEditMode && styles.slotDisabled,
                         ]}
                         onPress={() => handleSlotPress(dayKey, slot.id)}
                         onPressIn={() => setDragMode(isAvailable ? 'clear' : 'set')}
                         onPressOut={() => setDragMode(null)}
-                        activeOpacity={isEditMode ? 0.7 : 1}
+                        activeOpacity={isEditMode && !isBooked ? 0.7 : 1}
+                        disabled={isBooked}
                       >
-                        {isEditMode && (
+                        {isBooked ? (
+                          <Text style={styles.slotIconBooked}>●</Text>
+                        ) : isEditMode ? (
                           <Text style={[styles.slotIcon, isAvailable ? styles.slotIconAvailable : styles.slotIconBlocked]}>
                             {isAvailable ? '✓' : '✕'}
                           </Text>
-                        )}
+                        ) : null}
                       </TouchableOpacity>
                     );
                   })}
@@ -255,51 +312,62 @@ export default function UnifiedCalendarScreen() {
   );
 
   // Day View
-  const renderDayView = () => (
-    <View style={styles.dayContainer}>
-      {DAY_BLOCKS.map(block => (
-        <View key={block.id} style={styles.dayBlock}>
-          <View style={styles.dayBlockHeader}>
-            <Text style={styles.dayBlockTitle}>{block.label}</Text>
-            <Text style={styles.dayBlockRange}>{block.range}</Text>
+  const renderDayView = () => {
+    const dayKey = selectedDate.toISOString().split('T')[0];
+    
+    return (
+      <View style={styles.dayContainerInner}>
+        {DAY_BLOCKS.map(block => (
+          <View key={block.id} style={styles.dayBlock}>
+            <View style={styles.dayBlockHeader}>
+              <Text style={styles.dayBlockTitle}>{block.label}</Text>
+              <Text style={styles.dayBlockRange}>{block.range}</Text>
+            </View>
+            <View style={styles.dayBlockContent}>
+              {block.slots.map(slot => {
+                const slotAppointments = getAppointmentsForSlot(slot, dayKey);
+                const isBooked = slotAppointments.length > 0;
+                const isAvailable = isEditMode 
+                  ? getSlotAvailability(dayKey, slot.id, editingLocation)
+                  : (selectedLocation === 'all' 
+                      ? isSlotAvailableAnywhere(dayKey, slot.id)
+                      : getSlotAvailability(dayKey, slot.id, selectedLocation));
+                
+                return (
+                  <TouchableOpacity
+                    key={slot.id}
+                    style={[
+                      styles.daySlot,
+                      isBooked ? styles.daySlotBooked : (isEditMode && (isAvailable ? styles.daySlotAvailable : styles.daySlotBlocked)),
+                    ]}
+                    onPress={() => isEditMode && !isBooked && toggleSlot(dayKey, slot.id)}
+                    activeOpacity={isEditMode && !isBooked ? 0.7 : 1}
+                  >
+                    <Text style={styles.daySlotTime}>{slot.label}</Text>
+                    {isBooked ? (
+                      <View style={[styles.appointmentChip, { borderLeftColor: getLocationColor(slotAppointments[0].location) }]}>
+                        <Text style={styles.appointmentName}>{slotAppointments[0].patientName}</Text>
+                        <Text style={styles.appointmentLocation}>@ {LOCATIONS.find(l => l.id === slotAppointments[0].location)?.shortName}</Text>
+                        {slotAppointments[0].type === 'emergency' && <Text style={styles.emergencyDot}>●</Text>}
+                      </View>
+                    ) : isEditMode ? (
+                      <Text style={[styles.availabilityLabel, isAvailable ? styles.availableLabelText : styles.blockedLabelText]}>
+                        {isAvailable ? '✓ Open' : '✕ Closed'}
+                      </Text>
+                    ) : isAvailable ? (
+                      <Text style={styles.availableSlot}>Available</Text>
+                    ) : (
+                      <Text style={styles.emptySlot}>—</Text>
+                    )}
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
           </View>
-          <View style={styles.dayBlockContent}>
-            {block.slots.map(slot => {
-              const slotAppointments = getAppointmentsForSlot(slot);
-              const dayKey = selectedDate.toISOString().split('T')[0];
-              const isAvailable = availability[`${dayKey}-${slot.id}`];
-              
-              return (
-                <TouchableOpacity
-                  key={slot.id}
-                  style={[
-                    styles.daySlot,
-                    isEditMode && (isAvailable ? styles.daySlotAvailable : styles.daySlotBlocked),
-                  ]}
-                  onPress={() => isEditMode && toggleSlot(dayKey, slot.id)}
-                  activeOpacity={isEditMode ? 0.7 : 1}
-                >
-                  <Text style={styles.daySlotTime}>{slot.label}</Text>
-                  {slotAppointments.length > 0 ? (
-                    <View style={[styles.appointmentChip, { borderLeftColor: getLocationColor(slotAppointments[0].location) }]}>
-                      <Text style={styles.appointmentName}>{slotAppointments[0].patientName}</Text>
-                      {slotAppointments[0].type === 'emergency' && <Text style={styles.emergencyDot}>●</Text>}
-                    </View>
-                  ) : isEditMode ? (
-                    <Text style={[styles.availabilityLabel, isAvailable ? styles.availableLabelText : styles.blockedLabelText]}>
-                      {isAvailable ? '✓ Open' : '✕ Closed'}
-                    </Text>
-                  ) : (
-                    <Text style={styles.emptySlot}>—</Text>
-                  )}
-                </TouchableOpacity>
-              );
-            })}
-          </View>
-        </View>
-      ))}
-    </View>
-  );
+        ))}
+      </View>
+    );
+  };
 
   return (
     <RoleGuard allowedRoles={['doctor', 'medical_staff']} fallbackMessage="Access restricted.">
@@ -352,35 +420,66 @@ export default function UnifiedCalendarScreen() {
           </View>
         </View>
 
-        {/* Location Pills (only in edit mode) */}
-        {isEditMode && (
-          <View style={styles.locationBar}>
-            {LOCATIONS.filter(l => l.id !== 'all').map(loc => (
-              <TouchableOpacity
-                key={loc.id}
-                style={[styles.locationPill, selectedLocation === loc.id && styles.locationPillActive]}
-                onPress={() => setSelectedLocation(loc.id)}
-              >
-                <View style={[styles.locationDot, { backgroundColor: loc.color }]} />
-                <Text style={[styles.locationText, selectedLocation === loc.id && styles.locationTextActive]}>
-                  {loc.shortName}
-                </Text>
-              </TouchableOpacity>
-            ))}
-          </View>
-        )}
+        {/* Location Pills - Always visible */}
+        <View style={styles.locationBar}>
+          {isEditMode ? (
+            // Edit mode: Select which location to edit (no "All" option)
+            <>
+              <Text style={styles.locationLabel}>Editing:</Text>
+              {LOCATIONS.filter(l => l.id !== 'all').map(loc => (
+                <TouchableOpacity
+                  key={loc.id}
+                  style={[styles.locationPill, editingLocation === loc.id && styles.locationPillActive]}
+                  onPress={() => setEditingLocation(loc.id)}
+                >
+                  <View style={[styles.locationDot, { backgroundColor: loc.color }]} />
+                  <Text style={[styles.locationText, editingLocation === loc.id && styles.locationTextActive]}>
+                    {loc.shortName}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </>
+          ) : (
+            // View mode: Filter by location (includes "All")
+            <>
+              <Text style={styles.locationLabel}>View:</Text>
+              {LOCATIONS.map(loc => (
+                <TouchableOpacity
+                  key={loc.id}
+                  style={[styles.locationPill, selectedLocation === loc.id && styles.locationPillActive]}
+                  onPress={() => setSelectedLocation(loc.id)}
+                >
+                  <View style={[styles.locationDot, { backgroundColor: loc.color }]} />
+                  <Text style={[styles.locationText, selectedLocation === loc.id && styles.locationTextActive]}>
+                    {loc.shortName}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </>
+          )}
+        </View>
 
         {/* Edit Mode Instructions */}
         {isEditMode && (
           <View style={styles.editNotice}>
             <Text style={styles.editNoticeText}>
-              Tap slots to toggle: <Text style={styles.greenText}>✓ Green = Open</Text> · <Text style={styles.redText}>✕ Red = Closed</Text>
+              Setting availability for <Text style={styles.boldText}>{LOCATIONS.find(l => l.id === editingLocation)?.name}</Text>
+            </Text>
+            <Text style={styles.editNoticeSubtext}>
+              <Text style={styles.greenText}>✓ Green = Open</Text> · <Text style={styles.redText}>✕ Red = Closed</Text> · <Text style={styles.blueText}>● Blue = Booked (locked)</Text>
             </Text>
           </View>
         )}
 
-        {/* Content */}
-        {viewMode === 'week' ? renderWeekView() : renderDayView()}
+        {/* Content - Scrollable */}
+        <ScrollView 
+          style={styles.mainScrollView}
+          contentContainerStyle={styles.mainScrollContent}
+          showsVerticalScrollIndicator={true}
+          bounces={true}
+        >
+          {viewMode === 'week' ? renderWeekView() : renderDayView()}
+        </ScrollView>
 
         {/* Legend */}
         <View style={styles.legend}>
@@ -405,6 +504,10 @@ export default function UnifiedCalendarScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#FAFAFA' },
+  
+  // Main scroll
+  mainScrollView: { flex: 1 },
+  mainScrollContent: { flexGrow: 1, paddingBottom: 20 },
   
   // Header
   header: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 12, backgroundColor: '#FFF', borderBottomWidth: 1, borderBottomColor: '#E5E7EB' },
@@ -432,7 +535,8 @@ const styles = StyleSheet.create({
   toggleTextActive: { color: '#111827' },
   
   // Location Bar
-  locationBar: { flexDirection: 'row', paddingHorizontal: 16, paddingVertical: 8, gap: 8, backgroundColor: '#FFF', borderBottomWidth: 1, borderBottomColor: '#E5E7EB' },
+  locationBar: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 8, gap: 8, backgroundColor: '#FFF', borderBottomWidth: 1, borderBottomColor: '#E5E7EB', flexWrap: 'wrap' },
+  locationLabel: { fontSize: 12, color: '#6B7280', fontWeight: '500', marginRight: 4 },
   locationPill: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 16, backgroundColor: '#F3F4F6', gap: 6 },
   locationPillActive: { backgroundColor: '#111827' },
   locationDot: { width: 8, height: 8, borderRadius: 4 },
@@ -442,11 +546,14 @@ const styles = StyleSheet.create({
   // Edit Notice
   editNotice: { backgroundColor: '#DBEAFE', paddingHorizontal: 16, paddingVertical: 10 },
   editNoticeText: { fontSize: 13, color: '#1E40AF', textAlign: 'center' },
+  editNoticeSubtext: { fontSize: 12, color: '#1E40AF', textAlign: 'center', marginTop: 4 },
+  boldText: { fontWeight: '700' },
   greenText: { color: '#059669', fontWeight: '600' },
   redText: { color: '#DC2626', fontWeight: '600' },
+  blueText: { color: '#3B82F6', fontWeight: '600' },
   
   // Week View
-  weekContainer: { flex: 1, paddingHorizontal: 8, paddingTop: 8 },
+  weekContainerInner: { paddingHorizontal: 8, paddingTop: 8 },
   weekHeader: { flexDirection: 'row', marginBottom: 8 },
   timeColumn: { width: 36 },
   dayHeader: { flex: 1, alignItems: 'center', paddingVertical: 4 },
@@ -465,13 +572,15 @@ const styles = StyleSheet.create({
   slot: { height: 18, marginHorizontal: 1, borderRadius: 3, alignItems: 'center', justifyContent: 'center' },
   slotAvailable: { backgroundColor: '#D1FAE5' },
   slotBlocked: { backgroundColor: '#FEE2E2' },
+  slotBooked: { backgroundColor: '#DBEAFE' },
   slotDisabled: { opacity: 0.5 },
   slotIcon: { fontSize: 10, fontWeight: '700' },
   slotIconAvailable: { color: '#059669' },
   slotIconBlocked: { color: '#DC2626' },
+  slotIconBooked: { fontSize: 8, color: '#3B82F6' },
   
   // Day View
-  dayContainer: { flex: 1, paddingHorizontal: 12, paddingTop: 8 },
+  dayContainerInner: { paddingHorizontal: 12, paddingTop: 8 },
   dayBlock: { marginBottom: 12 },
   dayBlockHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 },
   dayBlockTitle: { fontSize: 14, fontWeight: '600', color: '#374151' },
@@ -481,15 +590,18 @@ const styles = StyleSheet.create({
   daySlot: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 12, paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: '#F3F4F6' },
   daySlotAvailable: { backgroundColor: '#F0FDF4' },
   daySlotBlocked: { backgroundColor: '#FEF2F2' },
+  daySlotBooked: { backgroundColor: '#EFF6FF' },
   daySlotTime: { width: 50, fontSize: 12, fontWeight: '600', color: '#6B7280' },
   
   appointmentChip: { flex: 1, flexDirection: 'row', alignItems: 'center', backgroundColor: '#F3F4F6', paddingHorizontal: 10, paddingVertical: 6, borderRadius: 6, borderLeftWidth: 3, gap: 6 },
   appointmentName: { fontSize: 13, fontWeight: '500', color: '#374151' },
+  appointmentLocation: { fontSize: 11, color: '#6B7280' },
   emergencyDot: { fontSize: 8, color: '#DC2626' },
   
   availabilityLabel: { flex: 1, fontSize: 12, fontWeight: '600' },
   availableLabelText: { color: '#059669' },
   blockedLabelText: { color: '#DC2626' },
+  availableSlot: { flex: 1, fontSize: 12, color: '#059669' },
   emptySlot: { flex: 1, fontSize: 12, color: '#D1D5DB' },
   
   // Legend

@@ -56,10 +56,13 @@ class ForgotPasswordRequest(BaseModel):
 
 class GoogleAuthRequest(BaseModel):
     id_token: Optional[str] = None
+    access_token: Optional[str] = None  # For expo-auth-session
     code: Optional[str] = None
     redirect_uri: Optional[str] = None
     code_verifier: Optional[str] = None
     role: str = "patient"
+    name: Optional[str] = None  # User name from Google
+    email: Optional[str] = None  # User email from Google
 
 class ProfileUpdateRequest(BaseModel):
     nationalId: Optional[str] = None
@@ -152,12 +155,14 @@ async def login(user_data: UserLogin):
 
 @app.post("/auth/google", response_model=SignupResponse)
 async def google_auth(google_request: GoogleAuthRequest):
-    """Authenticate user with Google OAuth ID token or authorization code"""
+    """Authenticate user with Google OAuth ID token, access token, or authorization code"""
     try:
         print(f"\n=== Google Auth Request ===")
         print(f"Role: {google_request.role}")
         print(f"Has id_token: {bool(google_request.id_token)}")
+        print(f"Has access_token: {bool(google_request.access_token)}")
         print(f"Has code: {bool(google_request.code)}")
+        print(f"Has email: {bool(google_request.email)}")
         
         # List of valid client IDs (must match frontend .env client IDs)
         valid_client_ids = [
@@ -214,77 +219,86 @@ async def google_auth(google_request: GoogleAuthRequest):
                         detail="No ID token received from token exchange"
                     )
 
-        if not id_token_str:
+        # Handle access_token from expo-auth-session (user info already fetched by frontend)
+        if google_request.access_token and google_request.email:
+            print(f"Using access_token flow with email: {google_request.email}")
+            # User info was already fetched by frontend, use it directly
+            idinfo = {
+                'email': google_request.email,
+                'name': google_request.name or google_request.email.split('@')[0],
+                'email_verified': True
+            }
+        elif not id_token_str:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Either id_token or code must be provided"
+                detail="Either id_token, access_token with email, or code must be provided"
             )
-
-        # Verify the ID token - try without audience first, then with specific client IDs
-        idinfo = None
-        verification_errors = []
+        else:
+            # Verify the ID token - try without audience first, then with specific client IDs
+            idinfo = None
+            verification_errors = []
         
-        # First, try without audience verification (most lenient)
-        for client_id in [None] + valid_client_ids:
-            try:
-                if client_id is None:
-                    print("Attempting verification without audience...")
-                    idinfo = id_token.verify_oauth2_token(
-                        id_token_str,
-                        google_requests.Request()
-                    )
-                    print(f"✓ Token verified without audience check")
-                    print(f"  Token audience: {idinfo.get('aud')}")
-                else:
-                    idinfo = id_token.verify_oauth2_token(
-                        id_token_str,
-                        google_requests.Request(),
-                        audience=client_id
-                    )
-                    print(f"✓ Token verified with client_id: {client_id[:20]}...")
-                break
-            except ValueError as e:
-                error_msg = str(e)
-                if client_id:
-                    verification_errors.append(f"{client_id[:20]}...: {error_msg}")
-                    print(f"✗ Verification failed for {client_id[:20]}...: {error_msg}")
-                else:
-                    print(f"✗ Verification without audience failed: {error_msg}")
-                
-                # If it's a clock skew error, try to work around it
-                if "Token used too early" in error_msg or "Token used too late" in error_msg:
-                    print("⚠️  Clock skew detected - attempting workaround...")
-                    try:
-                        # Decode without verification to get claims
-                        import json
-                        import base64
-                        parts = id_token_str.split('.')
-                        if len(parts) == 3:
-                            # Decode payload (add padding if needed)
-                            payload = parts[1]
-                            payload += '=' * (4 - len(payload) % 4)
-                            decoded = json.loads(base64.urlsafe_b64decode(payload))
-                            
-                            # Check if token is from Google and has required fields
-                            if decoded.get('iss') in ['accounts.google.com', 'https://accounts.google.com']:
-                                if decoded.get('email') and decoded.get('email_verified'):
-                                    print(f"✓ Token manually validated (clock skew workaround)")
-                                    print(f"  Email: {decoded.get('email')}")
-                                    print(f"  Audience: {decoded.get('aud')}")
-                                    idinfo = decoded
-                                    break
-                    except Exception as decode_error:
-                        print(f"✗ Manual decode failed: {decode_error}")
-                continue
+            # First, try without audience verification (most lenient)
+            for client_id in [None] + valid_client_ids:
+                try:
+                    if client_id is None:
+                        print("Attempting verification without audience...")
+                        idinfo = id_token.verify_oauth2_token(
+                            id_token_str,
+                            google_requests.Request()
+                        )
+                        print(f"✓ Token verified without audience check")
+                        print(f"  Token audience: {idinfo.get('aud')}")
+                    else:
+                        idinfo = id_token.verify_oauth2_token(
+                            id_token_str,
+                            google_requests.Request(),
+                            audience=client_id
+                        )
+                        print(f"✓ Token verified with client_id: {client_id[:20]}...")
+                    break
+                except ValueError as e:
+                    error_msg = str(e)
+                    if client_id:
+                        verification_errors.append(f"{client_id[:20]}...: {error_msg}")
+                        print(f"✗ Verification failed for {client_id[:20]}...: {error_msg}")
+                    else:
+                        print(f"✗ Verification without audience failed: {error_msg}")
+                    
+                    # If it's a clock skew error, try to work around it
+                    if "Token used too early" in error_msg or "Token used too late" in error_msg:
+                        print("⚠️  Clock skew detected - attempting workaround...")
+                        try:
+                            # Decode without verification to get claims
+                            import json
+                            import base64
+                            parts = id_token_str.split('.')
+                            if len(parts) == 3:
+                                # Decode payload (add padding if needed)
+                                payload = parts[1]
+                                payload += '=' * (4 - len(payload) % 4)
+                                decoded = json.loads(base64.urlsafe_b64decode(payload))
+                                
+                                # Check if token is from Google and has required fields
+                                if decoded.get('iss') in ['accounts.google.com', 'https://accounts.google.com']:
+                                    if decoded.get('email') and decoded.get('email_verified'):
+                                        print(f"✓ Token manually validated (clock skew workaround)")
+                                        print(f"  Email: {decoded.get('email')}")
+                                        print(f"  Audience: {decoded.get('aud')}")
+                                        idinfo = decoded
+                                        break
+                        except Exception as decode_error:
+                            print(f"✗ Manual decode failed: {decode_error}")
+                    continue
 
-        if not idinfo:
-            print(f"All verification attempts failed:")
-            for err in verification_errors:
-                print(f"  - {err}")
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail=f"Invalid Google ID token. Tried {len(valid_client_ids)} client IDs."
-            )
+            if not idinfo:
+                print(f"All verification attempts failed:")
+                for err in verification_errors:
+                    print(f"  - {err}")
+                raise HTTPException(
+                    status_code=status.HTTP_401_UNAUTHORIZED,
+                    detail=f"Invalid Google ID token. Tried {len(valid_client_ids)} client IDs."
+                )
 
         # Extract user information from Google
         email = idinfo.get('email')

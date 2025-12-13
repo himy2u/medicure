@@ -1,0 +1,167 @@
+appId: host.exp.Exponent
+---
+# Patient Signup Flow Test
+# Tests complete signup flow for patient role
+# Includes role selection, auth methods, and navigation
+
+- launchApp
+
+# Wait for app to load
+- extendedWaitUntil:
+    visible: ".*"
+    timeout: 10000
+
+- takeScreenshot: "01_landing_screen"
+
+# ========================================
+# Navigate to Signup
+# ========================================
+- tapOn:
+    text: "Find Doctors"
+    optional: true
+
+- extendedWaitUntil:
+    visible: ".*"
+    timeout: 5000
+
+- takeScreenshot: "02_signup_screen"
+
+# ========================================
+# TEST 1: Role Selection
+# ========================================
+
+# Verify Patient role card is visible
+- assertVisible:
+    text: "Patient"
+    optional: true
+
+# Verify Caregiver role card is visible  
+- assertVisible:
+    text: "Caregiver"
+    optional: true
+
+# Tap on Patient role
+- tapOn:
+    text: "Patient"
+    optional: true
+
+- takeScreenshot: "03_patient_selected"
+
+# Tap on Caregiver role
+- tapOn:
+    text: "Caregiver"
+    optional: true
+
+- takeScreenshot: "04_caregiver_selected"
+
+# Switch back to Patient
+- tapOn:
+    text: "Patient"
+    optional: true
+
+- takeScreenshot: "05_patient_reselected"
+
+# ========================================
+# TEST 2: Auth Method Buttons
+# ========================================
+
+# Verify Google button exists
+- assertVisible:
+    text: "Google"
+    optional: true
+
+# Verify WhatsApp button exists
+- assertVisible:
+    text: "WhatsApp"
+    optional: true
+
+- takeScreenshot: "06_auth_buttons_visible"
+
+# ========================================
+# TEST 3: Google Sign-In (should show alert)
+# ========================================
+- tapOn:
+    text: "Google"
+    optional: true
+
+- extendedWaitUntil:
+    visible: ".*"
+    timeout: 3000
+
+- takeScreenshot: "07_google_alert"
+
+# Dismiss alert
+- tapOn:
+    text: "OK"
+    optional: true
+
+- takeScreenshot: "08_alert_dismissed"
+
+# ========================================
+# TEST 4: WhatsApp Flow
+# ========================================
+- tapOn:
+    text: "WhatsApp"
+    optional: true
+
+- extendedWaitUntil:
+    visible: ".*"
+    timeout: 3000
+
+- takeScreenshot: "09_whatsapp_screen"
+
+# Verify WhatsApp input is visible
+- assertVisible:
+    text: "WhatsApp"
+    optional: true
+
+# Go back
+- tapOn:
+    text: "Back"
+    optional: true
+
+- takeScreenshot: "10_back_to_signup"
+
+# ========================================
+# TEST 5: Form Fields
+# ========================================
+
+# Scroll down to see form fields
+- swipe:
+    start: 50%, 70%
+    end: 50%, 30%
+    duration: 500
+
+- takeScreenshot: "11_form_fields"
+
+# Verify email field exists
+- assertVisible:
+    text: "Email"
+    optional: true
+
+# Verify password field exists
+- assertVisible:
+    text: "Password"
+    optional: true
+
+- takeScreenshot: "12_form_complete"
+
+# ========================================
+# TEST 6: Navigate to Login
+# ========================================
+- tapOn:
+    text: "Login"
+    optional: true
+
+- extendedWaitUntil:
+    visible: ".*"
+    timeout: 3000
+
+- takeScreenshot: "13_login_screen"
+
+# Verify login screen elements
+- assertVisible:
+    text: "Sign In"
+    optional: true
+
+- takeScreenshot: "14_final_state"

@@ -266,23 +266,23 @@ export default function EmergencyScreen() {
             </TouchableOpacity>
           ))}
         </View>
-      </View>
 
-      {/* Custom Symptom - Compact */}
-      <View style={styles.customSection}>
-        <Text style={styles.customLabel}>Or describe:</Text>
-        <RNTextInput
-          style={styles.customInput}
-          placeholder={t('symptomsPlaceholder')}
-          placeholderTextColor={colors.textSecondary}
-          value={customSymptom}
-          onChangeText={(text) => {
-            setCustomSymptom(text);
-            setSelectedSymptom('');
-          }}
-          multiline
-          numberOfLines={2}
-        />
+        {/* Custom Symptom - Right below symptoms */}
+        <View style={styles.customInputContainer}>
+          <Text style={styles.customLabel}>Or describe your symptoms:</Text>
+          <RNTextInput
+            style={styles.customInput}
+            placeholder={t('symptomsPlaceholder')}
+            placeholderTextColor={colors.textSecondary}
+            value={customSymptom}
+            onChangeText={(text) => {
+              setCustomSymptom(text);
+              setSelectedSymptom('');
+            }}
+            multiline
+            numberOfLines={2}
+          />
+        </View>
       </View>
 
       {/* Find Doctors Button - Fixed at Bottom */}
@@ -402,12 +402,11 @@ const styles = StyleSheet.create({
   symptomTextSelected: {
     color: '#FFFFFF',
   },
-  customSection: {
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
+  customInputContainer: {
+    marginTop: spacing.md,
   },
   customLabel: {
-    fontSize: 12,
+    fontSize: 13,
     fontWeight: '600',
     color: colors.textSecondary,
     marginBottom: spacing.xs,
@@ -419,8 +418,10 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.sm,
     fontSize: 14,
     color: colors.textPrimary,
-    minHeight: 50,
+    minHeight: 60,
     textAlignVertical: 'top',
+    borderWidth: 1,
+    borderColor: colors.border,
   },
   footer: {
     flexDirection: 'row',

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { StyleSheet, Text, View, ScrollView, TouchableOpacity, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
@@ -6,12 +6,18 @@ import { StackNavigationProp } from '@react-navigation/stack';
 import { TextInput, Button } from 'react-native-paper';
 import { colors, spacing, borderRadius } from '../theme/colors';
 import { RootStackParamList } from '../navigation/AppNavigator';
+import * as Google from 'expo-auth-session/providers/google';
+import * as WebBrowser from 'expo-web-browser';
+
+// Complete auth session for web browser
+WebBrowser.maybeCompleteAuthSession();
+
 // GoogleSignin: Conditionally import for Expo Go compatibility
 let GoogleSignin: any = null;
 try {
   GoogleSignin = require('@react-native-google-signin/google-signin').GoogleSignin;
 } catch (e) {
-  console.log('GoogleSignin not available (Expo Go) - using WhatsApp only');
+  console.log('GoogleSignin not available (Expo Go) - using expo-auth-session');
 }
 import * as SecureStore from 'expo-secure-store';
 import Constants from 'expo-constants';
@@ -45,8 +51,15 @@ export default function MedicalStaffSignupScreen() {
     { key: 'medical_staff', label: '👩‍⚕️ Medical Staff', description: 'Nurses & assistants' },
   ];
 
-  // Configure Google Sign-In (disabled in Expo Go)
-  React.useEffect(() => {
+  // expo-auth-session Google OAuth (works in Expo Go on real devices)
+  const [request, response, promptAsync] = Google.useAuthRequest({
+    webClientId: process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID,
+    iosClientId: process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID,
+    androidClientId: process.env.EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID,
+  });
+
+  // Configure native Google Sign-In (only if available - development builds)
+  useEffect(() => {
     if (GoogleSignin) {
       GoogleSignin.configure({
         webClientId: process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID,
@@ -54,13 +67,91 @@ export default function MedicalStaffSignupScreen() {
         offlineAccess: false,
         forceCodeForRefreshToken: false,
       });
+      console.log('=== Native GoogleSignin configured (Medical Staff) ===');
+    } else {
+      console.log('=== Using expo-auth-session for Google OAuth (Medical Staff) ===');
     }
   }, []);
 
+  // Handle expo-auth-session Google OAuth response
+  useEffect(() => {
+    if (response?.type === 'success') {
+      console.log('=== EXPO AUTH SESSION SUCCESS (Medical Staff) ===');
+      const { authentication } = response;
+      if (authentication?.accessToken) {
+        handleGoogleAuthSuccess(authentication.accessToken);
+      }
+    } else if (response?.type === 'error') {
+      console.error('Google OAuth error:', response.error);
+      Alert.alert('Error', 'Google authentication failed');
+    }
+  }, [response]);
+
+  // Handle successful Google auth (from either method)
+  const handleGoogleAuthSuccess = async (accessToken: string) => {
+    setLoading(true);
+    try {
+      // Get user info from Google
+      const userInfoResponse = await fetch('https://www.googleapis.com/userinfo/v2/me', {
+        headers: { Authorization: `Bearer ${accessToken}` },
+      });
+      const userInfo = await userInfoResponse.json();
+      console.log('Google user info:', userInfo.email);
+
+      // Send to backend
+      const apiBaseUrl = Constants.expoConfig?.extra?.apiBaseUrl || process.env.EXPO_PUBLIC_API_BASE_URL || 'http://192.168.100.91:8000';
+      const backendResponse = await fetch(`${apiBaseUrl}/auth/google`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          access_token: accessToken,
+          role: role,
+          name: userInfo.name,
+          email: userInfo.email,
+        }),
+      });
+
+      const data = await backendResponse.json();
+      if (backendResponse.ok) {
+        console.log('✅ Google auth success (Medical Staff)');
+        await SecureStore.setItemAsync('auth_token', data.access_token);
+        await SecureStore.setItemAsync('user_role', data.role);
+        await SecureStore.setItemAsync('user_id', data.user_id);
+        await SecureStore.setItemAsync('user_name', userInfo.name || '');
+        await SecureStore.setItemAsync('user_email', userInfo.email || '');
+        
+        const homeScreen = getRoleBasedHomeScreen(data.role);
+        navigation.navigate(homeScreen as any);
+      } else {
+        Alert.alert('Error', data.detail || 'Authentication failed');
+      }
+    } catch (error: any) {
+      console.error('Google auth error:', error);
+      Alert.alert('Error', error.message || 'Authentication failed');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handleGoogleSignup = async () => {
+    console.log('=== GOOGLE SIGN-IN STARTED (Medical Staff) ===');
+    console.log('Native GoogleSignin available:', !!GoogleSignin);
+    console.log('Expo auth request ready:', !!request);
+    
+    // Use expo-auth-session if native GoogleSignin is not available (Expo Go)
+    if (!GoogleSignin) {
+      console.log('Using expo-auth-session for Google OAuth');
+      if (request) {
+        promptAsync();
+      } else {
+        Alert.alert('Error', 'Google Sign-In is not ready. Please try again.');
+      }
+      return;
+    }
+    
+    // Use native GoogleSignin (development builds)
     try {
       setLoading(true);
-      console.log('=== GOOGLE SIGN-IN STARTED (Medical Staff) ===');
       
       await GoogleSignin.hasPlayServices({ showPlayServicesUpdateDialog: true });
       const signInResult = await GoogleSignin.signIn();
